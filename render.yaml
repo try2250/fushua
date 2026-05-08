@@ -1,9 +1,11 @@
 services:
   - type: web
     name: fushua
+    plan: free
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && python -c "from app.database import SessionLocal; from app.models import SiteConfig, User; db = SessionLocal(); db.query(SiteConfig).filter(SiteConfig.key == 'teacher_invite_code').first() or (db.add(SiteConfig(key='teacher_invite_code', value='FUSHUA2024')), db.commit()); db.close()" && gunicorn app.main:app -c gunicorn.conf.py
+    preDeployCommand: alembic upgrade head && python -c "from app.database import SessionLocal; from app.models import SiteConfig; db = SessionLocal(); db.query(SiteConfig).filter(SiteConfig.key == 'teacher_invite_code').first() or (db.add(SiteConfig(key='teacher_invite_code', value='FUSHUA2024')), db.commit()); db.close()"
+    startCommand: gunicorn app.main:app -c gunicorn.conf.py
     envVars:
       - key: SECRET_KEY
         generateValue: true
@@ -18,7 +20,6 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.6"
 
-  - type: pserv
-    name: fushua-db
-    runtime: postgres
+databases:
+  - name: fushua-db
     plan: free
