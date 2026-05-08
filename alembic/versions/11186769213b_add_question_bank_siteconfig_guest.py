@@ -19,11 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def _table_exists(table_name):
     conn = op.get_bind()
-    result = conn.execute(
-        sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
-        {"name": table_name},
-    )
-    return result.fetchone() is not None
+    return sa.inspect(conn).has_table(table_name)
 
 
 def upgrade() -> None:
