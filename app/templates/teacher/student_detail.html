@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}学生详情 - {{ student.display_name }} - 付刷{% endblock %}
+
+{% block content %}
+<h1>👤 {{ student.display_name }}（{{ student.username }}）</h1>
+
+<div class="stats-row stats-row-4">
+    <div class="stat-card">
+        <div class="stat-number">{{ total }}</div>
+        <div class="stat-label">总做题数</div>
+    </div>
+    <div class="stat-card stat-correct">
+        <div class="stat-number">{{ correct }}</div>
+        <div class="stat-label">正确数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ accuracy }}%</div>
+        <div class="stat-label">正确率</div>
+    </div>
+    <div class="stat-card stat-wrong">
+        <div class="stat-number">{{ mistake_count }}</div>
+        <div class="stat-label">未掌握错题</div>
+    </div>
+</div>
+
+{% if subject_stats %}
+<div class="card">
+    <h2>各科目正确率（从低到高）</h2>
+    <div class="bar-chart">
+        {% for s in subject_stats %}
+        <div class="bar-row">
+            <div class="bar-label">{{ s.name }}</div>
+            <div class="bar-track">
+                <div class="bar-fill {% if s.accuracy < 60 %}bar-danger{% elif s.accuracy < 80 %}bar-warning{% else %}bar-good{% endif %}" style="width: {{ s.accuracy }}%"></div>
+            </div>
+            <div class="bar-value">{{ s.accuracy }}%</div>
+            <div class="bar-detail">{{ s.correct }}/{{ s.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if type_stats %}
+<div class="card">
+    <h2>各题型正确率</h2>
+    <div class="bar-chart">
+        {% for t in type_stats %}
+        <div class="bar-row">
+            <div class="bar-label">{{ t.type }}</div>
+            <div class="bar-track">
+                <div class="bar-fill {% if t.accuracy < 60 %}bar-danger{% elif t.accuracy < 80 %}bar-warning{% else %}bar-good{% endif %}" style="width: {{ t.accuracy }}%"></div>
+            </div>
+            <div class="bar-value">{{ t.accuracy }}%</div>
+            <div class="bar-detail">{{ t.correct }}/{{ t.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if daily_stats %}
+<div class="card">
+    <h2>近14天刷题趋势</h2>
+    <div class="trend-chart">
+        {% for d in daily_stats %}
+        <div class="trend-day">
+            <div class="trend-bar-wrap">
+                <div class="trend-bar" style="height: {{ d.total * 8 }}px;" title="{{ d.date }}: {{ d.total }}题"></div>
+            </div>
+            <div class="trend-label">{{ d.date[5:] }}</div>
+            <div class="trend-count">{{ d.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div style="text-align:center; margin-top:1rem;">
+    <a href="/teacher/students/{{ student.id }}/export/pdf" class="btn btn-outline">导出PDF报告</a>
+    <a href="/teacher/students" class="btn btn-outline">返回学生管理</a>
+    <a href="/teacher/stats" class="btn btn-outline">返回统计</a>
+</div>
+{% endblock %}

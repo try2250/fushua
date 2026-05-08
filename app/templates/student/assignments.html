@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}我的作业 - 付刷{% endblock %}
+{% block content %}
+<h1>我的作业</h1>
+{% if assignments %}
+{% for a in assignments %}
+<div class="card">
+    <h3>{{ a.title }}</h3>
+    <p class="hint">{{ a.description }}</p>
+    <div class="question-meta">
+        <span class="badge">题目数: {{ a.question_ids.split(',')|length }}</span>
+        {% if a.deadline %}<span class="badge badge-semester">截止: {{ a.deadline.strftime('%Y-%m-%d') }}</span>{% endif %}
+    </div>
+    <div style="margin-top:0.5rem;">
+        {% if a.id in completed_ids %}
+        <span class="badge" style="background:#e8f5e9; color:#2e7d32;">已完成</span>
+        {% else %}
+        <a href="/student/practice" class="btn btn-primary btn-sm">开始做题</a>
+        <form action="/assignments/{{ a.id }}/complete" method="post" style="display:inline;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline btn-sm">标记完成</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="empty">暂无作业</p></div>
+{% endif %}
+{% endblock %}

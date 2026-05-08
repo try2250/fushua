@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ class_info.name }} - 付刷{% endblock %}
+{% block content %}
+<h1>{{ class_info.name }}</h1>
+
+<div class="card">
+    <h2>添加学生</h2>
+    <form action="/classes/{{ class_info.id }}/members/add" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <input type="text" name="username" required placeholder="输入学生用户名" style="max-width:300px;">
+            </div>
+            <button type="submit" class="btn btn-primary">添加</button>
+        </div>
+    </form>
+</div>
+
+{% if members %}
+<div class="card">
+    <h2>学生列表</h2>
+    <table class="data-table">
+        <thead><tr><th>姓名</th><th>答题数</th><th>正确数</th><th>正确率</th><th>操作</th></tr></thead>
+        <tbody>
+            {% for m in members %}
+            <tr>
+                <td>{{ m.display_name or m.username }}</td>
+                <td>{{ m.total }}</td>
+                <td>{{ m.correct }}</td>
+                <td>{{ m.accuracy }}%</td>
+                <td>
+                    <form action="/classes/{{ class_info.id }}/members/{{ m.id }}/remove" method="post" style="display:inline;">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-danger btn-sm">移除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card"><p class="empty">暂无学生，请添加</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}字段管理 - 付刷{% endblock %}
+
+{% block content %}
+<h1>字段管理</h1>
+
+<div class="card">
+    <h2>内置字段</h2>
+    <p class="hint">内置字段为系统核心字段，不可删除或修改字段标识</p>
+    <table class="data-table">
+        <thead>
+            <tr><th>字段标识</th><th>说明</th><th>状态</th></tr>
+        </thead>
+        <tbody>
+            {% for bf in builtin_fields %}
+            <tr>
+                <td><code>{{ bf }}</code></td>
+                <td>内置字段</td>
+                <td><span class="badge badge-semester">内置</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>添加自定义字段</h2>
+    <form action="/teacher/fields/create" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="field_key">字段标识 *</label>
+                <input type="text" id="field_key" name="field_key" required placeholder="如：source, tag, year" pattern="[a-zA-Z_][a-zA-Z0-9_]*" title="仅限英文字母、数字和下划线，以字母开头">
+            </div>
+            <div class="form-group">
+                <label for="field_label">显示名称 *</label>
+                <input type="text" id="field_label" name="field_label" required placeholder="如：题目来源、标签、年份">
+            </div>
+            <div class="form-group">
+                <label for="field_type">字段类型</label>
+                <select id="field_type" name="field_type">
+                    {% for ft in field_type_choices %}
+                    <option value="{{ ft }}">{{ ft }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="options">选项值（仅select类型）</label>
+                <input type="text" id="options" name="options" placeholder="逗号分隔，如：中考,模拟,单元测试">
+            </div>
+            <div class="form-group">
+                <label for="sort_order">排序</label>
+                <input type="number" id="sort_order" name="sort_order" value="0" min="0">
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; gap:1.5rem; padding-top:1.5rem;">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="required"> 必填
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="visible" checked> 可见
+                </label>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">添加字段</button>
+    </form>
+</div>
+
+{% if fields %}
+<div class="card">
+    <h2>自定义字段列表</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>标识</th><th>名称</th><th>类型</th><th>必填</th><th>可见</th><th>选项</th><th>排序</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {% for f in fields %}
+            <tr>
+                <form action="/teacher/fields/{{ f.id }}/update" method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <td><code>{{ f.field_key }}</code></td>
+                    <td><input type="text" name="field_label" value="{{ f.field_label }}" class="inline-input"></td>
+                    <td>
+                        <select name="field_type" class="inline-select">
+                            {% for ft in field_type_choices %}
+                            <option value="{{ ft }}" {% if f.field_type == ft %}selected{% endif %}>{{ ft }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="checkbox" name="required" {% if f.required %}checked{% endif %}></td>
+                    <td><input type="checkbox" name="visible" {% if f.visible %}checked{% endif %}></td>
+                    <td><input type="text" name="options" value="{{ f.options }}" class="inline-input" placeholder="逗号分隔"></td>
+                    <td><input type="number" name="sort_order" value="{{ f.sort_order }}" class="inline-input" min="0" style="width:60px;"></td>
+                    <td class="btn-group">
+                        <button type="submit" class="btn btn-outline btn-sm">保存</button>
+                    </td>
+                </form>
+            </tr>
+            <tr>
+                <td colspan="7"></td>
+                <td>
+                    <form action="/teacher/fields/{{ f.id }}/delete" method="post" onsubmit="return confirm('确定删除字段 {{ f.field_key }}？已有题目中该字段的数据不会丢失，但字段将不再显示在表单中。')">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card">
+    <p class="empty">暂无自定义字段，点击上方添加</p>
+</div>
+{% endif %}
+{% endblock %}

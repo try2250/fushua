@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}体验已过期 - 付刷{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;padding:3rem;">
+    <h1>⏰ 游客体验已过期</h1>
+    <p style="color:var(--text-secondary);margin:1rem 0;">您的1小时游客体验已结束。请联系教师将您加入班级，即可继续使用全部功能。</p>
+    <div style="display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;">
+        <form action="/logout" method="POST" style="display:inline;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline">退出登录</button>
+        </form>
+        <a href="/" class="btn btn-primary">返回首页</a>
+    </div>
+</div>
+{% endblock %}

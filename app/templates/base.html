@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}付刷{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#4361ee">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false}]});"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.10/dist/htmx.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">📚 付刷</a>
+            <div class="nav-links">
+                {% if logged_in %}
+                    <span class="nav-user">{{ display_name }}{% if is_guest %}<span class="badge badge-warning" style="font-size:0.7rem;margin-left:4px;">游客</span>{% endif %}</span>
+                    {% if role == 'student' %}
+                        <a href="/browse" class="nav-link">题库</a>
+                        <a href="/student/practice" class="nav-link">刷题</a>
+                        <a href="/student/mistakes" class="nav-link">错题本</a>
+                        <a href="/student/analysis" class="nav-link">分析</a>
+                        <a href="/student/profile" class="nav-link">我的</a>
+                        <a href="/student/favorites" class="nav-link">收藏</a>
+                        <a href="/student/assignments" class="nav-link">作业</a>
+                        <a href="/student/plans" class="nav-link">计划</a>
+                        <a href="/student/notifications" class="nav-link">通知{% if unread_count %}<span class="badge badge-warning" style="font-size:0.6rem;margin-left:2px;">{{ unread_count }}</span>{% endif %}</a>
+                        <a href="/leaderboard" class="nav-link">排行</a>
+                        <a href="/settings" class="nav-link">设置</a>
+                    {% elif role == 'teacher' %}
+                        <a href="/browse" class="nav-link">题库</a>
+                        <a href="/teacher/questions" class="nav-link">管理</a>
+                        <a href="/teacher/questions/create" class="nav-link">出题</a>
+                        <a href="/teacher/fields" class="nav-link">字段</a>
+                        <a href="/teacher/banks" class="nav-link">题库</a>
+                        <a href="/teacher/questions/import" class="nav-link">导入</a>
+                        <a href="/teacher/stats" class="nav-link">统计</a>
+                        <a href="/teacher/assignments" class="nav-link">作业</a>
+                        <a href="/teacher/classes" class="nav-link">班级</a>
+                        <a href="/teacher/students" class="nav-link">学生</a>
+                        {% if is_admin %}<a href="/teacher/invite" class="nav-link">邀请码</a>{% endif %}
+                        <a href="/leaderboard" class="nav-link">排行</a>
+                        <a href="/settings" class="nav-link">设置</a>
+                    {% endif %}
+                    <form action="/logout" method="POST" style="display:inline;">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="nav-link nav-link-logout" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit;">退出</button>
+                    </form>
+                {% else %}
+                    <a href="/login" class="nav-link">登录</a>
+                    <a href="/register" class="nav-link">注册</a>
+                {% endif %}
+                <button onclick="toggleTheme()" class="theme-toggle" id="themeToggle" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+<script>
+function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? '' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    document.getElementById('themeToggle').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.textContent = '☀️';
+        });
+    }
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

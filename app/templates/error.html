@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ error_title }} - 付刷{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;padding:3rem;">
+    <h1 style="font-size:4rem;margin-bottom:0.5rem;">{{ error_code }}</h1>
+    <h2>{{ error_title }}</h2>
+    <p style="color:var(--text-secondary);margin:1rem 0;">{{ error_message }}</p>
+    <a href="/" class="btn btn-primary">返回首页</a>
+</div>
+{% endblock %}

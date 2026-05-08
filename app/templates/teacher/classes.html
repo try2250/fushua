@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}班级管理 - 付刷{% endblock %}
+{% block content %}
+<h1>班级管理</h1>
+<div class="card">
+    <h2>创建班级</h2>
+    <form action="/classes/create" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <input type="text" name="name" required placeholder="班级名称" style="max-width:300px;">
+            </div>
+            <button type="submit" class="btn btn-primary">创建</button>
+        </div>
+    </form>
+</div>
+{% if classes %}
+{% for c in classes %}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h3><a href="/classes/{{ c.id }}">{{ c.name }}</a></h3>
+            <span class="hint">{{ c.members }} 名学生</span>
+        </div>
+        <form action="/classes/{{ c.id }}/delete" method="post" onsubmit="return confirm('确定删除此班级？')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-danger btn-sm">删除</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="empty">暂无班级</p></div>
+{% endif %}
+{% endblock %}

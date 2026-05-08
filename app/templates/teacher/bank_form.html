@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑题库' if bank else '新建题库' }} - 付刷{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>{{ '编辑题库' if bank else '新建题库' }}</h1>
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    <form action="/teacher/banks/create" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>题库名称 *</label>
+            <input type="text" name="name" required placeholder="如：2024中考真题、期末模拟卷" value="{{ bank.name if bank else '' }}">
+        </div>
+        <div class="form-group">
+            <label>科目 *</label>
+            <select name="subject" required>
+                <option value="">请选择科目</option>
+                {% for s in subjects %}<option value="{{ s }}" {{ 'selected' if bank and bank.subject == s else '' }}>{{ s }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>学期</label>
+            <select name="semester">
+                <option value="">全部学期</option>
+                {% for s in semesters %}<option value="{{ s }}" {{ 'selected' if bank and bank.semester == s else '' }}>{{ s }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>题库类型</label>
+            <select name="bank_type">
+                <option value="custom">自定义</option>
+                <option value="exam">真题</option>
+                <option value="mock">模拟题</option>
+                <option value="daily">每日练习</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>描述</label>
+            <textarea name="description" rows="3" placeholder="题库说明（可选）">{{ bank.description if bank else '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">创建</button>
+        <a href="/teacher/banks" class="btn btn-outline">取消</a>
+    </form>
+</div>
+{% endblock %}

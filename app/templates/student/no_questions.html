@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}开始刷题 - 付刷{% endblock %}
+
+{% block content %}
+<h1>选择科目</h1>
+
+<div class="card">
+    <div class="subject-grid">
+        {% for s in subjects %}
+        <a href="/student/practice?subject={{ s }}" class="subject-card">
+            <div class="subject-name">{{ s }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    <div style="margin-top:1.5rem; text-align:center; display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
+        <a href="/student/practice" class="btn btn-primary">全部科目随机练习</a>
+        <a href="/student/practice?mode=adaptive" class="btn btn-outline">自适应练习</a>
+    </div>
+</div>
+{% endblock %}

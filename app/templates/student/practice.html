@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}刷题中 - 付刷{% endblock %}
+
+{% block content %}
+<h1>刷题 {% if subject %}· {{ subject }}{% endif %}</h1>
+
+<div class="mode-select" style="margin-bottom:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+    <a href="/student/practice?mode=smart{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if mode == 'smart' %}btn-primary{% else %}btn-outline{% endif %}">智能刷题</a>
+    <a href="/student/practice?mode=adaptive{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if mode == 'adaptive' %}btn-primary{% else %}btn-outline{% endif %}">自适应练习</a>
+    <a href="/student/practice?mode=random{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if mode == 'random' %}btn-primary{% else %}btn-outline{% endif %}">随机练习</a>
+</div>
+
+<form action="/student/practice/submit" method="post" id="practiceForm">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<div class="practice-list">
+    {% for q in questions %}
+    <div class="card question-card">
+        <div class="question-header">
+            <span class="question-number">第 {{ loop.index }} 题</span>
+            <span class="badge badge-type-{{ q.q_type }}">{{ question_types.get(q.q_type, q.q_type) }}</span>
+            <span class="badge badge-subject">{{ q.subject }}</span>
+            <span class="badge badge-diff-{{ q.difficulty }}">难度 {{ q.difficulty }}</span>
+            <button hx-post="/student/favorites/{{ q.id }}/add" hx-target="this" hx-swap="outerHTML" class="btn btn-outline btn-sm">收藏</button>
+        </div>
+        <div class="question-content">{{ q.content }}</div>
+        {% if q.image_url %}
+        <div class="question-image">
+            <img src="{{ q.image_url }}" alt="题目图片" loading="lazy">
+        </div>
+        {% endif %}
+
+        {% if q.q_type == 'choice' %}
+        <div class="options-group">
+            {% if q.option_a %}
+            <label class="option-label">
+                <input type="radio" name="answer_{{ q.id }}" value="A" required>
+                <span class="option-text">A. {{ q.option_a }}</span>
+            </label>
+            {% endif %}
+            {% if q.option_b %}
+            <label class="option-label">
+                <input type="radio" name="answer_{{ q.id }}" value="B">
+                <span class="option-text">B. {{ q.option_b }}</span>
+            </label>
+            {% endif %}
+            {% if q.option_c %}
+            <label class="option-label">
+                <input type="radio" name="answer_{{ q.id }}" value="C">
+                <span class="option-text">C. {{ q.option_c }}</span>
+            </label>
+            {% endif %}
+            {% if q.option_d %}
+            <label class="option-label">
+                <input type="radio" name="answer_{{ q.id }}" value="D">
+                <span class="option-text">D. {{ q.option_d }}</span>
+            </label>
+            {% endif %}
+        </div>
+
+        {% elif q.q_type == 'multi_choice' %}
+        <div class="multi-hint">（多选题，可选择多个选项）</div>
+        <div class="options-group">
+            {% if q.option_a %}
+            <label class="option-label">
+                <input type="checkbox" name="answer_{{ q.id }}" value="A" class="multi-cb" data-qid="{{ q.id }}">
+                <span class="option-text">A. {{ q.option_a }}</span>
+            </label>
+            {% endif %}
+            {% if q.option_b %}
+            <label class="option-label">
+                <input type="checkbox" name="answer_{{ q.id }}" value="B" class="multi-cb" data-qid="{{ q.id }}">
+                <span class="option-text">B. {{ q.option_b }}</span>
+            </label>
+            {% endif %}
+            {% if q.option_c %}
+            <label class="option-label">
+                <input type="checkbox" name="answer_{{ q.id }}" value="C" class="multi-cb" data-qid="{{ q.id }}">
+                <span class="option-text">C. {{ q.option_c }}</span>
+            </label>
+            {% endif %}
+            {% if q.option_d %}
+            <label class="option-label">
+                <input type="checkbox" name="answer_{{ q.id }}" value="D" class="multi-cb" data-qid="{{ q.id }}">
+                <span class="option-text">D. {{ q.option_d }}</span>
+            </label>
+            {% endif %}
+        </div>
+
+        {% elif q.q_type == 'fill' %}
+        <div class="form-group" style="margin-top:0.5rem;">
+            <input type="text" name="answer_{{ q.id }}" class="fill-input" placeholder="请输入答案" required>
+        </div>
+
+        {% elif q.q_type == 'judge' %}
+        <div class="options-group">
+            <label class="option-label">
+                <input type="radio" name="answer_{{ q.id }}" value="对" required>
+                <span class="option-text">✅ 对</span>
+            </label>
+            <label class="option-label">
+                <input type="radio" name="answer_{{ q.id }}" value="错">
+                <span class="option-text">❌ 错</span>
+            </label>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="submit-bar">
+    <span class="submit-info">共 {{ questions|length }} 题</span>
+    <button type="submit" class="btn btn-primary btn-lg">提交答案</button>
+</div>
+</form>
+
+<script>
+document.getElementById('practiceForm').addEventListener('submit', function(e) {
+    var multiQids = new Set();
+    document.querySelectorAll('.multi-cb').forEach(function(cb) {
+        multiQids.add(cb.dataset.qid);
+    });
+    for (var qid of multiQids) {
+        var checked = document.querySelectorAll('.multi-cb[data-qid="' + qid + '"]:checked');
+        if (checked.length === 0) {
+            e.preventDefault();
+            alert('请完成所有题目后再提交');
+            return;
+        }
+    }
+});
+</script>
+{% endblock %}

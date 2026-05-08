@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}通知 - 付刷{% endblock %}
+{% block content %}
+<h1>通知 {% if unread_count > 0 %}<span class="badge badge-semester">{{ unread_count }} 条未读</span>{% endif %}</h1>
+
+{% if unread_count > 0 %}
+<form action="/student/notifications/read-all" method="post" style="margin-bottom:1rem;">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-outline btn-sm">全部标为已读</button>
+</form>
+{% endif %}
+
+{% if notifications %}
+{% for n in notifications %}
+<div class="card" style="{% if not n.is_read %}border-left: 3px solid #4361ee;{% endif %}">
+    <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div>
+            <strong>{{ n.title }}</strong>
+            {% if not n.is_read %}<span class="badge badge-semester" style="font-size:0.7rem;">新</span>{% endif %}
+            <p class="hint" style="margin:0.3rem 0 0;">{{ n.content }}</p>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+            <span class="hint">{{ n.created_at.strftime('%m-%d %H:%M') }}</span>
+            {% if not n.is_read %}
+            <form action="/student/notifications/{{ n.id }}/read" method="post">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-outline btn-sm">已读</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="empty">暂无通知</p></div>
+{% endif %}
+{% endblock %}

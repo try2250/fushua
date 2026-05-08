@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}排行榜 - 付刷{% endblock %}
+{% block content %}
+<h1>学习排行榜</h1>
+
+{% if rankings %}
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr><th>排名</th><th>姓名</th><th>答题数</th><th>正确数</th><th>正确率</th></tr>
+        </thead>
+        <tbody>
+            {% for r in rankings %}
+            <tr>
+                <td>
+                    {% if loop.index == 1 %}🥇
+                    {% elif loop.index == 2 %}🥈
+                    {% elif loop.index == 3 %}🥉
+                    {% else %}{{ loop.index }}{% endif %}
+                </td>
+                <td>{{ r.display_name or r.username }}</td>
+                <td>{{ r.total }}</td>
+                <td>{{ r.correct }}</td>
+                <td>{{ r.accuracy }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card"><p class="empty">暂无排行数据，快去刷题吧！</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}学生管理 - 付刷{% endblock %}
+{% block content %}
+<h1>学生管理</h1>
+
+{% if guest_data %}
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid #f59e0b;">
+    <h2>待审核游客 ({{ guest_data|length }})</h2>
+    <p style="color:var(--text-secondary);">以下学生以游客身份注册，审核通过后可使用全部功能。</p>
+    <table class="table">
+        <thead><tr><th>用户名</th><th>昵称</th><th>过期时间</th><th>操作</th></tr></thead>
+        <tbody>
+        {% for g in guest_data %}
+        <tr>
+            <td>{{ g.username }}</td>
+            <td>{{ g.display_name }}</td>
+            <td>{{ g.guest_expires_at.strftime('%m-%d %H:%M') if g.guest_expires_at else '未设置' }}</td>
+            <td>
+                <form action="/teacher/students/{{ g.id }}/approve" method="POST" style="display:inline;">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <select name="class_id" required>
+                        <option value="">选择班级</option>
+                        {% for c in class_data %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">通过</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% for c in class_data %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2>{{ c.name }} ({{ c.members|length }}人)</h2>
+    {% if c.members %}
+    <table class="table">
+        <thead><tr><th>用户名</th><th>昵称</th><th>做题数</th><th>正确率</th><th>状态</th></tr></thead>
+        <tbody>
+        {% for m in c.members %}
+        <tr>
+            <td>{{ m.username }}</td>
+            <td>{{ m.display_name }}</td>
+            <td>{{ m.total }}</td>
+            <td>{{ m.accuracy }}%</td>
+            <td>{% if m.is_guest %}<span class="badge badge-warning">游客</span>{% else %}<span class="badge badge-success">正式</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-secondary);">暂无学生</p>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div class="card">
+    <h2>添加学生到班级</h2>
+    <p style="color:var(--text-secondary);">在班级详情页可以通过用户名添加学生，学生注册时选择班级也会自动加入。</p>
+    <a href="/teacher/classes" class="btn btn-outline">管理班级</a>
+</div>
+{% endblock %}

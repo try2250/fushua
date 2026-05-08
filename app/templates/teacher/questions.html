@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}题库管理 - 付刷{% endblock %}
+
+{% block content %}
+<h1>题库管理</h1>
+
+<div class="card">
+    <div class="flex-between">
+        <div class="filter-group">
+            <a href="/teacher/questions" class="btn {% if not current_subject and not current_type %}btn-primary{% else %}btn-outline{% endif %} btn-sm">全部</a>
+            {% for s in subjects %}
+            <a href="/teacher/questions?subject={{ s }}" class="btn {% if current_subject == s %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ s }}</a>
+            {% endfor %}
+            <span class="filter-divider">|</span>
+            {% for k, v in question_types.items() %}
+            <a href="/teacher/questions?q_type={{ k }}" class="btn {% if current_type == k %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ v }}</a>
+            {% endfor %}
+        </div>
+        <div class="btn-group">
+            <a href="/teacher/questions/create" class="btn btn-primary">+ 添加题目</a>
+            <a href="/teacher/questions/import" class="btn btn-outline">📥 导入</a>
+            <a href="/teacher/questions/export/json" class="btn btn-outline">📤 导出JSON</a>
+            <a href="/teacher/questions/export/csv" class="btn btn-outline">📤 导出CSV</a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    {% if questions %}
+    <div class="question-list">
+        {% for q in questions %}
+        <div class="question-item">
+            <div class="question-meta">
+                <span class="badge badge-type-{{ q.q_type }}">{{ question_types.get(q.q_type, q.q_type) }}</span>
+                <span class="badge badge-subject">{{ q.subject }}</span>
+                {% if q.semester %}<span class="badge badge-semester">{{ q.semester }}</span>{% endif %}
+                {% if q.chapter %}<span class="badge badge-chapter">{{ q.chapter }}</span>{% endif %}
+                <span class="badge badge-diff-{{ q.difficulty }}">难度 {{ q.difficulty }}</span>
+                {% for cf in custom_fields %}
+                {% set val = q.extra.get(cf.field_key, '') %}
+                {% if val %}<span class="badge badge-custom">{{ cf.field_label }}: {{ val }}</span>{% endif %}
+                {% endfor %}
+            </div>
+            <div class="question-content">{{ q.content[:80] }}{% if q.content|length > 80 %}...{% endif %}</div>
+            <div class="question-footer">
+                <span class="question-answer">答案：{{ q.answer }}</span>
+                <div class="btn-group">
+                    <a href="/teacher/questions/{{ q.id }}/edit" class="btn btn-outline btn-sm">编辑</a>
+                    <form action="/teacher/questions/{{ q.id }}/delete" method="post" onsubmit="return confirm('确定删除此题？')">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">还没有题目，点击上方按钮添加</p>
+    {% endif %}
+</div>
+{% endblock %}

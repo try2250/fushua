@@ -1,0 +1,211 @@
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session
+from sqlalchemy import func as sa_func, Integer
+from typing import Annotated
+
+from app.database import get_db
+from app.models import Question, Record, User, QuestionBank, SUBJECTS, SEMESTERS
+from app.auth import get_current_user, get_current_user_info
+
+router = APIRouter()
+
+
+@router.get("/")
+def index(request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = get_current_user(request)
+    logged_in = user_id is not None
+    role = ""
+    display_name = ""
+    if logged_in:
+        user, role, display_name = get_current_user_info(request, db)
+
+    total_questions = db.query(Question).count()
+
+    stats = {}
+    if logged_in and role == "student":
+        total = db.query(Record).filter(Record.user_id == user_id).count()
+        correct = (
+            db.query(Record)
+            .filter(Record.user_id == user_id, Record.is_correct == True)
+            .count()
+        )
+        stats = {
+            "total": total,
+            "correct": correct,
+            "accuracy": round(correct / total * 100, 1) if total > 0 else 0,
+        }
+
+    question_counts = {}
+    for s in SUBJECTS:
+        count = db.query(Question).filter(Question.subject == s).count()
+        if count > 0:
+            question_counts[s] = count
+
+    return request.app.state.templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "logged_in": logged_in,
+            "role": role,
+            "display_name": display_name,
+            "total_questions": total_questions,
+            "stats": stats,
+            "question_counts": question_counts,
+            "subjects": SUBJECTS,
+        },
+    )
+
+
+@router.get("/browse")
+def browse(
+    request: Request,
+    subject: str = "",
+    semester: str = "",
+    chapter: str = "",
+    bank_id: int = 0,
+    db: Annotated[Session, Depends(get_db)] = None,
+):
+    user_id = get_current_user(request)
+    logged_in = user_id is not None
+
+    subject_counts = {}
+    subject_rows = (
+        db.query(Question.subject, sa_func.count(Question.id))
+        .group_by(Question.subject)
+        .all()
+    )
+    for s, c in subject_rows:
+        subject_counts[s] = c
+
+    semester_counts = {}
+    chapters = []
+    chapter_counts = {}
+    questions = []
+    banks = []
+
+    if subject:
+        sem_rows = (
+            db.query(Question.semester, sa_func.count(Question.id))
+            .filter(Question.subject == subject)
+            .group_by(Question.semester)
+            .all()
+        )
+        for sem, cnt in sem_rows:
+            label = sem if sem else "未分类"
+            semester_counts[label] = cnt
+
+        bank_list = db.query(QuestionBank).filter(QuestionBank.subject == subject).order_by(QuestionBank.name).all()
+        bank_ids = [b.id for b in bank_list]
+        bank_count_rows = (
+            db.query(Question.bank_id, sa_func.count(Question.id))
+            .filter(Question.bank_id.in_(bank_ids))
+            .group_by(Question.bank_id)
+            .all()
+        )
+        bank_count_map = {bid: cnt for bid, cnt in bank_count_rows}
+        banks = [{"id": b.id, "name": b.name, "bank_type": b.bank_type, "q_count": bank_count_map.get(b.id, 0)} for b in bank_list]
+
+        if semester:
+            chap_rows = (
+                db.query(Question.chapter, sa_func.count(Question.id))
+                .filter(Question.subject == subject, Question.semester == (semester if semester != "未分类" else ""))
+                .group_by(Question.chapter)
+                .all()
+            )
+            for ch, cnt in chap_rows:
+                if ch:
+                    chapters.append(ch)
+                    chapter_counts[ch] = cnt
+
+            if chapter:
+                questions = (
+                    db.query(Question)
+                    .filter(
+                        Question.subject == subject,
+                        Question.semester == (semester if semester != "未分类" else ""),
+                        Question.chapter == chapter,
+                    )
+                    .order_by(Question.difficulty, Question.id)
+                    .all()
+                )
+            else:
+                questions = (
+                    db.query(Question)
+                    .filter(
+                        Question.subject == subject,
+                        Question.semester == (semester if semester != "未分类" else ""),
+                    )
+                    .order_by(Question.difficulty, Question.id)
+                    .all()
+                )
+        else:
+            chap_rows = (
+                db.query(Question.chapter, sa_func.count(Question.id))
+                .filter(Question.subject == subject)
+                .group_by(Question.chapter)
+                .all()
+            )
+            for ch, cnt in chap_rows:
+                if ch:
+                    chapters.append(ch)
+                    chapter_counts[ch] = cnt
+
+    if bank_id:
+        questions = questions.filter(Question.bank_id == bank_id) if hasattr(questions, 'filter') else [q for q in questions if q.bank_id == bank_id]
+
+    return request.app.state.templates.TemplateResponse(
+        "browse.html",
+        {
+            "request": request,
+            "logged_in": logged_in,
+            "subject": subject,
+            "semester": semester,
+            "chapter": chapter,
+            "subject_counts": subject_counts,
+            "semester_counts": semester_counts,
+            "chapters": chapters,
+            "chapter_counts": chapter_counts,
+            "questions": questions,
+            "subjects": SUBJECTS,
+            "semesters": SEMESTERS,
+            "banks": banks,
+            "bank_id": bank_id,
+        },
+    )
+
+
+@router.get("/leaderboard")
+def leaderboard(request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = get_current_user(request)
+    logged_in = user_id is not None
+
+    rankings_data = (
+        db.query(
+            User.id,
+            User.username,
+            User.display_name,
+            sa_func.count(Record.id).label("total"),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+        )
+        .outerjoin(Record, Record.user_id == User.id)
+        .filter(User.role == "student", User.is_guest == False)
+        .group_by(User.id)
+        .having(sa_func.count(Record.id) > 0)
+        .all()
+    )
+    rankings = [
+        {
+            "username": r.username,
+            "display_name": r.display_name,
+            "total": r.total,
+            "correct": int(r.correct or 0),
+            "accuracy": round((r.correct or 0) / r.total * 100, 1) if r.total > 0 else 0,
+        }
+        for r in rankings_data
+    ]
+    rankings.sort(key=lambda x: (-x["correct"], -x["accuracy"]))
+
+    return request.app.state.templates.TemplateResponse(
+        "leaderboard.html",
+        {"request": request, "logged_in": logged_in, "rankings": rankings},
+    )

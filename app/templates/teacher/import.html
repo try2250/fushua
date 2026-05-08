@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}导入题库 - 付刷{% endblock %}
+
+{% block content %}
+<h1>📥 导入题库</h1>
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2>导入说明</h2>
+    <div style="line-height:1.8;">
+        <p><strong>支持格式：</strong>JSON (.json) 或 CSV (.csv)</p>
+        <p><strong>必填字段：</strong>subject（科目）、content（题目内容）、answer（答案）</p>
+        <p><strong>题型代码：</strong>choice=选择题, multi_choice=多选题, fill=填空题, judge=判断题</p>
+        <p><strong>难度等级：</strong>1=简单, 2=中等, 3=困难</p>
+        <p><strong>选择题选项：</strong>option_a, option_b, option_c, option_d</p>
+        {% if custom_fields %}
+        <p><strong>自定义字段：</strong>{% for cf in custom_fields %}{{ cf.field_key }}({{ cf.field_label }}){% if not loop.last %}, {% endif %}{% endfor %}</p>
+        {% endif %}
+        <p style="margin-top:0.5rem;">
+            <strong>下载模板：</strong>
+            <a href="/teacher/questions/import/template/json" class="btn btn-outline btn-sm">JSON 模板</a>
+            <a href="/teacher/questions/import/template/csv" class="btn btn-outline btn-sm">CSV 模板</a>
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <form action="/teacher/questions/import" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>导入到题库（可选）</label>
+            <select name="bank_id">
+                <option value="">不归属题库</option>
+                {% for b in banks %}
+                <option value="{{ b.id }}">{{ b.name }} ({{ b.subject }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="file">选择文件 *（支持 .json 或 .csv）</label>
+            <input type="file" id="file" name="file" accept=".json,.csv" required class="file-input">
+        </div>
+        <button type="submit" class="btn btn-primary">上传导入</button>
+        <a href="/teacher/questions" class="btn btn-outline" style="margin-left:0.5rem;">返回题库</a>
+    </form>
+</div>
+
+<div class="card">
+    <h2>JSON 格式示例</h2>
+    <pre class="format-example">[
+  {
+    "subject": "数学",
+    "semester": "八年级上册",
+    "chapter": "代数",
+    "q_type": "choice",
+    "difficulty": 2,
+    "content": "1+1等于几？",
+    "option_a": "1",
+    "option_b": "2",
+    "option_c": "3",
+    "option_d": "4",
+    "answer": "B",
+    "explanation": "1+1=2"
+  },
+  {
+    "subject": "数学",
+    "semester": "八年级下册",
+    "q_type": "multi_choice",
+    "difficulty": 3,
+    "content": "以下哪些是质数？",
+    "option_a": "2",
+    "option_b": "4",
+    "option_c": "5",
+    "option_d": "6",
+    "answer": "AC",
+    "explanation": "2和5是质数"
+  },
+  {
+    "subject": "英语",
+    "semester": "七年级上册",
+    "q_type": "fill",
+    "content": "Apple的中文意思是___",
+    "answer": "苹果"
+  },
+  {
+    "subject": "物理",
+    "semester": "九年级上册",
+    "q_type": "judge",
+    "content": "光速比声速快",
+    "answer": "对",
+    "explanation": "光速约3×10⁸m/s，声速约340m/s"
+  }
+]</pre>
+</div>
+
+<div class="card">
+    <h2>CSV 格式示例</h2>
+    <p class="format-hint">首行为表头，字段与 JSON 相同。q_type 可选值：choice / multi_choice / fill / judge</p>
+    <pre class="format-example">subject,semester,chapter,q_type,difficulty,content,option_a,option_b,option_c,option_d,answer,explanation
+数学,八年级上册,代数,choice,2,1+1等于几？,1,2,3,4,B,1+1=2
+数学,八年级下册,,multi_choice,3,以下哪些是质数？,2,4,5,6,AC,2和5是质数
+英语,七年级上册,,fill,1,Apple的中文意思是___,,,,,,苹果,
+物理,九年级上册,,judge,1,光速比声速快,,,,,,对,光速约3×10⁸m/s</pre>
+</div>
+
+<div class="card">
+    <h2>字段说明</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>字段</th><th>必填</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>subject</td><td>是</td><td>科目（如：数学、英语）</td></tr>
+            <tr><td>content</td><td>是</td><td>题目内容</td></tr>
+            <tr><td>answer</td><td>是</td><td>正确答案（单选A-D，多选如AC，填空文本，判断对/错）</td></tr>
+            <tr><td>q_type</td><td>否</td><td>题目类型：choice/multi_choice/fill/judge，默认choice</td></tr>
+            <tr><td>semester</td><td>否</td><td>学期（如：八年级上册、九年级下册）</td></tr>
+            <tr><td>chapter</td><td>否</td><td>知识点/章节</td></tr>
+            <tr><td>difficulty</td><td>否</td><td>难度1-3，默认2</td></tr>
+            <tr><td>option_a~d</td><td>否</td><td>选项内容（选择题/多选题需要）</td></tr>
+            <tr><td>explanation</td><td>否</td><td>答案解析</td></tr>
+            {% for cf in custom_fields %}
+            <tr><td>{{ cf.field_key }}</td><td>{% if cf.required %}是{% else %}否{% endif %}</td><td>{{ cf.field_label }}（扩展字段）{% if cf.field_type == 'select' %}，可选值：{{ cf.options }}{% endif %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

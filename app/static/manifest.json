@@ -1,0 +1,21 @@
+{
+    "name": "付刷 - 中学刷题平台",
+    "short_name": "付刷",
+    "description": "中学刷题练习平台，支持多科目、多题型智能练习",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#4361ee",
+    "icons": [
+        {
+            "src": "/static/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/static/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

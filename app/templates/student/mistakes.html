@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}错题本 - 付刷{% endblock %}
+
+{% block content %}
+<h1>📖 错题本</h1>
+
+<div class="card">
+    <div class="flex-between">
+        <div class="filter-group">
+            <a href="/student/mistakes" class="btn {% if not subject %}btn-primary{% else %}btn-outline{% endif %} btn-sm">全部</a>
+            {% for s in subjects %}
+            <a href="/student/mistakes?subject={{ s }}" class="btn {% if subject == s %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ s }}</a>
+            {% endfor %}
+        </div>
+        <a href="/student/mistakes/retry{% if subject %}?subject={{ subject }}{% endif %}" class="btn btn-primary">🔄 重练错题</a>
+    </div>
+</div>
+
+{% if message is defined %}
+<div class="card">
+    <p class="empty">{{ message }}</p>
+</div>
+{% elif mistakes %}
+<div class="mistake-list">
+    {% for r in mistakes %}
+    <div class="card mistake-card {% if correct_after.get(r.question_id, False) %}mistake-mastered{% else %}mistake-pending{% endif %}">
+        <div class="mistake-header">
+            <span class="badge badge-type-{{ r.question.q_type }}">{{ question_types.get(r.question.q_type, r.question.q_type) }}</span>
+            <span class="badge badge-subject">{{ r.question.subject }}</span>
+            {% if correct_after.get(r.question_id, False) %}
+            <span class="badge badge-correct">已掌握 ✓</span>
+            {% else %}
+            <span class="badge badge-wrong">未掌握</span>
+            {% endif %}
+        </div>
+        <div class="question-content">{{ r.question.content }}</div>
+        <div class="mistake-detail">
+            <span>你的答案：<strong class="wrong-answer">{{ r.user_answer }}</strong></span>
+            <span>正确答案：<strong class="correct-answer">{{ r.question.answer }}</strong></span>
+        </div>
+        {% if r.question.explanation %}
+        <div class="result-explanation">
+            <strong>解析：</strong>{{ r.question.explanation }}
+        </div>
+        {% endif %}
+        <div class="mistake-time">
+            <small>做错于 {{ r.created_at.strftime("%Y-%m-%d %H:%M") }}</small>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p class="empty">🎉 没有错题记录，继续保持！</p>
+</div>
+{% endif %}
+{% endblock %}

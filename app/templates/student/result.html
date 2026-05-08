@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}答题结果 - 付刷{% endblock %}
+
+{% block content %}
+<h1>答题结果</h1>
+
+<div class="stats-row stats-row-4">
+    <div class="stat-card">
+        <div class="stat-number">{{ total }}</div>
+        <div class="stat-label">总题数</div>
+    </div>
+    <div class="stat-card stat-correct">
+        <div class="stat-number">{{ correct_count }}</div>
+        <div class="stat-label">正确</div>
+    </div>
+    <div class="stat-card stat-wrong">
+        <div class="stat-number">{{ total - correct_count }}</div>
+        <div class="stat-label">错误</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ accuracy }}%</div>
+        <div class="stat-label">正确率</div>
+    </div>
+</div>
+
+<div class="result-list">
+    {% for r in results %}
+    <div class="card result-card {% if r.is_correct %}result-correct{% else %}result-wrong{% endif %}">
+        <div class="result-header">
+            <span class="question-number">第 {{ loop.index }} 题</span>
+            <span class="badge badge-type-{{ r.question.q_type }}">{{ question_types.get(r.question.q_type, r.question.q_type) }}</span>
+            {% if r.is_correct %}
+            <span class="badge badge-correct">✓ 正确</span>
+            {% else %}
+            <span class="badge badge-wrong">✗ 错误</span>
+            {% endif %}
+        </div>
+        <div class="question-content">{{ r.question.content }}</div>
+        <div class="result-detail">
+            <span>你的答案：<strong>{{ r.user_answer }}</strong></span>
+            {% if not r.is_correct %}
+            <span>正确答案：<strong class="correct-answer">{{ r.question.answer }}</strong></span>
+            {% endif %}
+        </div>
+        {% if r.question.explanation %}
+        <div class="result-explanation">
+            <strong>解析：</strong>{{ r.question.explanation }}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div style="text-align:center; margin-top:1.5rem;">
+    <a href="/student/practice" class="btn btn-primary">继续刷题</a>
+    <a href="/student/mistakes" class="btn btn-outline" style="margin-left:0.5rem;">查看错题</a>
+</div>
+{% endblock %}

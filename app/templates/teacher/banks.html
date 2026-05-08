@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}题库管理 - 付刷{% endblock %}
+{% block content %}
+<h1>题库管理</h1>
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h2>我的题库</h2>
+        <a href="/teacher/banks/create" class="btn btn-primary">+ 新建题库</a>
+    </div>
+    {% if banks %}
+    <table class="table">
+        <thead><tr><th>名称</th><th>科目</th><th>学期</th><th>类型</th><th>题目数</th><th>操作</th></tr></thead>
+        <tbody>
+        {% for b in banks %}
+        <tr>
+            <td>{{ b.name }}</td>
+            <td>{{ b.subject }}</td>
+            <td>{{ b.semester or '全部' }}</td>
+            <td>{{ '真题' if b.bank_type == 'exam' else '模拟' if b.bank_type == 'mock' else '自定义' }}</td>
+            <td>{{ b.q_count }}</td>
+            <td>
+                <form action="/teacher/banks/{{ b.id }}/delete" method="POST" style="display:inline;" onsubmit="return confirm('确定删除？题库中的题目不会被删除。')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-secondary);">还没有题库，点击上方按钮创建</p>
+    {% endif %}
+</div>
+{% endblock %}

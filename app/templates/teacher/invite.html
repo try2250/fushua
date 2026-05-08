@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}邀请码管理 - 付刷{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>教师邀请码管理</h1>
+    <p style="color:var(--text-secondary);margin-bottom:1rem;">设置邀请码后，教师注册时必须输入正确的邀请码。多个邀请码用英文逗号分隔。</p>
+    <form action="/teacher/invite/update" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>当前邀请码</label>
+            <input type="text" name="codes" value="{{ current_codes }}" placeholder="如：TEACH2024,FUSHUA888" style="font-family:monospace;">
+            <small style="color:var(--text-secondary);">多个邀请码用英文逗号分隔，如：CODE1,CODE2</small>
+        </div>
+        <button type="submit" class="btn btn-primary">保存</button>
+    </form>
+</div>
+{% endblock %}

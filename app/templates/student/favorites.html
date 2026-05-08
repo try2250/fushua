@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}我的收藏 - 付刷{% endblock %}
+
+{% block content %}
+<h1>我的收藏</h1>
+
+{% if questions %}
+<div class="question-list">
+    {% for q in questions %}
+    <div class="card question-card">
+        <div class="question-meta">
+            <span class="badge badge-subject">{{ q.subject }}</span>
+            <span class="badge badge-diff-{{ q.difficulty }}">难度 {{ q.difficulty }}</span>
+            <span class="badge badge-type">{{ q.type_label }}</span>
+            {% if q.semester %}<span class="badge badge-semester">{{ q.semester }}</span>{% endif %}
+        </div>
+        <div class="question-content">{{ q.content }}</div>
+        <div class="question-actions">
+            <a href="/student/practice?subject={{ q.subject }}" class="btn btn-primary btn-sm">去刷题</a>
+            <form action="/student/favorites/{{ q.id }}/remove" method="post" style="display:inline;">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-outline btn-sm">取消收藏</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p class="empty">暂无收藏题目，刷题时点击收藏按钮即可添加</p>
+    <a href="/student/practice" class="btn btn-primary">去刷题</a>
+</div>
+{% endif %}
+{% endblock %}

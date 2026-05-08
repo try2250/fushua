@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}布置作业 - 付刷{% endblock %}
+{% block content %}
+<h1>布置作业</h1>
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+<div class="card">
+    <form action="/assignments/create" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="title">作业标题 *</label>
+            <input type="text" id="title" name="title" required placeholder="如：第三章课后练习">
+        </div>
+        <div class="form-group">
+            <label for="description">作业说明</label>
+            <textarea id="description" name="description" rows="2" placeholder="可选说明"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="deadline">截止日期</label>
+            <input type="date" id="deadline" name="deadline">
+        </div>
+        <div class="form-group">
+            <label>选择题目 *（输入题目ID，逗号分隔）</label>
+            <input type="text" name="question_ids" required placeholder="如：1,2,3">
+            <small class="hint">可用题目：</small>
+            <div style="max-height:200px; overflow-y:auto; margin-top:0.5rem;">
+                {% for q in questions %}
+                <div style="padding:0.3rem; border-bottom:1px solid #f0f0f0; font-size:0.85rem;">
+                    <label><input type="checkbox" class="assignment-q-check" value="{{ q.id }}" onclick="updateQuestionIds()"> #{{ q.id }} {{ q.subject }} - {{ q.content[:30] }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">发布作业</button>
+        <a href="/teacher/assignments" class="btn btn-outline">取消</a>
+    </form>
+</div>
+<script>
+function updateQuestionIds() {
+    const checks = document.querySelectorAll('.assignment-q-check:checked');
+    const ids = Array.from(checks).map(c => c.value).join(',');
+    document.querySelector('input[name=question_ids]').value = ids;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}我的记录 - 付刷{% endblock %}
+
+{% block content %}
+<h1>我的学习记录</h1>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ total }}</div>
+        <div class="stat-label">总做题数</div>
+    </div>
+    <div class="stat-card stat-correct">
+        <div class="stat-number">{{ correct }}</div>
+        <div class="stat-label">正确数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ accuracy }}%</div>
+        <div class="stat-label">正确率</div>
+    </div>
+</div>
+
+{% if subject_stats %}
+<div class="card">
+    <h2>各科目统计</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>科目</th>
+                <th>做题数</th>
+                <th>正确数</th>
+                <th>正确率</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in subject_stats %}
+            <tr>
+                <td><span class="badge badge-subject">{{ s.subject }}</span></td>
+                <td>{{ s.total }}</td>
+                <td>{{ s.correct }}</td>
+                <td>{{ s.accuracy }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>最近作答</h2>
+    {% if recent %}
+    <div class="record-list">
+        {% for r in recent %}
+        <div class="record-item {% if r.is_correct %}record-correct{% else %}record-wrong{% endif %}">
+            <div class="record-info">
+                <span class="badge badge-subject">{{ r.question.subject }}</span>
+                <span class="record-content">{{ r.question.content[:50] }}{% if r.question.content|length > 50 %}...{% endif %}</span>
+            </div>
+            <div class="record-result">
+                {% if r.is_correct %}
+                <span class="badge badge-correct">✓</span>
+                {% else %}
+                <span class="badge badge-wrong">✗ 选{{ r.user_answer }} → {{ r.question.answer }}</span>
+                {% endif %}
+                <small>{{ r.created_at.strftime("%m-%d %H:%M") }}</small>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">还没有做题记录，快去刷题吧！</p>
+    {% endif %}
+</div>
+
+<div style="text-align:center; margin-top:1rem;">
+    <a href="/student/practice" class="btn btn-primary">继续刷题</a>
+</div>
+{% endblock %}

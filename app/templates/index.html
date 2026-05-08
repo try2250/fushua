@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}付刷 - 中学生刷题平台{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>📚 付刷</h1>
+    <p class="hero-sub">中学生智能刷题平台 · 高效学习 轻松提分</p>
+</div>
+
+{% if not logged_in %}
+<div class="card">
+    <div class="welcome-actions">
+        <a href="/register" class="btn btn-primary btn-lg">立即注册</a>
+        <a href="/login" class="btn btn-outline btn-lg">已有账号，登录</a>
+    </div>
+</div>
+{% endif %}
+
+{% if logged_in and role == 'student' %}
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">已做题数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.correct }}</div>
+        <div class="stat-label">正确数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.accuracy }}%</div>
+        <div class="stat-label">正确率</div>
+    </div>
+</div>
+<div class="card">
+    <h2>选择科目开始刷题</h2>
+    <div class="subject-grid">
+        {% for subject, count in question_counts.items() %}
+        <a href="/browse?subject={{ subject }}" class="subject-card">
+            <div class="subject-name">{{ subject }}</div>
+            <div class="subject-count">{{ count }} 题</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% if question_counts %}
+    <div style="margin-top:1rem; display:flex; gap:0.8rem; flex-wrap:wrap;">
+        <a href="/browse" class="btn btn-outline">按学期/知识点浏览</a>
+        <a href="/student/practice" class="btn btn-primary">全部科目随机练习</a>
+        <a href="/student/practice?mode=adaptive" class="btn btn-outline">自适应练习</a>
+    </div>
+    {% else %}
+    <p class="empty">暂无题目，请等待教师添加</p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if logged_in and role == 'teacher' %}
+<div class="card">
+    <h2>教师工作台</h2>
+    <p>题库共 <strong>{{ total_questions }}</strong> 道题目</p>
+    <div class="welcome-actions" style="margin-top:1rem;">
+        <a href="/teacher/questions/create" class="btn btn-primary">添加题目</a>
+        <a href="/teacher/questions" class="btn btn-outline">管理题库</a>
+        <a href="/teacher/stats" class="btn btn-outline">查看统计</a>
+    </div>
+</div>
+{% endif %}
+
+{% if not logged_in %}
+<div class="card">
+    <h2>平台功能</h2>
+    <div class="feature-grid">
+        <div class="feature-item">
+            <div class="feature-icon">📝</div>
+            <div class="feature-title">海量题库</div>
+            <div class="feature-desc">覆盖中学全科目</div>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">🎯</div>
+            <div class="feature-title">智能刷题</div>
+            <div class="feature-desc">优先推送未做题目</div>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">数据分析</div>
+            <div class="feature-desc">实时掌握学习情况</div>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">💡</div>
+            <div class="feature-title">答案解析</div>
+            <div class="feature-desc">每题配有详细解析</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

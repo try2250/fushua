@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}作业管理 - 付刷{% endblock %}
+{% block content %}
+<h1>作业管理</h1>
+<div style="margin-bottom:1rem;">
+    <a href="/assignments/create" class="btn btn-primary">布置新作业</a>
+</div>
+{% if assignments %}
+{% for a in assignments %}
+<div class="card">
+    <h3>{{ a.title }}</h3>
+    <p class="hint">{{ a.description }}</p>
+    <div class="question-meta">
+        <span class="badge">题目数: {{ a.question_ids.split(',')|length }}</span>
+        {% if a.deadline %}<span class="badge badge-semester">截止: {{ a.deadline.strftime('%Y-%m-%d') }}</span>{% endif %}
+        <span class="badge">创建于: {{ a.created_at.strftime('%m-%d') }}</span>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><p class="empty">暂无作业，点击上方按钮布置</p></div>
+{% endif %}
+{% endblock %}

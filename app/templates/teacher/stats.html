@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}数据统计 - 付刷{% endblock %}
+
+{% block content %}
+<h1>数据统计</h1>
+
+<a href="/teacher/stats/export/pdf" class="btn btn-outline" style="margin-bottom:1rem;">导出PDF报告</a>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ total_questions }}</div>
+        <div class="stat-label">我的题目</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ total_records }}</div>
+        <div class="stat-label">被答次数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ accuracy }}%</div>
+        <div class="stat-label">学生正确率</div>
+    </div>
+</div>
+
+{% if student_stats %}
+<div class="card">
+    <h2>学生作答排名（按正确率从低到高）</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>学生</th>
+                <th>做题数</th>
+                <th>正确数</th>
+                <th>正确率</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in student_stats %}
+            <tr>
+                <td>{{ s.display_name or s.username }}</td>
+                <td>{{ s.total }}</td>
+                <td>{{ s.correct }}</td>
+                <td>
+                    <span class="accuracy-badge {% if s.accuracy < 60 %}badge-wrong{% elif s.accuracy < 80 %}badge-chapter{% else %}badge-correct{% endif %}">
+                        {{ s.accuracy }}%
+                    </span>
+                </td>
+                <td><a href="/teacher/students/{{ s.id }}" class="btn btn-outline btn-sm">详情</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>各题目作答情况</h2>
+    {% if per_question %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>科目</th>
+                <th>题目</th>
+                <th>作答次数</th>
+                <th>正确次数</th>
+                <th>正确率</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for qid, content, subject, q_type, attempts, correct in per_question %}
+            <tr>
+                <td><span class="badge badge-subject">{{ subject }}</span></td>
+                <td>{{ content[:40] }}{% if content|length > 40 %}...{% endif %}</td>
+                <td>{{ attempts }}</td>
+                <td>{{ correct or 0 }}</td>
+                <td>{{ ((correct or 0) / attempts * 100)|round(1) if attempts > 0 else 0 }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">暂无作答数据</p>
+    {% endif %}
+</div>
+{% endblock %}

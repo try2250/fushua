@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}个人中心 - 付刷{% endblock %}
+
+{% block content %}
+<h1>👤 个人中心</h1>
+
+<div class="stats-row stats-row-4">
+    <div class="stat-card">
+        <div class="stat-number">{{ streak }}</div>
+        <div class="stat-label">连续天数 🔥</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ today_count }}</div>
+        <div class="stat-label">今日做题</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ active_days }}</div>
+        <div class="stat-label">活跃天数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ study_days }}</div>
+        <div class="stat-label">注册天数</div>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ total }}</div>
+        <div class="stat-label">总做题数</div>
+    </div>
+    <div class="stat-card stat-correct">
+        <div class="stat-number">{{ correct }}</div>
+        <div class="stat-label">正确数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ accuracy }}%</div>
+        <div class="stat-label">总正确率</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📊 近14天刷题趋势</h2>
+    {% if daily_stats %}
+    <div class="trend-chart">
+        {% for d in daily_stats %}
+        <div class="trend-day">
+            <div class="trend-bar-wrap">
+                <div class="trend-bar" style="height: {{ d.total * 8 }}px;" title="{{ d.date }}: {{ d.total }}题"></div>
+            </div>
+            <div class="trend-label">{{ d.date[5:] }}</div>
+            <div class="trend-count">{{ d.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">还没有做题记录</p>
+    {% endif %}
+</div>
+
+{% if subject_stats %}
+<div class="card">
+    <h2>各科目正确率</h2>
+    <div class="bar-chart">
+        {% for s in subject_stats %}
+        <div class="bar-row">
+            <div class="bar-label">{{ s.name }}</div>
+            <div class="bar-track">
+                <div class="bar-fill {% if s.accuracy < 60 %}bar-danger{% elif s.accuracy < 80 %}bar-warning{% else %}bar-good{% endif %}" style="width: {{ s.accuracy }}%"></div>
+            </div>
+            <div class="bar-value">{{ s.accuracy }}%</div>
+            <div class="bar-detail">{{ s.correct }}/{{ s.total }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="quick-actions">
+        <a href="/student/practice" class="action-card">
+            <div class="action-icon">🎯</div>
+            <div class="action-text">智能刷题</div>
+        </a>
+        <a href="/student/mistakes" class="action-card">
+            <div class="action-icon">📖</div>
+            <div class="action-text">错题本</div>
+            {% if mistake_count > 0 %}
+            <div class="action-badge">{{ mistake_count }}</div>
+            {% endif %}
+        </a>
+        <a href="/student/analysis" class="action-card">
+            <div class="action-icon">📊</div>
+            <div class="action-text">弱项分析</div>
+        </a>
+        <a href="/student/records" class="action-card">
+            <div class="action-icon">📋</div>
+            <div class="action-text">做题记录</div>
+        </a>
+    </div>
+</div>
+{% endblock %}

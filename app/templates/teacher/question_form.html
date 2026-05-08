@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}{% if question %}编辑题目{% else %}添加题目{% endif %} - 付刷{% endblock %}
+
+{% block content %}
+<h1>{% if question %}编辑题目{% else %}添加题目{% endif %}</h1>
+
+<div class="card">
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    <form action="{% if question %}/teacher/questions/{{ question.id }}/edit{% else %}/teacher/questions/create{% endif %}" method="post" id="questionForm">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="subject">科目 *</label>
+                <select id="subject" name="subject" required>
+                    <option value="">请选择科目</option>
+                    {% for s in ["语文", "数学", "英语", "物理", "化学", "生物", "历史", "地理", "政治"] %}
+                    <option value="{{ s }}" {% if question and question.subject == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="semester">学期</label>
+                <select id="semester" name="semester">
+                    <option value="">不选择学期</option>
+                    {% for sem in semesters %}
+                    <option value="{{ sem }}" {% if question and question.semester == sem %}selected{% endif %}>{{ sem }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>所属题库</label>
+                <select name="bank_id">
+                    <option value="">不归属题库</option>
+                    {% for b in banks %}
+                    <option value="{{ b.id }}" {{ 'selected' if question and question.bank_id == b.id else '' }}>{{ b.name }} ({{ b.subject }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="chapter">知识点/章节</label>
+                <input type="text" id="chapter" name="chapter" placeholder="如：代数、力学" value="{{ question.chapter if question else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="q_type">题目类型 *</label>
+                <select id="q_type" name="q_type" onchange="toggleTypeFields()">
+                    {% for k, v in question_types.items() %}
+                    <option value="{{ k }}" {% if question and question.q_type == k %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="difficulty">难度</label>
+            <select id="difficulty" name="difficulty">
+                <option value="1" {% if question and question.difficulty == 1 %}selected{% endif %}>1 - 简单</option>
+                <option value="2" {% if not question or question.difficulty == 2 %}selected{% endif %}>2 - 中等</option>
+                <option value="3" {% if question and question.difficulty == 3 %}selected{% endif %}>3 - 困难</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="content">题目内容 *</label>
+            <textarea id="content" name="content" rows="4" required placeholder="请输入题目内容">{{ question.content if question else '' }}</textarea>
+        </div>
+
+        <div id="choiceFields">
+            <div class="form-row form-row-2col">
+                <div class="form-group">
+                    <label for="option_a">选项 A *</label>
+                    <input type="text" id="option_a" name="option_a" placeholder="选项A内容" value="{{ question.option_a if question else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="option_b">选项 B *</label>
+                    <input type="text" id="option_b" name="option_b" placeholder="选项B内容" value="{{ question.option_b if question else '' }}">
+                </div>
+            </div>
+            <div class="form-row form-row-2col">
+                <div class="form-group">
+                    <label for="option_c">选项 C</label>
+                    <input type="text" id="option_c" name="option_c" placeholder="选项C内容（可选）" value="{{ question.option_c if question else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="option_d">选项 D</label>
+                    <input type="text" id="option_d" name="option_d" placeholder="选项D内容（可选）" value="{{ question.option_d if question else '' }}">
+                </div>
+            </div>
+        </div>
+
+        <div id="answerField">
+            <div id="choiceAnswer">
+                <div class="form-group">
+                    <label for="answer_choice">正确答案 *（单选）</label>
+                    <select id="answer_choice" name="answer">
+                        <option value="A" {% if question and question.answer == 'A' %}selected{% endif %}>A</option>
+                        <option value="B" {% if question and question.answer == 'B' %}selected{% endif %}>B</option>
+                        <option value="C" {% if question and question.answer == 'C' %}selected{% endif %}>C</option>
+                        <option value="D" {% if question and question.answer == 'D' %}selected{% endif %}>D</option>
+                    </select>
+                </div>
+            </div>
+            <div id="multiChoiceAnswer" style="display:none;">
+                <div class="form-group">
+                    <label>正确答案 *（多选，勾选所有正确选项）</label>
+                    <div class="multi-answer-group">
+                        <label class="multi-answer-label"><input type="checkbox" class="multi-ans-cb" value="A"> A</label>
+                        <label class="multi-answer-label"><input type="checkbox" class="multi-ans-cb" value="B"> B</label>
+                        <label class="multi-answer-label"><input type="checkbox" class="multi-ans-cb" value="C"> C</label>
+                        <label class="multi-answer-label"><input type="checkbox" class="multi-ans-cb" value="D"> D</label>
+                    </div>
+                    <input type="hidden" id="answer_multi" name="answer" value="{{ question.answer if question and question.q_type == 'multi_choice' else '' }}">
+                </div>
+            </div>
+            <div id="fillAnswer" style="display:none;">
+                <div class="form-group">
+                    <label for="answer_fill">正确答案 *</label>
+                    <input type="text" id="answer_fill" name="answer" placeholder="请输入正确答案（不区分大小写和空格）" value="{{ question.answer if question and question.q_type == 'fill' else '' }}">
+                </div>
+            </div>
+            <div id="judgeAnswer" style="display:none;">
+                <div class="form-group">
+                    <label for="answer_judge">正确答案 *</label>
+                    <select id="answer_judge" name="answer">
+                        <option value="对" {% if question and question.answer == '对' %}selected{% endif %}>对 ✓</option>
+                        <option value="错" {% if question and question.answer == '错' %}selected{% endif %}>错 ✗</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="explanation">答案解析</label>
+            <textarea id="explanation" name="explanation" rows="3" placeholder="输入解析（可选）">{{ question.explanation if question else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="image_url">题目图片URL</label>
+            <input type="text" id="image_url" name="image_url" placeholder="输入图片地址（可选）" value="{{ question.image_url if question else '' }}">
+            <small class="hint">支持输入图片链接地址，将显示在题目内容上方</small>
+        </div>
+
+        {% if custom_fields %}
+        <div class="custom-fields-section">
+            <h3 class="section-title">扩展字段</h3>
+            {% for cf in custom_fields %}
+            <div class="form-group">
+                <label for="extra_{{ cf.field_key }}">{{ cf.field_label }}{% if cf.required %} *{% endif %}</label>
+                {% if cf.field_type == 'select' %}
+                <select id="extra_{{ cf.field_key }}" name="extra_{{ cf.field_key }}" {% if cf.required %}required{% endif %}>
+                    <option value="">请选择</option>
+                    {% for opt in cf.options_list %}
+                    <option value="{{ opt }}" {% if question and question.extra.get(cf.field_key) == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+                {% elif cf.field_type == 'number' %}
+                <input type="number" id="extra_{{ cf.field_key }}" name="extra_{{ cf.field_key }}" value="{{ question.extra.get(cf.field_key, '') if question else '' }}" {% if cf.required %}required{% endif %}>
+                {% else %}
+                <input type="text" id="extra_{{ cf.field_key }}" name="extra_{{ cf.field_key }}" value="{{ question.extra.get(cf.field_key, '') if question else '' }}" {% if cf.required %}required{% endif %}>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">{% if question %}保存修改{% else %}保存题目{% endif %}</button>
+        {% if not question %}
+        <button type="submit" name="continue_creating" value="1" class="btn btn-outline" style="margin-left:0.5rem;">继续出题</button>
+        {% endif %}
+        <a href="/teacher/questions" class="btn btn-outline" style="margin-left:0.5rem;">取消</a>
+    </form>
+</div>
+
+<script>
+function toggleTypeFields() {
+    var qType = document.getElementById('q_type').value;
+    var isChoice = qType === 'choice' || qType === 'multi_choice';
+    document.getElementById('choiceFields').style.display = isChoice ? 'block' : 'none';
+    document.getElementById('choiceAnswer').style.display = qType === 'choice' ? 'block' : 'none';
+    document.getElementById('multiChoiceAnswer').style.display = qType === 'multi_choice' ? 'block' : 'none';
+    document.getElementById('fillAnswer').style.display = qType === 'fill' ? 'block' : 'none';
+    document.getElementById('judgeAnswer').style.display = qType === 'judge' ? 'block' : 'none';
+
+    var choiceInputs = document.getElementById('choiceFields').querySelectorAll('input');
+    choiceInputs.forEach(function(inp) {
+        if (isChoice) inp.removeAttribute('disabled');
+        else inp.setAttribute('disabled', 'disabled');
+    });
+
+    document.getElementById('answer_choice').removeAttribute('name');
+    document.getElementById('answer_multi').removeAttribute('name');
+    document.getElementById('answer_fill').removeAttribute('name');
+    document.getElementById('answer_judge').removeAttribute('name');
+
+    if (qType === 'choice') document.getElementById('answer_choice').setAttribute('name', 'answer');
+    else if (qType === 'multi_choice') document.getElementById('answer_multi').setAttribute('name', 'answer');
+    else if (qType === 'fill') document.getElementById('answer_fill').setAttribute('name', 'answer');
+    else if (qType === 'judge') document.getElementById('answer_judge').setAttribute('name', 'answer');
+
+    if (qType === 'multi_choice') {
+        var existing = document.getElementById('answer_multi').value;
+        document.querySelectorAll('.multi-ans-cb').forEach(function(cb) {
+            cb.checked = existing.includes(cb.value);
+        });
+    }
+}
+
+document.querySelectorAll('.multi-ans-cb').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var selected = [];
+        document.querySelectorAll('.multi-ans-cb:checked').forEach(function(c) {
+            selected.push(c.value);
+        });
+        selected.sort();
+        document.getElementById('answer_multi').value = selected.join('');
+    });
+});
+
+document.getElementById('questionForm').addEventListener('submit', function(e) {
+    var qType = document.getElementById('q_type').value;
+    if (qType === 'multi_choice') {
+        var val = document.getElementById('answer_multi').value;
+        if (val.length < 2) {
+            e.preventDefault();
+            alert('多选题至少选择2个正确答案');
+        }
+    }
+});
+
+toggleTypeFields();
+</script>
+{% endblock %}
