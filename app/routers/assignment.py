@@ -88,7 +88,13 @@ async def create_assignment(request: Request, db: Annotated[Session, Depends(get
 @router.get("/student/assignments")
 def student_assignments(request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_non_guest(request, db)
-    assignments = db.query(Assignment).order_by(Assignment.created_at.desc()).all()
+    user = db.query(User).filter(User.id == user_id).first()
+    if user.class_id:
+        assignments = db.query(Assignment).filter(
+            Assignment.class_id == user.class_id
+        ).order_by(Assignment.created_at.desc()).all()
+    else:
+        assignments = []
     completed_ids = set()
     records = db.query(AssignmentRecord).filter(AssignmentRecord.user_id == user_id).all()
     for r in records:
@@ -103,6 +109,16 @@ def student_assignments(request: Request, db: Annotated[Session, Depends(get_db)
 async def complete_assignment(assignment_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_non_guest(request, db)
     await validate_csrf_async(request)
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="作业不存在")
+    if assignment.class_id:
+        member = db.query(ClassMember).filter(
+            ClassMember.class_id == assignment.class_id,
+            ClassMember.user_id == user_id,
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="您不属于该作业班级")
     existing = db.query(AssignmentRecord).filter(
         AssignmentRecord.assignment_id == assignment_id,
         AssignmentRecord.user_id == user_id,

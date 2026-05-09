@@ -16,6 +16,7 @@ import openpyxl
 from app.database import get_db
 from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES
 from app.auth import require_teacher
+from app.routers.permissions import teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
 
 router = APIRouter(prefix="/teacher")
@@ -269,11 +270,12 @@ async def create_bank(request: Request, db: Annotated[Session, Depends(get_db)])
 async def delete_bank(bank_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_teacher(request, db)
     await validate_csrf_async(request)
-    bank = db.query(QuestionBank).filter(QuestionBank.id == bank_id, QuestionBank.created_by == user_id).first()
-    if bank:
-        db.query(Question).filter(Question.bank_id == bank_id).update({"bank_id": None})
-        db.delete(bank)
-        db.commit()
+    bank = db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    if not bank or not teacher_owns_bank(db, user_id, bank_id):
+        raise HTTPException(status_code=404)
+    db.query(Question).filter(Question.bank_id == bank_id).update({"bank_id": None})
+    db.delete(bank)
+    db.commit()
     return RedirectResponse(url="/teacher/banks", status_code=303)
 
 
@@ -1025,6 +1027,8 @@ def student_detail(student_id: int, request: Request, db: Annotated[Session, Dep
     student = db.query(User).filter(User.id == student_id, User.role == "student").first()
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
+    if not teacher_owns_student(db, user_id, student_id):
+        raise HTTPException(status_code=404)
 
     total = db.query(Record).filter(Record.user_id == student_id).count()
     correct = db.query(Record).filter(Record.user_id == student_id, Record.is_correct == True).count()
@@ -1142,10 +1146,12 @@ def export_stats_pdf(request: Request, db: Annotated[Session, Depends(get_db)]):
 
 @router.get("/students/{student_id}/parent-report")
 def parent_report(student_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
-    require_teacher(request, db)
+    user_id = require_teacher(request, db)
     student = db.query(User).filter(User.id == student_id, User.role == "student").first()
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
+    if not teacher_owns_student(db, user_id, student_id):
+        raise HTTPException(status_code=404)
 
     today = datetime.now()
     monday = today - timedelta(days=today.weekday())
@@ -1219,10 +1225,12 @@ def parent_report(student_id: int, request: Request, db: Annotated[Session, Depe
 
 @router.get("/students/{student_id}/parent-report/pdf")
 def parent_report_pdf(student_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
-    require_teacher(request, db)
+    user_id = require_teacher(request, db)
     student = db.query(User).filter(User.id == student_id, User.role == "student").first()
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
+    if not teacher_owns_student(db, user_id, student_id):
+        raise HTTPException(status_code=404)
 
     today = datetime.now()
     monday = today - timedelta(days=today.weekday())
@@ -1297,10 +1305,12 @@ def parent_report_pdf(student_id: int, request: Request, db: Annotated[Session, 
 
 @router.get("/students/{student_id}/export/pdf")
 def export_student_pdf(student_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
-    require_teacher(request, db)
+    user_id = require_teacher(request, db)
     student = db.query(User).filter(User.id == student_id, User.role == "student").first()
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
+    if not teacher_owns_student(db, user_id, student_id):
+        raise HTTPException(status_code=404)
 
     total = db.query(Record).filter(Record.user_id == student_id).count()
     correct = db.query(Record).filter(Record.user_id == student_id, Record.is_correct == True).count()
