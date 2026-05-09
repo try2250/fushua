@@ -885,7 +885,7 @@ async def create_plan(request: Request, db: Session = Depends(get_db)):
         user_id=user_id,
         subject=form.get("subject", ""),
         semester=form.get("semester", ""),
-        daily_goal=int(form.get("daily_goal", "10")),
+        daily_goal=parse_int(form.get("daily_goal"), default=10) or 10,
     )
     db.add(plan)
     db.commit()

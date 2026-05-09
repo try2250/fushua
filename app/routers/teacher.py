@@ -121,7 +121,7 @@ async def create_question(
         subject=subject,
         semester=form.get("semester", ""),
         chapter=form.get("chapter", ""),
-        difficulty=int(form.get("difficulty", "2")),
+        difficulty=parse_int(form.get("difficulty"), default=2, min_value=1, max_value=5) or 2,
         q_type=form.get("q_type", "choice"),
         content=content,
         option_a=form.get("option_a", ""),
@@ -193,11 +193,11 @@ async def edit_question(
 
     form = await request.form()
     bank_id_val = form.get("bank_id", "")
-    question.bank_id = int(bank_id_val) if bank_id_val else None
+    question.bank_id = parse_int(bank_id_val) if bank_id_val else None
     question.subject = form.get("subject", question.subject)
     question.semester = form.get("semester", "")
     question.chapter = form.get("chapter", "")
-    question.difficulty = int(form.get("difficulty", "2"))
+    question.difficulty = parse_int(form.get("difficulty"), default=2, min_value=1, max_value=5) or 2
     question.q_type = form.get("q_type", "choice")
     question.content = form.get("content", question.content)
     question.option_a = form.get("option_a", "")
