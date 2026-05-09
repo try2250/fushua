@@ -72,7 +72,7 @@ async def create_assignment(request: Request, db: Annotated[Session, Depends(get
         created_by=user_id,
     )
     if class_id and class_id.isdigit():
-        assignment.class_id = int(class_id)
+        assignment.class_id = parse_int(class_id) if class_id else None
     if deadline:
         from datetime import datetime
         try:

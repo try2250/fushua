@@ -90,6 +90,11 @@ async def add_member(class_id: int, request: Request, db: Annotated[Session, Dep
     username = form.get("username", "").strip()
     user = db.query(User).filter(User.username == username, User.role == "student").first()
     if user:
+        if user.class_id and user.class_id != class_id:
+            return request.app.state.templates.TemplateResponse(
+                "teacher/class_detail.html",
+                {"request": request, "class_info": cls, "error": f"学生 {username} 已在其他班级，请先移出原班级"},
+            )
         existing = db.query(ClassMember).filter(ClassMember.class_id == class_id, ClassMember.user_id == user.id).first()
         if not existing:
             db.add(ClassMember(class_id=class_id, user_id=user.id))

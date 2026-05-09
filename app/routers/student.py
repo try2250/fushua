@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import User, Question, Record, QUESTION_TYPES, Favorite, StudyPlan, Notification, SUBJECTS as MODEL_SUBJECTS, SEMESTERS, MasteryRecord, Assignment, AssignmentRecord
 from app.auth import require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, sanitize_input
+from app.utils.validation import parse_int
 
 router = APIRouter(prefix="/student")
 

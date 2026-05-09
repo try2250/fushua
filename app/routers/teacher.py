@@ -18,6 +18,7 @@ from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteCo
 from app.auth import require_teacher
 from app.routers.permissions import teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
+from app.utils.validation import parse_int
 
 router = APIRouter(prefix="/teacher")
 
@@ -130,7 +131,7 @@ async def create_question(
         answer=answer,
         explanation=form.get("explanation", ""),
         image_url=form.get("image_url", ""),
-        bank_id=int(bank_id_val) if bank_id_val else None,
+        bank_id=parse_int(bank_id_val) if bank_id_val else None,
         created_by=user_id,
     )
 
@@ -722,7 +723,7 @@ def _build_question_from_dict(item: dict, user_id: int, bank_id: int = None) -> 
         subject=builtin_data.get("subject", ""),
         semester=builtin_data.get("semester", ""),
         chapter=builtin_data.get("chapter", ""),
-        difficulty=int(builtin_data.get("difficulty", 2)) if builtin_data.get("difficulty") else 2,
+        difficulty=parse_int(builtin_data.get("difficulty"), default=2, min_value=1, max_value=5) or 2,
         q_type=builtin_data.get("q_type", "choice"),
         content=builtin_data.get("content", ""),
         option_a=builtin_data.get("option_a", ""),
