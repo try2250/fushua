@@ -86,7 +86,7 @@ def health_check(request: Request):
         db = SessionLocal()
         user_count = db.query(User).count()
         db.close()
-        return {"status": "ok", "db": "ok", "user_count": user_count}
+        return {"status": "ok", "db": "ok", "user_count": user_count, "version": "1.0"}
     except Exception as e:
         return {"status": "degraded", "db": "error", "error": str(e)}
 

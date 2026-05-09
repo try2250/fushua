@@ -9,17 +9,31 @@ class TestParentReport:
         assert response.status_code in (303, 403)
 
     def test_parent_report_page_returns_200(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher1", "teacher")
         student = create_test_user(db_session, "prstudent2", "student")
+        cls = ClassGroup(name="家长报告班", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
         register_and_login(client, "prteacher1", "teacher")
         response = client.get(f"/teacher/students/{student.id}/parent-report")
         assert response.status_code == 200
         assert "本周做题数" in response.text
 
     def test_parent_report_shows_week_data(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher2", "teacher")
         student = create_test_user(db_session, "prstudent3", "student")
         q = create_test_question(db_session, subject="数学", chapter="代数", created_by=teacher.id)
+        cls = ClassGroup(name="家长报告班2", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
 
         from app.models import Record
         now = datetime.now()
@@ -34,10 +48,17 @@ class TestParentReport:
         assert "2" in response.text
 
     def test_parent_report_shows_weak_points(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher3", "teacher")
         student = create_test_user(db_session, "prstudent4", "student")
         q1 = create_test_question(db_session, subject="数学", chapter="几何", created_by=teacher.id)
         q2 = create_test_question(db_session, subject="英语", chapter="阅读", created_by=teacher.id)
+        cls = ClassGroup(name="家长报告班3", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
 
         from app.models import Record
         now = datetime.now()
@@ -52,9 +73,16 @@ class TestParentReport:
         assert "几何" in response.text
 
     def test_parent_report_old_records_excluded(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher4", "teacher")
         student = create_test_user(db_session, "prstudent5", "student")
         q = create_test_question(db_session, subject="数学", chapter="代数", created_by=teacher.id)
+        cls = ClassGroup(name="家长报告班4", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
 
         from app.models import Record
         old_date = datetime.now() - timedelta(days=14)
@@ -72,8 +100,15 @@ class TestParentReport:
         assert response.status_code == 404
 
     def test_parent_report_pdf_returns_pdf(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher6", "teacher")
         student = create_test_user(db_session, "prstudent6", "student")
+        cls = ClassGroup(name="家长报告班6", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
         register_and_login(client, "prteacher6", "teacher")
         response = client.get(f"/teacher/students/{student.id}/parent-report/pdf")
         assert response.status_code == 200
@@ -81,9 +116,16 @@ class TestParentReport:
         assert "pdf" in content_type or "octet-stream" in content_type
 
     def test_parent_report_pdf_with_data(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher7", "teacher")
         student = create_test_user(db_session, "prstudent7", "student")
         q = create_test_question(db_session, subject="数学", chapter="代数", created_by=teacher.id)
+        cls = ClassGroup(name="家长报告班7", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
 
         from app.models import Record
         now = datetime.now()
@@ -107,9 +149,16 @@ class TestParentReport:
         assert response.status_code == 404
 
     def test_parent_report_no_weak_points(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "prteacher9", "teacher")
         student = create_test_user(db_session, "prstudent9", "student")
         q = create_test_question(db_session, subject="数学", chapter="代数", created_by=teacher.id)
+        cls = ClassGroup(name="家长报告班9", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
 
         from app.models import Record
         now = datetime.now()

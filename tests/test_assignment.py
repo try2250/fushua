@@ -32,13 +32,21 @@ class TestAssignment:
         assert "作业1" in response.text
 
     def test_student_see_assignments(self, client, db_session):
+        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "assteacher3", "teacher")
+        student = create_test_user(db_session, "assstudent", "student")
         q = create_test_question(db_session, created_by=teacher.id)
+        cls = ClassGroup(name="学生作业测试班", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        student.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+        db_session.commit()
         register_and_login(client, "assteacher3", "teacher")
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "学生作业", "question_ids": str(q.id), "deadline": "2026-06-01",
-            "_csrf_token": csrf,
+            "class_id": str(cls.id), "_csrf_token": csrf,
         })
         register_and_login(client, "assstudent", "student")
         response = client.get("/student/assignments", follow_redirects=True)

@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models import Question, Assignment, AssignmentRecord, User, Record, ClassGroup, ClassMember, Notification, QUESTION_TYPES
 from app.auth import require_teacher, require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, sanitize_input
+from app.utils.validation import parse_int
 
 router = APIRouter()
 
