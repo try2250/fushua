@@ -27,6 +27,17 @@ MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 _pending_imports = {}
 
 
+def _parse_owned_bank_id(db: Session, teacher_id: int, raw_bank_id) -> int | None:
+    if not raw_bank_id:
+        return None
+    bank_id = parse_int(raw_bank_id, min_value=1)
+    if bank_id is None:
+        raise HTTPException(status_code=400, detail="Invalid bank id")
+    if not teacher_owns_bank(db, teacher_id, bank_id):
+        raise HTTPException(status_code=404, detail="Question bank not found")
+    return bank_id
+
+
 def require_admin(request: Request, db: Session) -> int:
     user_id = require_teacher(request, db)
     user = db.query(User).filter(User.id == user_id).first()
@@ -117,6 +128,8 @@ async def create_question(
             },
         )
 
+    bank_id = _parse_owned_bank_id(db, user_id, bank_id_val)
+
     question = Question(
         subject=subject,
         semester=form.get("semester", ""),
@@ -131,7 +144,7 @@ async def create_question(
         answer=answer,
         explanation=form.get("explanation", ""),
         image_url=form.get("image_url", ""),
-        bank_id=parse_int(bank_id_val) if bank_id_val else None,
+        bank_id=bank_id,
         created_by=user_id,
     )
 
@@ -193,7 +206,7 @@ async def edit_question(
 
     form = await request.form()
     bank_id_val = form.get("bank_id", "")
-    question.bank_id = parse_int(bank_id_val) if bank_id_val else None
+    question.bank_id = _parse_owned_bank_id(db, user_id, bank_id_val)
     question.subject = form.get("subject", question.subject)
     question.semester = form.get("semester", "")
     question.chapter = form.get("chapter", "")
@@ -309,7 +322,7 @@ async def create_field(request: Request, db: Annotated[Session, Depends(get_db)]
     required = form.get("required") == "on"
     visible = form.get("visible") == "on"
     options = form.get("options", "").strip()
-    sort_order = int(form.get("sort_order", "0"))
+    sort_order = parse_int(form.get("sort_order"), default=0) or 0
 
     if not field_key or not field_label:
         return RedirectResponse(url="/teacher/fields", status_code=303)
@@ -349,7 +362,7 @@ async def update_field(field_id: int, request: Request, db: Annotated[Session, D
     fc.required = form.get("required") == "on"
     fc.visible = form.get("visible") == "on"
     fc.options = form.get("options", "")
-    fc.sort_order = int(form.get("sort_order", str(fc.sort_order)))
+    fc.sort_order = parse_int(form.get("sort_order"), default=fc.sort_order) or fc.sort_order
     db.commit()
     return RedirectResponse(url="/teacher/fields", status_code=303)
 
@@ -439,8 +452,7 @@ async def import_questions(
     user_id = require_teacher(request, db)
     await validate_csrf_async(request)
     form_data = await request.form()
-    bank_id = form_data.get("bank_id", "")
-    bank_id = int(bank_id) if bank_id else None
+    bank_id = _parse_owned_bank_id(db, user_id, form_data.get("bank_id", ""))
     filename = file.filename or ""
     content_bytes = await file.read()
 
@@ -570,8 +582,7 @@ async def import_preview(
     user_id = require_teacher(request, db)
     await validate_csrf_async(request)
     form_data = await request.form()
-    bank_id = form_data.get("bank_id", "")
-    bank_id = int(bank_id) if bank_id else None
+    bank_id = _parse_owned_bank_id(db, user_id, form_data.get("bank_id", ""))
     filename = file.filename or ""
     content_bytes = await file.read()
 
@@ -867,10 +878,12 @@ async def batch_edit_questions(request: Request, db: Annotated[Session, Depends(
     if not question_ids_str or not action:
         raise HTTPException(status_code=400, detail="参数不完整")
 
-    try:
-        qids = [int(x.strip()) for x in question_ids_str.split(",") if x.strip()]
-    except ValueError:
-        raise HTTPException(status_code=400, detail="题目ID格式错误")
+    qids = []
+    for raw_qid in [x.strip() for x in question_ids_str.split(",") if x.strip()]:
+        qid = parse_int(raw_qid, min_value=1)
+        if qid is None:
+            raise HTTPException(status_code=400, detail="题目ID格式错误")
+        qids.append(qid)
 
     if not qids:
         raise HTTPException(status_code=400, detail="未选择题目")
@@ -892,11 +905,8 @@ async def batch_edit_questions(request: Request, db: Annotated[Session, Depends(
             db.delete(q)
         db.commit()
     elif action == "difficulty":
-        try:
-            diff = int(value)
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="难度值必须为1-5的数字")
-        if diff < 1 or diff > 5:
+        diff = parse_int(value, min_value=1, max_value=5)
+        if diff is None:
             raise HTTPException(status_code=400, detail="难度值必须为1-5的数字")
         for q in questions:
             q.difficulty = diff
@@ -912,15 +922,7 @@ async def batch_edit_questions(request: Request, db: Annotated[Session, Depends(
             q.chapter = value
         db.commit()
     elif action == "bank":
-        try:
-            bank_id = int(value)
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="题库ID格式错误")
-        bank = db.query(QuestionBank).filter(
-            QuestionBank.id == bank_id, QuestionBank.created_by == user_id
-        ).first()
-        if not bank:
-            raise HTTPException(status_code=404, detail="题库不存在")
+        bank_id = _parse_owned_bank_id(db, user_id, value)
         for q in questions:
             q.bank_id = bank_id
         db.commit()
@@ -1398,7 +1400,10 @@ async def approve_student(student_id: int, request: Request, db: Annotated[Sessi
         return RedirectResponse(url="/teacher/students", status_code=303)
     if not class_id:
         return RedirectResponse(url="/teacher/students", status_code=303)
-    cls = db.query(ClassGroup).filter(ClassGroup.id == int(class_id), ClassGroup.created_by == user_id).first()
+    class_id_value = parse_int(class_id, min_value=1)
+    if class_id_value is None:
+        return RedirectResponse(url="/teacher/students", status_code=303)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id_value, ClassGroup.created_by == user_id).first()
     if cls:
         existing = db.query(ClassMember).filter(ClassMember.class_id == cls.id, ClassMember.user_id == student.id).first()
         if not existing:

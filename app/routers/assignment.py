@@ -8,6 +8,7 @@ from typing import Annotated
 from app.database import get_db
 from app.models import Question, Assignment, AssignmentRecord, User, Record, ClassGroup, ClassMember, Notification, QUESTION_TYPES
 from app.auth import require_teacher, require_login, require_non_guest, get_current_user
+from app.routers.permissions import teacher_owns_class
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int
 
@@ -27,7 +28,7 @@ def teacher_assignments(request: Request, db: Annotated[Session, Depends(get_db)
 @router.get("/assignments/create")
 def create_assignment_page(request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_teacher(request, db)
-    questions = db.query(Question).order_by(Question.subject, Question.id).all()
+    questions = db.query(Question).filter(Question.created_by == user_id).order_by(Question.subject, Question.id).all()
     classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).order_by(ClassGroup.name).all()
     return request.app.state.templates.TemplateResponse(
         "teacher/assignment_form.html",
@@ -50,21 +51,38 @@ async def create_assignment(request: Request, db: Annotated[Session, Depends(get
     description = sanitize_input(description, max_length=2000)
     valid_ids = [qid.strip() for qid in question_ids.split(",") if qid.strip().isdigit()]
     if not valid_ids:
-        questions = db.query(Question).order_by(Question.subject, Question.id).all()
+        questions = db.query(Question).filter(Question.created_by == user_id).order_by(Question.subject, Question.id).all()
         classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).order_by(ClassGroup.name).all()
         return request.app.state.templates.TemplateResponse(
             "teacher/assignment_form.html",
             {"request": request, "questions": questions, "classes": classes, "error": "请选择至少一道题目"},
         )
-    question_ids = ",".join(valid_ids)
+    question_id_values = [parse_int(qid, min_value=1) for qid in valid_ids]
+    question_id_values = [qid for qid in question_id_values if qid is not None]
+    owned_question_rows = db.query(Question.id).filter(
+        Question.id.in_(question_id_values),
+        Question.created_by == user_id,
+    ).all()
+    owned_question_ids = {row.id for row in owned_question_rows}
+    if any(qid not in owned_question_ids for qid in question_id_values):
+        raise HTTPException(status_code=403, detail="Question does not belong to current teacher")
+    question_ids = ",".join(str(qid) for qid in question_id_values)
 
     if not title or not question_ids:
-        questions = db.query(Question).order_by(Question.subject, Question.id).all()
+        questions = db.query(Question).filter(Question.created_by == user_id).order_by(Question.subject, Question.id).all()
         classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).order_by(ClassGroup.name).all()
         return request.app.state.templates.TemplateResponse(
             "teacher/assignment_form.html",
             {"request": request, "questions": questions, "classes": classes, "error": "标题和题目为必填项"},
         )
+
+    class_id_value = None
+    if class_id:
+        class_id_value = parse_int(class_id, min_value=1)
+        if class_id_value is None:
+            raise HTTPException(status_code=400, detail="Invalid class id")
+        if not teacher_owns_class(db, user_id, class_id_value):
+            raise HTTPException(status_code=403, detail="Class does not belong to current teacher")
 
     assignment = Assignment(
         title=title,
@@ -72,8 +90,8 @@ async def create_assignment(request: Request, db: Annotated[Session, Depends(get
         question_ids=question_ids,
         created_by=user_id,
     )
-    if class_id and class_id.isdigit():
-        assignment.class_id = parse_int(class_id) if class_id else None
+    if class_id_value is not None:
+        assignment.class_id = class_id_value
     if deadline:
         from datetime import datetime
         try:
@@ -182,7 +200,7 @@ def assignment_detail(assignment_id: int, request: Request, db: Annotated[Sessio
         )
         accuracy_map = {row.question_id: {"total": row.total, "correct": int(row.correct or 0)} for row in accuracy_rows}
 
-        questions = db.query(Question).filter(Question.id.in_(qid_list)).all()
+        questions = db.query(Question).filter(Question.id.in_(qid_list), Question.created_by == user_id).all()
         q_map = {q.id: q for q in questions}
 
         for qid in qid_list:
@@ -282,7 +300,7 @@ async def send_reminder(assignment_id: int, request: Request, db: Annotated[Sess
         )
         accuracy_map = {row.question_id: {"total": row.total, "correct": int(row.correct or 0)} for row in accuracy_rows}
 
-        questions = db.query(Question).filter(Question.id.in_(qid_list)).all()
+        questions = db.query(Question).filter(Question.id.in_(qid_list), Question.created_by == user_id).all()
         q_map = {q.id: q for q in questions}
 
         for qid in qid_list:

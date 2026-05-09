@@ -30,4 +30,4 @@ jobs:
 
       - name: Run Alembic migration
         run: |
-          python -m alembic upgrade head
+          alembic upgrade head

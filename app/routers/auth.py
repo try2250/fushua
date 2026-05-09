@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import User, ClassGroup, Notification
 from app.auth import require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, validate_password_strength, check_login_rate_limit, record_login_attempt, sanitize_input
+from app.utils.validation import parse_int
 
 router = APIRouter()
 
@@ -75,7 +76,12 @@ async def register(
     if role == "student":
         class_id_str = form.get("class_id", "").strip()
         if class_id_str:
-            class_id = int(class_id_str)
+            class_id = parse_int(class_id_str, min_value=1)
+            if class_id is None:
+                classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
+                return request.app.state.templates.TemplateResponse(
+                    "register.html", {"request": request, "error": "所选班级不存在，请重新选择", "csrf_token": request.session.get("csrf_token", ""), "classes": classes, "role": role, "preselected_class": ""},
+                )
             cls = db.query(ClassGroup).filter(ClassGroup.id == class_id).first()
             if not cls:
                 classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
