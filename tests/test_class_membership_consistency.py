@@ -85,7 +85,7 @@ class TestAddMemberChecksExistingClass:
         )
 
         assert response.status_code == 200
-        assert b"已在其他班级" in response.content
+        assert "已在其他班级".encode() in response.content
 
         member_in_cls2 = db_session.query(ClassMember).filter(
             ClassMember.class_id == cls2.id, ClassMember.user_id == student.id
