@@ -80,8 +80,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
-def health_check():
-    return {"status": "ok", "version": "3.0.0"}
+def health_check(request: Request):
+    try:
+        from app.database import SessionLocal
+        db = SessionLocal()
+        user_count = db.query(User).count()
+        db.close()
+        return {"status": "ok", "db": "ok", "user_count": user_count}
+    except Exception as e:
+        return {"status": "degraded", "db": "error", "error": str(e)}
 
 app.add_middleware(
     SessionMiddleware,

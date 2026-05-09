@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 
 from app.database import get_db
-from app.models import User, ClassGroup, Question, ClassMember
+from app.models import User, ClassGroup, Question, ClassMember, AuditLog
 from app.auth import get_current_user
 from app.security import validate_csrf_async
 
@@ -19,7 +19,7 @@ def require_admin(request: Request, db: Session):
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_admin:
         raise HTTPException(status_code=403)
-    return user_id
+    return user
 
 
 @router.get("/admin")
@@ -62,19 +62,26 @@ def admin_users(request: Request, db: Annotated[Session, Depends(get_db)], q: st
 
 @router.post("/admin/users/{user_id}/reset-password")
 async def reset_password(user_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
-    require_admin(request, db)
+    admin_user = require_admin(request, db)
     await validate_csrf_async(request)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     user.password_hash = User.hash_password("abc123")
+    db.add(AuditLog(
+        actor_id=admin_user.id,
+        action="reset_password",
+        target_type="user",
+        target_id=user_id,
+        detail=f"管理员重置用户 {user.username} 的密码"
+    ))
     db.commit()
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
 @router.post("/admin/users/{user_id}/toggle-disable")
 async def toggle_disable(user_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
-    require_admin(request, db)
+    admin_user = require_admin(request, db)
     await validate_csrf_async(request)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -82,13 +89,20 @@ async def toggle_disable(user_id: int, request: Request, db: Annotated[Session, 
     if user.is_admin:
         raise HTTPException(status_code=403, detail="不能禁用管理员账号")
     user.is_disabled = not user.is_disabled
+    db.add(AuditLog(
+        actor_id=admin_user.id,
+        action="toggle_disable",
+        target_type="user",
+        target_id=user_id,
+        detail=f"{'禁用' if user.is_disabled else '启用'}用户 {user.username}"
+    ))
     db.commit()
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
 @router.post("/admin/cleanup-guests")
 async def cleanup_guests(request: Request, db: Annotated[Session, Depends(get_db)]):
-    require_admin(request, db)
+    admin_user = require_admin(request, db)
     await validate_csrf_async(request)
     now = datetime.now()
     expired_guests = db.query(User).filter(
@@ -96,8 +110,15 @@ async def cleanup_guests(request: Request, db: Annotated[Session, Depends(get_db
         User.guest_expires_at != None,
         User.guest_expires_at < now,
     ).all()
+    count = len(expired_guests)
     for guest in expired_guests:
         db.query(ClassMember).filter(ClassMember.user_id == guest.id).delete()
         db.delete(guest)
+    db.add(AuditLog(
+        actor_id=admin_user.id,
+        action="cleanup_guests",
+        target_type="system",
+        detail=f"清理了 {count} 个过期游客"
+    ))
     db.commit()
     return RedirectResponse(url="/admin", status_code=303)
