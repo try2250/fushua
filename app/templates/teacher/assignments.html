@@ -15,6 +15,9 @@
         {% if a.deadline %}<span class="badge badge-semester">截止: {{ a.deadline.strftime('%Y-%m-%d') }}</span>{% endif %}
         <span class="badge">创建于: {{ a.created_at.strftime('%m-%d') }}</span>
     </div>
+    <div style="margin-top:0.5rem;">
+        <a href="/teacher/assignments/{{ a.id }}" class="btn btn-outline btn-sm">查看详情</a>
+    </div>
 </div>
 {% endfor %}
 {% else %}

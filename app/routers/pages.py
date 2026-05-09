@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
 from app.database import get_db
-from app.models import Question, Record, User, QuestionBank, SUBJECTS, SEMESTERS
+from app.models import Question, Record, User, QuestionBank, SUBJECTS, SEMESTERS, Feedback
 from app.auth import get_current_user, get_current_user_info
+from app.security import validate_csrf_async, sanitize_input
 
 router = APIRouter()
 
@@ -18,6 +20,9 @@ def index(request: Request, db: Annotated[Session, Depends(get_db)]):
     display_name = ""
     if logged_in:
         user, role, display_name = get_current_user_info(request, db)
+
+    if logged_in and role == "student":
+        return RedirectResponse(url="/student/dashboard", status_code=303)
 
     total_questions = db.query(Question).count()
 
@@ -209,3 +214,34 @@ def leaderboard(request: Request, db: Annotated[Session, Depends(get_db)]):
         "leaderboard.html",
         {"request": request, "logged_in": logged_in, "rankings": rankings},
     )
+
+
+@router.get("/help")
+def help_page(request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = get_current_user(request)
+    logged_in = user_id is not None
+    role = ""
+    if logged_in:
+        _, role, _ = get_current_user_info(request, db)
+    return request.app.state.templates.TemplateResponse(
+        "help.html",
+        {"request": request, "logged_in": logged_in, "role": role},
+    )
+
+
+@router.post("/feedback")
+async def submit_feedback(request: Request, db: Annotated[Session, Depends(get_db)]):
+    await validate_csrf_async(request)
+    form = await request.form()
+    content = sanitize_input(form.get("content", ""), max_length=2000)
+    page_path = sanitize_input(form.get("page_path", ""), max_length=500)
+    if not content:
+        return JSONResponse({"ok": False, "error": "请输入反馈内容"}, status_code=400)
+    user_id = get_current_user(request)
+    role = ""
+    if user_id:
+        user, role, _ = get_current_user_info(request, db)
+    fb = Feedback(user_id=user_id, role=role, page_path=page_path, content=content)
+    db.add(fb)
+    db.commit()
+    return JSONResponse({"ok": True})

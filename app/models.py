@@ -35,6 +35,7 @@ class User(Base):
     guest_expires_at = Column(DateTime, nullable=True)
     class_id = Column(Integer, nullable=True, index=True)
     is_admin = Column(Boolean, default=False)
+    is_disabled = Column(Boolean, default=False)
 
     records = relationship("Record", back_populates="user")
 
@@ -219,6 +220,21 @@ class QuestionBank(Base):
     )
 
 
+class MasteryRecord(Base):
+    __tablename__ = "mastery_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, index=True)
+    status = Column(String(20), default="unmastered")
+    consecutive_correct = Column(Integer, default=0)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "question_id", name="uq_mastery_user_question"),
+    )
+
+
 class SiteConfig(Base):
     __tablename__ = "site_configs"
 
@@ -237,6 +253,7 @@ class Assignment(Base):
     question_ids = Column(Text, nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"))
     deadline = Column(DateTime, nullable=True)
+    class_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -248,3 +265,14 @@ class AssignmentRecord(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
+
+
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=True)
+    role = Column(String(10), default="")
+    page_path = Column(String(500), default="")
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())

@@ -3,6 +3,8 @@
 {% block content %}
 <h1>{{ class_info.name }}</h1>
 
+<a href="/teacher/classes/{{ class_info.id }}/stats" class="btn btn-outline" style="margin-bottom:1rem;">班级统计</a>
+
 <div class="card">
     <h2>添加学生</h2>
     <form action="/classes/{{ class_info.id }}/members/add" method="post">
@@ -12,6 +14,7 @@
                 <input type="text" name="username" required placeholder="输入学生用户名" style="max-width:300px;">
             </div>
             <button type="submit" class="btn btn-primary">添加</button>
+            <a href="/teacher/classes/{{ class_info.id }}/import-students" class="btn btn-outline" style="margin-left:0.5rem;">批量导入学生</a>
         </div>
     </form>
 </div>

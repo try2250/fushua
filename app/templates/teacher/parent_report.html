@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}家长报告 - {{ student.display_name }} - 付刷{% endblock %}
+
+{% block content %}
+<div class="parent-report">
+    <div class="report-header" style="text-align:center; margin-bottom:1.5rem;">
+        <h1 style="margin-bottom:0.25rem;">📚 本周学习报告</h1>
+        <p style="color:var(--text-secondary);">{{ week_start }} ~ {{ today }}</p>
+        <p style="font-size:1.1rem;">学生：<strong>{{ student.display_name }}</strong></p>
+    </div>
+
+    <div class="stats-row stats-row-3" style="margin-bottom:1.5rem;">
+        <div class="stat-card">
+            <div class="stat-number">{{ week_total }}</div>
+            <div class="stat-label">本周做题数</div>
+        </div>
+        <div class="stat-card stat-correct">
+            <div class="stat-number">{{ week_correct }}</div>
+            <div class="stat-label">正确数</div>
+        </div>
+        <div class="stat-card {% if week_accuracy < 60 %}stat-wrong{% elif week_accuracy < 80 %}stat-chapter{% else %}stat-correct{% endif %}">
+            <div class="stat-number">{{ week_accuracy }}%</div>
+            <div class="stat-label">正确率</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+        <h2>⚠️ 薄弱知识点</h2>
+        {% if weak_points %}
+        <table class="data-table">
+            <thead>
+                <tr><th>科目</th><th>章节</th><th>做题数</th><th>正确数</th><th>正确率</th></tr>
+            </thead>
+            <tbody>
+                {% for wp in weak_points %}
+                <tr>
+                    <td><span class="badge badge-subject">{{ wp.subject }}</span></td>
+                    <td>{{ wp.chapter }}</td>
+                    <td>{{ wp.total }}</td>
+                    <td>{{ wp.correct }}</td>
+                    <td><span class="accuracy-badge badge-wrong">{{ wp.accuracy }}%</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty">本周暂无薄弱知识点，继续保持！</p>
+        {% endif %}
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+        <h2>💡 建议练习方向</h2>
+        {% if suggestions %}
+        <table class="data-table">
+            <thead>
+                <tr><th>科目</th><th>章节</th><th>当前正确率</th><th>可练习题目数</th></tr>
+            </thead>
+            <tbody>
+                {% for s in suggestions %}
+                <tr>
+                    <td><span class="badge badge-subject">{{ s.subject }}</span></td>
+                    <td>{{ s.chapter }}</td>
+                    <td><span class="accuracy-badge badge-wrong">{{ s.accuracy }}%</span></td>
+                    <td>{{ s.available_questions }} 题</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty">本周表现优秀，无需额外重点练习！</p>
+        {% endif %}
+    </div>
+
+    <div style="text-align:center; margin-top:1.5rem;">
+        <a href="/teacher/students/{{ student.id }}/parent-report/pdf" class="btn btn-primary">导出PDF</a>
+        <a href="/teacher/students/{{ student.id }}" class="btn btn-outline">返回学生详情</a>
+        <a href="/teacher/students" class="btn btn-outline">返回学生管理</a>
+    </div>
+</div>
+
+<style>
+@media print {
+    .navbar, #feedback-widget, .btn { display: none !important; }
+    .parent-report { max-width: 100%; }
+    .card { break-inside: avoid; }
+}
+</style>
+{% endblock %}

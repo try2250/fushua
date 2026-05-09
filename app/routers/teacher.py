@@ -1,20 +1,28 @@
 import json
 import csv
 import io
+import uuid
+import urllib.parse
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
+from io import BytesIO
+from datetime import datetime, timedelta
+
+import openpyxl
 
 from app.database import get_db
-from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES
+from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES
 from app.auth import require_teacher
 from app.security import validate_csrf_async, sanitize_input
 
 router = APIRouter(prefix="/teacher")
 
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+
+_pending_imports = {}
 
 
 def require_admin(request: Request, db: Session) -> int:
@@ -50,7 +58,9 @@ def manage_questions(
             "current_subject": subject,
             "current_type": q_type,
             "question_types": QUESTION_TYPES,
+            "semesters": SEMESTERS,
             "custom_fields": custom_fields,
+            "csrf_token": request.session.get("csrf_token", ""),
         },
     )
 
@@ -491,6 +501,211 @@ async def import_questions(
     )
 
 
+def _parse_file_content(content_bytes: bytes, filename: str):
+    rows = []
+    if filename.endswith(".json"):
+        data = json.loads(content_bytes.decode("utf-8"))
+        if not isinstance(data, list):
+            data = [data]
+        for idx, item in enumerate(data):
+            row = {k: (v.strip() if isinstance(v, str) else str(v)) for k, v in item.items()}
+            row["_row_num"] = idx + 1
+            rows.append(row)
+    elif filename.endswith(".csv"):
+        text = content_bytes.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(text))
+        for idx, raw in enumerate(reader):
+            row = {k: (v.strip() if isinstance(v, str) else "") for k, v in raw.items() if k is not None}
+            row["_row_num"] = idx + 1
+            rows.append(row)
+    return rows
+
+
+def _validate_rows(rows):
+    error_rows = []
+    valid_rows = []
+    for row in rows:
+        missing = []
+        if not row.get("subject"):
+            missing.append("subject")
+        if not row.get("content"):
+            missing.append("content")
+        if not row.get("answer"):
+            missing.append("answer")
+        if missing:
+            error_rows.append({"row_num": row["_row_num"], "missing_fields": missing, "data": row})
+        else:
+            valid_rows.append(row)
+    return valid_rows, error_rows
+
+
+def _check_duplicates(valid_rows, user_id, db):
+    duplicate_rows = []
+    unique_rows = []
+    existing_pairs = set()
+    questions = db.query(Question.content, Question.answer).filter(Question.created_by == user_id).all()
+    for q in questions:
+        existing_pairs.add((q.content, q.answer))
+
+    seen_in_file = set()
+    for row in valid_rows:
+        key = (row.get("content", ""), row.get("answer", ""))
+        if key in existing_pairs or key in seen_in_file:
+            duplicate_rows.append({"row_num": row["_row_num"], "content": row.get("content", ""), "answer": row.get("answer", "")})
+        else:
+            seen_in_file.add(key)
+            unique_rows.append(row)
+    return unique_rows, duplicate_rows
+
+
+@router.post("/questions/import-preview")
+async def import_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Annotated[Session, Depends(get_db)] = None,
+):
+    user_id = require_teacher(request, db)
+    await validate_csrf_async(request)
+    form_data = await request.form()
+    bank_id = form_data.get("bank_id", "")
+    bank_id = int(bank_id) if bank_id else None
+    filename = file.filename or ""
+    content_bytes = await file.read()
+
+    if len(content_bytes) > MAX_UPLOAD_SIZE:
+        custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+        banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/import.html",
+            {
+                "request": request,
+                "error": f"文件大小超过限制（最大 {MAX_UPLOAD_SIZE // 1024 // 1024}MB）",
+                "success": None,
+                "question_types": QUESTION_TYPES,
+                "custom_fields": custom_fields,
+                "banks": banks,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+
+    if not filename.endswith(".json") and not filename.endswith(".csv"):
+        custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+        banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/import.html",
+            {
+                "request": request,
+                "error": "仅支持 JSON 和 CSV 格式",
+                "success": None,
+                "question_types": QUESTION_TYPES,
+                "custom_fields": custom_fields,
+                "banks": banks,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+
+    try:
+        rows = _parse_file_content(content_bytes, filename)
+    except Exception as e:
+        custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+        banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/import.html",
+            {
+                "request": request,
+                "error": f"文件解析失败：{str(e)}",
+                "success": None,
+                "question_types": QUESTION_TYPES,
+                "custom_fields": custom_fields,
+                "banks": banks,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+
+    valid_rows, error_rows = _validate_rows(rows)
+    unique_rows, duplicate_rows = _check_duplicates(valid_rows, user_id, db)
+
+    preview_rows = unique_rows[:20]
+    total_rows = len(rows)
+    valid_count = len(unique_rows)
+
+    import_token = uuid.uuid4().hex
+    _pending_imports[import_token] = {
+        "rows": unique_rows,
+        "user_id": user_id,
+        "bank_id": bank_id,
+        "filename": filename,
+    }
+
+    return request.app.state.templates.TemplateResponse(
+        "teacher/import_preview.html",
+        {
+            "request": request,
+            "preview_rows": preview_rows,
+            "error_rows": error_rows,
+            "duplicate_rows": duplicate_rows,
+            "total_rows": total_rows,
+            "valid_count": valid_count,
+            "error_count": len(error_rows),
+            "duplicate_count": len(duplicate_rows),
+            "import_token": import_token,
+            "bank_id": bank_id,
+            "filename": filename,
+            "csrf_token": request.session.get("csrf_token", ""),
+        },
+    )
+
+
+@router.post("/questions/import-confirm")
+async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db)] = None):
+    user_id = require_teacher(request, db)
+    form = await request.form()
+    import_token = form.get("import_token", "")
+    await validate_csrf_async(request)
+
+    pending = _pending_imports.pop(import_token, None)
+    if not pending or pending["user_id"] != user_id:
+        custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+        banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/import.html",
+            {
+                "request": request,
+                "error": "导入会话已过期，请重新上传文件",
+                "success": None,
+                "question_types": QUESTION_TYPES,
+                "custom_fields": custom_fields,
+                "banks": banks,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+
+    rows = pending["rows"]
+    bank_id = pending["bank_id"]
+    count = 0
+    for row in rows:
+        item = {k: v for k, v in row.items() if k != "_row_num"}
+        q = _build_question_from_dict(item, user_id, bank_id=bank_id)
+        db.add(q)
+        count += 1
+    db.commit()
+
+    custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+    banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+    return request.app.state.templates.TemplateResponse(
+        "teacher/import.html",
+        {
+            "request": request,
+            "error": None,
+            "success": f"成功导入 {count} 道题目！",
+            "question_types": QUESTION_TYPES,
+            "custom_fields": custom_fields,
+            "banks": banks,
+            "csrf_token": request.session.get("csrf_token", ""),
+        },
+    )
+
+
 def _build_question_from_dict(item: dict, user_id: int, bank_id: int = None) -> Question:
     builtin_data = {}
     extra_data = {}
@@ -615,11 +830,105 @@ def export_questions(fmt: str, request: Request, db: Annotated[Session, Depends(
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": "attachment; filename=questions.csv"},
         )
+    elif fmt == "excel":
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "题库"
+        headers = ["ID", "科目", "学期", "章节", "题型", "难度", "题目内容", "选项A", "选项B", "选项C", "选项D", "答案", "解析"]
+        for ck in custom_keys:
+            headers.append(ck)
+        ws.append(headers)
+        for q in questions:
+            row = [q.id, q.subject, q.semester, q.chapter, QUESTION_TYPES.get(q.q_type, q.q_type), q.difficulty, q.content, q.option_a, q.option_b, q.option_c, q.option_d, q.answer, q.explanation]
+            extra = q.extra
+            for ck in custom_keys:
+                row.append(extra.get(ck, ""))
+            ws.append(row)
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        filename = urllib.parse.quote("题库.xlsx")
+        return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"})
     raise HTTPException(status_code=400, detail="不支持的导出格式")
 
 
+@router.post("/questions/batch-edit")
+async def batch_edit_questions(request: Request, db: Annotated[Session, Depends(get_db)] = None):
+    user_id = require_teacher(request, db)
+    await validate_csrf_async(request)
+    form = await request.form()
+    question_ids_str = form.get("question_ids", "")
+    action = form.get("action", "")
+    value = form.get("value", "")
+
+    if not question_ids_str or not action:
+        raise HTTPException(status_code=400, detail="参数不完整")
+
+    try:
+        qids = [int(x.strip()) for x in question_ids_str.split(",") if x.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="题目ID格式错误")
+
+    if not qids:
+        raise HTTPException(status_code=400, detail="未选择题目")
+
+    questions = db.query(Question).filter(
+        Question.id.in_(qids), Question.created_by == user_id
+    ).all()
+
+    if action == "delete":
+        for q in questions:
+            db.query(Record).filter(Record.question_id == q.id).delete()
+            db.query(Favorite).filter(Favorite.question_id == q.id).delete()
+            affected_assignments = db.query(Assignment).filter(
+                Assignment.question_ids.contains(str(q.id))
+            ).all()
+            for a in affected_assignments:
+                ids = [qid.strip() for qid in a.question_ids.split(",") if qid.strip() and qid.strip() != str(q.id)]
+                a.question_ids = ",".join(ids)
+            db.delete(q)
+        db.commit()
+    elif action == "difficulty":
+        try:
+            diff = int(value)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="难度值必须为1-5的数字")
+        if diff < 1 or diff > 5:
+            raise HTTPException(status_code=400, detail="难度值必须为1-5的数字")
+        for q in questions:
+            q.difficulty = diff
+        db.commit()
+    elif action == "semester":
+        value = sanitize_input(value, max_length=20)
+        for q in questions:
+            q.semester = value
+        db.commit()
+    elif action == "chapter":
+        value = sanitize_input(value, max_length=100)
+        for q in questions:
+            q.chapter = value
+        db.commit()
+    elif action == "bank":
+        try:
+            bank_id = int(value)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="题库ID格式错误")
+        bank = db.query(QuestionBank).filter(
+            QuestionBank.id == bank_id, QuestionBank.created_by == user_id
+        ).first()
+        if not bank:
+            raise HTTPException(status_code=404, detail="题库不存在")
+        for q in questions:
+            q.bank_id = bank_id
+        db.commit()
+    else:
+        raise HTTPException(status_code=400, detail="不支持的操作类型")
+
+    return RedirectResponse(url="/teacher/questions", status_code=303)
+
+
 @router.post("/questions/{question_id}/delete")
-async def delete_question(question_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+async def delete_question(question_id: int, request: Request, db: Annotated[Session, Depends(get_db)] = None):
     user_id = require_teacher(request, db)
     await validate_csrf_async(request)
     question = db.query(Question).filter(
@@ -831,6 +1140,161 @@ def export_stats_pdf(request: Request, db: Annotated[Session, Depends(get_db)]):
     )
 
 
+@router.get("/students/{student_id}/parent-report")
+def parent_report(student_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    require_teacher(request, db)
+    student = db.query(User).filter(User.id == student_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="学生不存在")
+
+    today = datetime.now()
+    monday = today - timedelta(days=today.weekday())
+    week_start = datetime(monday.year, monday.month, monday.day)
+
+    week_records = db.query(Record).filter(
+        Record.user_id == student_id,
+        Record.created_at >= week_start,
+    ).all()
+
+    week_total = len(week_records)
+    week_correct = sum(1 for r in week_records if r.is_correct)
+    week_accuracy = round(week_correct / week_total * 100, 1) if week_total > 0 else 0
+
+    week_question_ids = [r.question_id for r in week_records]
+    chapter_stats = {}
+    if week_question_ids:
+        chapter_rows = (
+            db.query(
+                Question.subject,
+                Question.chapter,
+                sa_func.count(Record.id).label("total"),
+                sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+            )
+            .join(Question, Record.question_id == Question.id)
+            .filter(Record.user_id == student_id, Record.created_at >= week_start)
+            .group_by(Question.subject, Question.chapter)
+            .all()
+        )
+        for row in chapter_rows:
+            acc = round((row.correct or 0) / row.total * 100, 1) if row.total > 0 else 0
+            chapter_stats[f"{row.subject}-{row.chapter or '未分类'}"] = {
+                "subject": row.subject,
+                "chapter": row.chapter or "未分类",
+                "total": row.total,
+                "correct": int(row.correct or 0),
+                "accuracy": acc,
+            }
+
+    weak_points = [v for v in chapter_stats.values() if v["accuracy"] < 60]
+    weak_points.sort(key=lambda x: x["accuracy"])
+
+    suggestions = []
+    for wp in weak_points:
+        available = db.query(Question).filter(
+            Question.subject == wp["subject"],
+            Question.chapter == wp["chapter"] if wp["chapter"] != "未分类" else "",
+        ).count()
+        suggestions.append({
+            "subject": wp["subject"],
+            "chapter": wp["chapter"],
+            "accuracy": wp["accuracy"],
+            "available_questions": available,
+        })
+
+    return request.app.state.templates.TemplateResponse(
+        "teacher/parent_report.html",
+        {
+            "request": request,
+            "student": student,
+            "week_total": week_total,
+            "week_correct": week_correct,
+            "week_accuracy": week_accuracy,
+            "weak_points": weak_points,
+            "suggestions": suggestions,
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "today": today.strftime("%Y-%m-%d"),
+        },
+    )
+
+
+@router.get("/students/{student_id}/parent-report/pdf")
+def parent_report_pdf(student_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    require_teacher(request, db)
+    student = db.query(User).filter(User.id == student_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="学生不存在")
+
+    today = datetime.now()
+    monday = today - timedelta(days=today.weekday())
+    week_start = datetime(monday.year, monday.month, monday.day)
+
+    week_records = db.query(Record).filter(
+        Record.user_id == student_id,
+        Record.created_at >= week_start,
+    ).all()
+
+    week_total = len(week_records)
+    week_correct = sum(1 for r in week_records if r.is_correct)
+    week_accuracy = round(week_correct / week_total * 100, 1) if week_total > 0 else 0
+
+    chapter_stats = {}
+    chapter_rows = (
+        db.query(
+            Question.subject,
+            Question.chapter,
+            sa_func.count(Record.id).label("total"),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+        )
+        .join(Question, Record.question_id == Question.id)
+        .filter(Record.user_id == student_id, Record.created_at >= week_start)
+        .group_by(Question.subject, Question.chapter)
+        .all()
+    )
+    for row in chapter_rows:
+        acc = round((row.correct or 0) / row.total * 100, 1) if row.total > 0 else 0
+        chapter_stats[f"{row.subject}-{row.chapter or '未分类'}"] = {
+            "subject": row.subject,
+            "chapter": row.chapter or "未分类",
+            "total": row.total,
+            "correct": int(row.correct or 0),
+            "accuracy": acc,
+        }
+
+    weak_points = [v for v in chapter_stats.values() if v["accuracy"] < 60]
+    weak_points.sort(key=lambda x: x["accuracy"])
+
+    suggestions = []
+    for wp in weak_points:
+        available = db.query(Question).filter(
+            Question.subject == wp["subject"],
+            Question.chapter == wp["chapter"] if wp["chapter"] != "未分类" else "",
+        ).count()
+        suggestions.append({
+            "subject": wp["subject"],
+            "chapter": wp["chapter"],
+            "accuracy": wp["accuracy"],
+            "available_questions": available,
+        })
+
+    from app.utils.report import generate_parent_report
+    buffer = generate_parent_report(
+        student.display_name or student.username,
+        week_total,
+        week_correct,
+        week_accuracy,
+        weak_points,
+        suggestions,
+        week_start.strftime("%Y-%m-%d"),
+        today.strftime("%Y-%m-%d"),
+    )
+
+    return Response(
+        content=buffer.read(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=parent_report_{student_id}.pdf"},
+    )
+
+
 @router.get("/students/{student_id}/export/pdf")
 def export_student_pdf(student_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
     require_teacher(request, db)
@@ -966,3 +1430,324 @@ async def update_invite(request: Request, db: Annotated[Session, Depends(get_db)
         config.value = codes
     db.commit()
     return RedirectResponse(url="/teacher/invite", status_code=303)
+
+
+@router.get("/classes/{class_id}/import-students")
+def import_students_page(class_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id, ClassGroup.created_by == user_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="班级不存在")
+    return request.app.state.templates.TemplateResponse(
+        "teacher/student_import.html",
+        {
+            "request": request,
+            "class_info": cls,
+            "error": None,
+            "success": None,
+            "created_count": 0,
+            "skipped_count": 0,
+            "csrf_token": request.session.get("csrf_token", ""),
+        },
+    )
+
+
+@router.post("/classes/{class_id}/import-students")
+async def import_students(class_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    await validate_csrf_async(request)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id, ClassGroup.created_by == user_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="班级不存在")
+
+    form = await request.form()
+    csv_text = form.get("csv_text", "").strip()
+
+    if not csv_text:
+        return request.app.state.templates.TemplateResponse(
+            "teacher/student_import.html",
+            {
+                "request": request,
+                "class_info": cls,
+                "error": "请输入CSV数据",
+                "success": None,
+                "created_count": 0,
+                "skipped_count": 0,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+
+    created_count = 0
+    skipped_count = 0
+
+    try:
+        reader = csv.DictReader(io.StringIO(csv_text))
+        for row in reader:
+            username = row.get("username", "").strip()
+            display_name = row.get("display_name", "").strip()
+            if not username:
+                continue
+
+            existing = db.query(User).filter(User.username == username).first()
+            if existing:
+                member = db.query(ClassMember).filter(
+                    ClassMember.class_id == cls.id,
+                    ClassMember.user_id == existing.id,
+                ).first()
+                if not member:
+                    db.add(ClassMember(class_id=cls.id, user_id=existing.id))
+                existing.class_id = cls.id
+                if existing.is_guest:
+                    existing.is_guest = False
+                    existing.guest_expires_at = None
+                skipped_count += 1
+            else:
+                new_user = User(
+                    username=username,
+                    password_hash=User.hash_password("abc123"),
+                    role="student",
+                    display_name=display_name or username,
+                    class_id=cls.id,
+                )
+                db.add(new_user)
+                db.flush()
+                db.add(ClassMember(class_id=cls.id, user_id=new_user.id))
+                created_count += 1
+
+        db.commit()
+    except Exception as e:
+        return request.app.state.templates.TemplateResponse(
+            "teacher/student_import.html",
+            {
+                "request": request,
+                "class_info": cls,
+                "error": f"导入失败：{str(e)}",
+                "success": None,
+                "created_count": 0,
+                "skipped_count": 0,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+
+    return request.app.state.templates.TemplateResponse(
+        "teacher/student_import.html",
+        {
+            "request": request,
+            "class_info": cls,
+            "error": None,
+            "success": f"导入完成：新建 {created_count} 人，跳过（已存在） {skipped_count} 人",
+            "created_count": created_count,
+            "skipped_count": skipped_count,
+            "csrf_token": request.session.get("csrf_token", ""),
+        },
+    )
+
+
+@router.get("/classes/{class_id}/stats")
+def class_stats(class_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id, ClassGroup.created_by == user_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="班级不存在")
+
+    member_ids = [m.user_id for m in db.query(ClassMember).filter(ClassMember.class_id == class_id).all()]
+
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    accuracy_trend = (
+        db.query(
+            sa_func.date(Record.created_at).label("date"),
+            sa_func.count(Record.id).label("total"),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+        )
+        .filter(Record.user_id.in_(member_ids), Record.created_at >= seven_days_ago)
+        .group_by(sa_func.date(Record.created_at))
+        .order_by(sa_func.date(Record.created_at))
+        .all()
+    )
+    trend_data = [
+        {"date": str(row.date), "total": row.total, "correct": int(row.correct or 0), "accuracy": round((row.correct or 0) / row.total * 100, 1) if row.total > 0 else 0}
+        for row in accuracy_trend
+    ]
+
+    weak_chapters = (
+        db.query(
+            Question.subject,
+            Question.chapter,
+            sa_func.count(Record.id).label("total"),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+        )
+        .join(Question, Record.question_id == Question.id)
+        .filter(Record.user_id.in_(member_ids))
+        .group_by(Question.subject, Question.chapter)
+        .all()
+    )
+    chapter_data = [
+        {"subject": row.subject, "chapter": row.chapter, "total": row.total, "correct": int(row.correct or 0), "accuracy": round((row.correct or 0) / row.total * 100, 1) if row.total > 0 else 0}
+        for row in weak_chapters
+    ]
+    chapter_data.sort(key=lambda x: x["accuracy"])
+    weak_chapters_top5 = chapter_data[:5]
+
+    student_ranking = (
+        db.query(
+            User.id,
+            User.username,
+            User.display_name,
+            sa_func.count(Record.id).label("total"),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+        )
+        .join(Record, Record.user_id == User.id)
+        .filter(Record.user_id.in_(member_ids))
+        .group_by(User.id)
+        .all()
+    )
+    ranking = [
+        {"id": s.id, "username": s.username, "display_name": s.display_name, "total": s.total, "correct": int(s.correct or 0), "accuracy": round((s.correct or 0) / s.total * 100, 1) if s.total > 0 else 0}
+        for s in student_ranking
+    ]
+    ranking.sort(key=lambda x: x["accuracy"], reverse=True)
+
+    progress_list = []
+    for s in student_ranking:
+        records = db.query(Record).filter(Record.user_id == s.id).order_by(Record.created_at).all()
+        if len(records) < 2:
+            continue
+        mid = len(records) // 2
+        first_half = records[:mid]
+        second_half = records[mid:]
+        first_correct = sum(1 for r in first_half if r.is_correct)
+        first_acc = first_correct / len(first_half) * 100 if first_half else 0
+        second_correct = sum(1 for r in second_half if r.is_correct)
+        second_acc = second_correct / len(second_half) * 100 if second_half else 0
+        improvement = round(second_acc - first_acc, 1)
+        progress_list.append({
+            "id": s.id,
+            "username": s.username,
+            "display_name": s.display_name,
+            "first_acc": round(first_acc, 1),
+            "second_acc": round(second_acc, 1),
+            "improvement": improvement,
+        })
+    progress_list.sort(key=lambda x: x["improvement"], reverse=True)
+    progress_top5 = progress_list[:5]
+
+    all_member_users = (
+        db.query(User.id, User.username, User.display_name)
+        .join(ClassMember, ClassMember.user_id == User.id)
+        .filter(ClassMember.class_id == class_id)
+        .all()
+    )
+    practiced_ids = set(s.id for s in student_ranking)
+    no_practice = [
+        {"id": u.id, "username": u.username, "display_name": u.display_name}
+        for u in all_member_users if u.id not in practiced_ids
+    ]
+
+    return request.app.state.templates.TemplateResponse(
+        "teacher/class_stats.html",
+        {
+            "request": request,
+            "class_info": cls,
+            "trend_data": trend_data,
+            "weak_chapters": weak_chapters_top5,
+            "ranking": ranking,
+            "progress_top5": progress_top5,
+            "no_practice": no_practice,
+        },
+    )
+
+
+@router.get("/classes/{class_id}/export/excel")
+def export_class_excel(class_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id, ClassGroup.created_by == user_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="班级不存在")
+
+    member_ids = [m.user_id for m in db.query(ClassMember).filter(ClassMember.class_id == class_id).all()]
+
+    student_ranking = (
+        db.query(
+            User.id,
+            User.username,
+            User.display_name,
+            sa_func.count(Record.id).label("total"),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+        )
+        .join(Record, Record.user_id == User.id)
+        .filter(Record.user_id.in_(member_ids))
+        .group_by(User.id)
+        .all()
+    ) if member_ids else []
+
+    ranking = [
+        {"id": s.id, "username": s.username, "display_name": s.display_name, "total": s.total, "correct": int(s.correct or 0), "accuracy": round((s.correct or 0) / s.total * 100, 1) if s.total > 0 else 0}
+        for s in student_ranking
+    ]
+    ranking.sort(key=lambda x: x["accuracy"], reverse=True)
+
+    practiced_ids = set(s.id for s in student_ranking)
+    no_practice_users = db.query(User).filter(User.id.in_(member_ids), User.role == "student").all() if member_ids else []
+    no_practice = [u for u in no_practice_users if u.id not in practiced_ids]
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "班级报告"
+    ws.append(["排名", "姓名", "用户名", "做题数", "正确数", "正确率"])
+    for idx, s in enumerate(ranking, 1):
+        ws.append([idx, s["display_name"] or s["username"], s["username"], s["total"], s["correct"], f'{s["accuracy"]}%'])
+    for u in no_practice:
+        ws.append(["-", u.display_name or u.username, u.username, 0, 0, "0%"])
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = urllib.parse.quote(f"{cls.name}_班级报告.xlsx")
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"})
+
+
+@router.get("/assignments/{assignment_id}/export/excel")
+def export_assignment_excel(assignment_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    assignment = db.query(Assignment).filter(Assignment.id == assignment_id, Assignment.created_by == user_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+    qid_list = [int(x.strip()) for x in assignment.question_ids.split(",") if x.strip().isdigit()]
+
+    completed_records = db.query(AssignmentRecord).filter(
+        AssignmentRecord.assignment_id == assignment_id,
+        AssignmentRecord.completed == True,
+    ).all()
+    completed_user_ids = {r.user_id for r in completed_records}
+
+    if assignment.class_id:
+        members = db.query(ClassMember).filter(ClassMember.class_id == assignment.class_id).all()
+        student_ids = [m.user_id for m in members]
+    else:
+        classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).all()
+        class_ids = [c.id for c in classes]
+        members = db.query(ClassMember).filter(ClassMember.class_id.in_(class_ids)).all() if class_ids else []
+        student_ids = list({m.user_id for m in members})
+
+    students = db.query(User).filter(User.id.in_(student_ids), User.role == "student").all() if student_ids else []
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "作业完成情况"
+    ws.append(["姓名", "用户名", "完成状态", "正确率"])
+
+    for s in students:
+        status = "已完成" if s.id in completed_user_ids else "未完成"
+        accuracy = 0.0
+        if s.id in completed_user_ids and qid_list:
+            total = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(qid_list)).count()
+            correct = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(qid_list), Record.is_correct == True).count()
+            accuracy = round(correct / total * 100, 1) if total > 0 else 0.0
+        ws.append([s.display_name or s.username, s.username, status, f"{accuracy}%"])
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = urllib.parse.quote(f"{assignment.title}_作业完成情况.xlsx")
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"})

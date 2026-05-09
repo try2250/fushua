@@ -54,6 +54,69 @@ def generate_teacher_report(teacher_name, total_questions, total_records, accura
     return buffer
 
 
+def generate_parent_report(student_name, week_total, week_correct, week_accuracy, weak_points, suggestions, week_start, today):
+    student_name = sanitize_input(str(student_name), max_length=100)
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph("付刷 - 家长周报", styles['Title']))
+    elements.append(Paragraph(f"学生: {student_name}", styles['Normal']))
+    elements.append(Paragraph(f"统计周期: {week_start} ~ {today}", styles['Normal']))
+    elements.append(Spacer(1, 10 * mm))
+
+    elements.append(Paragraph("本周学习概况", styles['Heading2']))
+    summary_data = [
+        ["指标", "数值"],
+        ["本周做题数", str(week_total)],
+        ["正确数", str(week_correct)],
+        ["正确率", f"{week_accuracy}%"],
+    ]
+    t = Table(summary_data)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4361ee')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 10 * mm))
+
+    if weak_points:
+        elements.append(Paragraph("薄弱知识点（正确率<60%）", styles['Heading2']))
+        weak_data = [["科目", "章节", "做题数", "正确数", "正确率"]]
+        for wp in weak_points:
+            weak_data.append([wp["subject"], wp["chapter"], str(wp["total"]), str(wp["correct"]), f"{wp['accuracy']}%"])
+        wt = Table(weak_data)
+        wt.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e63946')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
+        elements.append(wt)
+        elements.append(Spacer(1, 10 * mm))
+
+    if suggestions:
+        elements.append(Paragraph("建议练习方向", styles['Heading2']))
+        sug_data = [["科目", "章节", "当前正确率", "可练习题目数"]]
+        for s in suggestions:
+            sug_data.append([s["subject"], s["chapter"], f"{s['accuracy']}%", f"{s['available_questions']}题"])
+        st = Table(sug_data)
+        st.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2a9d8f')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
+        elements.append(st)
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
 def generate_student_report(student_name, total, correct, accuracy, subject_stats, type_stats):
     student_name = sanitize_input(str(student_name), max_length=100)
     buffer = io.BytesIO()

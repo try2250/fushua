@@ -1491,3 +1491,186 @@ input:focus, select:focus, textarea:focus {
 .theme-toggle:hover {
     background: var(--bg-secondary);
 }
+
+.achievement-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.achievement-item {
+    text-align: center;
+    padding: 1rem 0.5rem;
+    background: #f8f9ff;
+    border-radius: 10px;
+}
+
+.achievement-icon {
+    font-size: 1.6rem;
+    margin-bottom: 0.3rem;
+}
+
+.achievement-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1a1a2e;
+}
+
+.achievement-label {
+    color: #888;
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+
+.achievement-progress-track {
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.achievement-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4361ee, #7b8ff7);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+.accuracy-up {
+    color: #27ae60;
+}
+
+.accuracy-down {
+    color: #e74c3c;
+}
+
+.accuracy-flat {
+    color: #888;
+}
+
+.badge-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+.badge-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0.6rem;
+}
+
+.badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.chapter-badge {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    background: linear-gradient(135deg, #e8f8f0, #d4f5e4);
+    color: #27ae60;
+    border-radius: 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .achievement-item {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .chapter-badge {
+    background: #1f3a2e;
+    color: #4caf50;
+}
+
+@media (max-width: 600px) {
+    .achievement-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+#feedback-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+#feedback-toggle {
+    background: #4361ee;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
+    transition: all 0.2s;
+}
+
+#feedback-toggle:hover {
+    background: #3a56d4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4);
+}
+
+#feedback-form-wrap {
+    position: absolute;
+    bottom: 50px;
+    right: 0;
+    width: 300px;
+    background: var(--bg-card, white);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+#feedback-form textarea {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    resize: vertical;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+#feedback-form button[type="submit"] {
+    width: 100%;
+    padding: 0.5rem;
+    background: #4361ee;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+#feedback-form button[type="submit"]:hover {
+    background: #3a56d4;
+}
+
+#feedback-success {
+    text-align: center;
+    color: #27ae60;
+    font-weight: 500;
+    margin: 0;
+    padding: 0.5rem 0;
+}
+
+[data-theme="dark"] #feedback-form-wrap {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}

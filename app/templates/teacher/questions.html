@@ -22,8 +22,40 @@
             <a href="/teacher/questions/import" class="btn btn-outline">📥 导入</a>
             <a href="/teacher/questions/export/json" class="btn btn-outline">📤 导出JSON</a>
             <a href="/teacher/questions/export/csv" class="btn btn-outline">📤 导出CSV</a>
+            <a href="/teacher/questions/export/excel" class="btn btn-outline">📤 导出Excel</a>
         </div>
     </div>
+</div>
+
+<div class="card" id="batch-bar" style="display:none;">
+    <form id="batch-form" action="/teacher/questions/batch-edit" method="post" onsubmit="return onBatchSubmit()">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="question_ids" id="batch-question-ids" value="">
+        <div class="flex-between">
+            <div class="filter-group">
+                <label><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"> 全选</label>
+                <span id="selected-count">已选 0 题</span>
+            </div>
+            <div class="filter-group">
+                <select name="action" id="batch-action" onchange="onActionChange()">
+                    <option value="">选择操作</option>
+                    <option value="difficulty">修改难度</option>
+                    <option value="semester">修改学期</option>
+                    <option value="chapter">修改章节</option>
+                    <option value="bank">移动到题库</option>
+                    <option value="delete">批量删除</option>
+                </select>
+                <input type="text" name="value" id="batch-value" placeholder="输入值" style="display:none;">
+                <select name="value" id="batch-value-select" style="display:none;">
+                    <option value="">选择学期</option>
+                    {% for s in semesters %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm" id="batch-submit-btn" disabled>执行</button>
+            </div>
+        </div>
+    </form>
 </div>
 
 <div class="card">
@@ -32,6 +64,7 @@
         {% for q in questions %}
         <div class="question-item">
             <div class="question-meta">
+                <input type="checkbox" class="q-checkbox" value="{{ q.id }}" onchange="updateBatchBar()">
                 <span class="badge badge-type-{{ q.q_type }}">{{ question_types.get(q.q_type, q.q_type) }}</span>
                 <span class="badge badge-subject">{{ q.subject }}</span>
                 {% if q.semester %}<span class="badge badge-semester">{{ q.semester }}</span>{% endif %}
@@ -60,4 +93,78 @@
     <p class="empty">还没有题目，点击上方按钮添加</p>
     {% endif %}
 </div>
+
+<script>
+function updateBatchBar() {
+    var checkboxes = document.querySelectorAll('.q-checkbox');
+    var checked = document.querySelectorAll('.q-checkbox:checked');
+    var bar = document.getElementById('batch-bar');
+    var countEl = document.getElementById('selected-count');
+    var submitBtn = document.getElementById('batch-submit-btn');
+    if (checked.length > 0) {
+        bar.style.display = '';
+        countEl.textContent = '已选 ' + checked.length + ' 题';
+    } else {
+        bar.style.display = 'none';
+    }
+    var action = document.getElementById('batch-action').value;
+    submitBtn.disabled = !action || checked.length === 0;
+    var allChecked = checkboxes.length > 0 && checked.length === checkboxes.length;
+    document.getElementById('select-all').checked = allChecked;
+}
+
+function toggleSelectAll(checked) {
+    var checkboxes = document.querySelectorAll('.q-checkbox');
+    checkboxes.forEach(function(cb) { cb.checked = checked; });
+    updateBatchBar();
+}
+
+function onActionChange() {
+    var action = document.getElementById('batch-action').value;
+    var inputEl = document.getElementById('batch-value');
+    var selectEl = document.getElementById('batch-value-select');
+    var submitBtn = document.getElementById('batch-submit-btn');
+    inputEl.style.display = 'none';
+    selectEl.style.display = 'none';
+    inputEl.name = '';
+    selectEl.name = '';
+    if (action === 'difficulty') {
+        inputEl.placeholder = '输入难度(1-5)';
+        inputEl.type = 'number';
+        inputEl.min = 1;
+        inputEl.max = 5;
+        inputEl.name = 'value';
+        inputEl.style.display = '';
+    } else if (action === 'semester') {
+        selectEl.name = 'value';
+        selectEl.style.display = '';
+    } else if (action === 'chapter') {
+        inputEl.placeholder = '输入章节';
+        inputEl.type = 'text';
+        inputEl.name = 'value';
+        inputEl.style.display = '';
+    } else if (action === 'bank') {
+        inputEl.placeholder = '输入题库ID';
+        inputEl.type = 'number';
+        inputEl.name = 'value';
+        inputEl.style.display = '';
+    }
+    var checked = document.querySelectorAll('.q-checkbox:checked');
+    submitBtn.disabled = !action || checked.length === 0;
+}
+
+function onBatchSubmit() {
+    var checked = document.querySelectorAll('.q-checkbox:checked');
+    if (checked.length === 0) return false;
+    var action = document.getElementById('batch-action').value;
+    if (!action) return false;
+    var ids = [];
+    checked.forEach(function(cb) { ids.push(cb.value); });
+    document.getElementById('batch-question-ids').value = ids.join(',');
+    if (action === 'delete') {
+        return confirm('确定删除选中的 ' + checked.length + ' 道题目？');
+    }
+    return true;
+}
+</script>
 {% endblock %}

@@ -33,6 +33,7 @@
                         <a href="/student/plans" class="nav-link">计划</a>
                         <a href="/student/notifications" class="nav-link">通知{% if unread_count %}<span class="badge badge-warning" style="font-size:0.6rem;margin-left:2px;">{{ unread_count }}</span>{% endif %}</a>
                         <a href="/leaderboard" class="nav-link">排行</a>
+                        <a href="/help" class="nav-link">帮助</a>
                         <a href="/settings" class="nav-link">设置</a>
                     {% elif role == 'teacher' %}
                         <a href="/browse" class="nav-link">题库</a>
@@ -46,7 +47,9 @@
                         <a href="/teacher/classes" class="nav-link">班级</a>
                         <a href="/teacher/students" class="nav-link">学生</a>
                         {% if is_admin %}<a href="/teacher/invite" class="nav-link">邀请码</a>{% endif %}
+                        {% if is_admin %}<a href="/admin" class="nav-link">管理</a>{% endif %}
                         <a href="/leaderboard" class="nav-link">排行</a>
+                        <a href="/help" class="nav-link">帮助</a>
                         <a href="/settings" class="nav-link">设置</a>
                     {% endif %}
                     <form action="/logout" method="POST" style="display:inline;">
@@ -56,6 +59,7 @@
                 {% else %}
                     <a href="/login" class="nav-link">登录</a>
                     <a href="/register" class="nav-link">注册</a>
+                    <a href="/help" class="nav-link">帮助</a>
                 {% endif %}
                 <button onclick="toggleTheme()" class="theme-toggle" id="themeToggle" title="切换深色模式">🌙</button>
             </div>
@@ -64,6 +68,18 @@
     <main class="container">
         {% block content %}{% endblock %}
     </main>
+    <div id="feedback-widget">
+        <button type="button" id="feedback-toggle" onclick="document.getElementById('feedback-form-wrap').style.display=document.getElementById('feedback-form-wrap').style.display==='none'?'block':'none'">反馈问题</button>
+        <div id="feedback-form-wrap" style="display:none">
+            <form id="feedback-form" onsubmit="return submitFeedback(event)">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="page_path" id="feedback-page-path">
+                <textarea name="content" rows="3" placeholder="请描述您遇到的问题或建议..." required></textarea>
+                <button type="submit">提交反馈</button>
+            </form>
+            <p id="feedback-success" style="display:none">感谢反馈！</p>
+        </div>
+    </div>
 <script>
 function toggleTheme() {
     const html = document.documentElement;
@@ -83,6 +99,33 @@ function toggleTheme() {
         });
     }
 })();
+</script>
+<script>
+document.getElementById('feedback-page-path').value = window.location.pathname;
+function submitFeedback(e) {
+    e.preventDefault();
+    var form = document.getElementById('feedback-form');
+    var data = new FormData(form);
+    fetch('/feedback', {method:'POST', body: data})
+        .then(function(r){return r.json()})
+        .then(function(d){
+            if(d.ok){
+                form.style.display='none';
+                document.getElementById('feedback-success').style.display='block';
+                setTimeout(function(){
+                    form.style.display='block';
+                    form.reset();
+                    document.getElementById('feedback-page-path').value = window.location.pathname;
+                    document.getElementById('feedback-success').style.display='none';
+                    document.getElementById('feedback-form-wrap').style.display='none';
+                }, 3000);
+            } else {
+                alert(d.error || '提交失败');
+            }
+        })
+        .catch(function(){ alert('提交失败，请稍后重试'); });
+    return false;
+}
 </script>
 <script>
 if ('serviceWorker' in navigator) {

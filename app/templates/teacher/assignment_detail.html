@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ assignment.title }} - 作业详情 - 付刷{% endblock %}
+{% block content %}
+<h1>{{ assignment.title }}</h1>
+<p class="hint">{{ assignment.description }}</p>
+{% if assignment.deadline %}<p class="hint">截止日期：{{ assignment.deadline.strftime('%Y-%m-%d') }}</p>{% endif %}
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ completed_count }}/{{ total_students }}</div>
+        <div class="stat-label">已完成/总人数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ total_students - completed_count }}</div>
+        <div class="stat-label">未完成人数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ avg_accuracy }}%</div>
+        <div class="stat-label">平均正确率</div>
+    </div>
+</div>
+
+{% if top_wrong %}
+<div class="card">
+    <h2>高频错题（正确率最低的5题）</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>题目ID</th>
+                <th>题目内容</th>
+                <th>作答人数</th>
+                <th>正确人数</th>
+                <th>正确率</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for q in top_wrong %}
+            <tr>
+                <td>#{{ q.id }}</td>
+                <td>{{ q.content }}{% if q.content|length >= 40 %}...{% endif %}</td>
+                <td>{{ q.total }}</td>
+                <td>{{ q.correct }}</td>
+                <td>
+                    <span class="accuracy-badge {% if q.accuracy < 60 %}badge-wrong{% elif q.accuracy < 80 %}badge-chapter{% else %}badge-correct{% endif %}">
+                        {{ q.accuracy }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if question_accuracy %}
+<div class="card">
+    <h2>每题正确率</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>题目ID</th>
+                <th>题目内容</th>
+                <th>作答人数</th>
+                <th>正确人数</th>
+                <th>正确率</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for q in question_accuracy %}
+            <tr>
+                <td>#{{ q.id }}</td>
+                <td>{{ q.content }}{% if q.content|length >= 40 %}...{% endif %}</td>
+                <td>{{ q.total }}</td>
+                <td>{{ q.correct }}</td>
+                <td>
+                    <span class="accuracy-badge {% if q.accuracy < 60 %}badge-wrong{% elif q.accuracy < 80 %}badge-chapter{% else %}badge-correct{% endif %}">
+                        {{ q.accuracy }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>学生完成列表</h2>
+    {% if complete_students or incomplete_students %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>学生</th>
+                <th>状态</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in complete_students %}
+            <tr>
+                <td>{{ s.display_name or s.username }}</td>
+                <td><span class="badge badge-correct">已完成</span></td>
+            </tr>
+            {% endfor %}
+            {% for s in incomplete_students %}
+            <tr>
+                <td>{{ s.display_name or s.username }}</td>
+                <td><span class="badge badge-wrong">未完成</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">暂无学生数据，请先将学生加入班级</p>
+    {% endif %}
+</div>
+
+{% if incomplete_students %}
+<div class="card">
+    <form action="/teacher/assignments/{{ assignment.id }}/remind" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-primary">提醒未完成学生（{{ incomplete_students|length }}人）</button>
+    </form>
+    {% if reminded_count > 0 %}
+    <p class="hint" style="margin-top:0.5rem;">已发送 {{ reminded_count }} 条提醒通知</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<a href="/teacher/assignments" class="btn btn-outline">返回作业列表</a>
+<a href="/teacher/assignments/{{ assignment.id }}/export/excel" class="btn btn-primary">📤 导出Excel</a>
+{% endblock %}

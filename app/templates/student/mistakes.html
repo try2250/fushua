@@ -8,12 +8,21 @@
 <div class="card">
     <div class="flex-between">
         <div class="filter-group">
-            <a href="/student/mistakes" class="btn {% if not subject %}btn-primary{% else %}btn-outline{% endif %} btn-sm">全部</a>
+            <a href="/student/mistakes" class="btn {% if not subject and not status_filter %}btn-primary{% else %}btn-outline{% endif %} btn-sm">全部</a>
             {% for s in subjects %}
-            <a href="/student/mistakes?subject={{ s }}" class="btn {% if subject == s %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ s }}</a>
+            <a href="/student/mistakes?subject={{ s }}" class="btn {% if subject == s and not status_filter %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ s }}</a>
             {% endfor %}
         </div>
         <a href="/student/mistakes/retry{% if subject %}?subject={{ subject }}{% endif %}" class="btn btn-primary">🔄 重练错题</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="filter-group">
+        <a href="/student/mistakes{% if subject %}?subject={{ subject }}{% endif %}" class="btn {% if not status_filter %}btn-primary{% else %}btn-outline{% endif %} btn-sm">全部 ({{ status_counts.unmastered + status_counts.reviewing + status_counts.mastered }})</a>
+        <a href="/student/mistakes?status=unmastered{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if status_filter == 'unmastered' %}btn-primary{% else %}btn-outline{% endif %} btn-sm" style="{% if status_filter == 'unmastered' %}background:#ef4444;border-color:#ef4444{% endif %}">🔴 未掌握 ({{ status_counts.unmastered }})</a>
+        <a href="/student/mistakes?status=reviewing{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if status_filter == 'reviewing' %}btn-primary{% else %}btn-outline{% endif %} btn-sm" style="{% if status_filter == 'reviewing' %}background:#f59e0b;border-color:#f59e0b{% endif %}">🟡 复习中 ({{ status_counts.reviewing }})</a>
+        <a href="/student/mistakes?status=mastered{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if status_filter == 'mastered' %}btn-primary{% else %}btn-outline{% endif %} btn-sm" style="{% if status_filter == 'mastered' %}background:#22c55e;border-color:#22c55e{% endif %}">🟢 已掌握 ({{ status_counts.mastered }})</a>
     </div>
 </div>
 
@@ -24,12 +33,17 @@
 {% elif mistakes %}
 <div class="mistake-list">
     {% for r in mistakes %}
-    <div class="card mistake-card {% if correct_after.get(r.question_id, False) %}mistake-mastered{% else %}mistake-pending{% endif %}">
+    {% set mr = mastery_map.get(r.question_id) %}
+    {% set ms = mr.status if mr else 'unmastered' %}
+    {% set cc = mr.consecutive_correct if mr else 0 %}
+    <div class="card mistake-card {% if ms == 'mastered' %}mistake-mastered{% elif ms == 'reviewing' %}mistake-reviewing{% else %}mistake-pending{% endif %}">
         <div class="mistake-header">
             <span class="badge badge-type-{{ r.question.q_type }}">{{ question_types.get(r.question.q_type, r.question.q_type) }}</span>
             <span class="badge badge-subject">{{ r.question.subject }}</span>
-            {% if correct_after.get(r.question_id, False) %}
+            {% if ms == 'mastered' %}
             <span class="badge badge-correct">已掌握 ✓</span>
+            {% elif ms == 'reviewing' %}
+            <span class="badge" style="background:#f59e0b;color:#fff">复习中 ({{ cc }}/3)</span>
             {% else %}
             <span class="badge badge-wrong">未掌握</span>
             {% endif %}

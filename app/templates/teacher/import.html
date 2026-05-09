@@ -32,7 +32,7 @@
     <div class="alert alert-success">{{ success }}</div>
     {% endif %}
 
-    <form action="/teacher/questions/import" method="post" enctype="multipart/form-data">
+    <form action="/teacher/questions/import-preview" method="post" enctype="multipart/form-data">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label>导入到题库（可选）</label>
@@ -47,7 +47,7 @@
             <label for="file">选择文件 *（支持 .json 或 .csv）</label>
             <input type="file" id="file" name="file" accept=".json,.csv" required class="file-input">
         </div>
-        <button type="submit" class="btn btn-primary">上传导入</button>
+        <button type="submit" class="btn btn-primary">预览导入</button>
         <a href="/teacher/questions" class="btn btn-outline" style="margin-left:0.5rem;">返回题库</a>
     </form>
 </div>

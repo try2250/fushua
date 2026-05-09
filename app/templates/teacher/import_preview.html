@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}导入预览 - 付刷{% endblock %}
+
+{% block content %}
+<h1>📋 导入预览</h1>
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2>导入概览</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;">
+        <div style="text-align:center;padding:0.8rem;background:var(--bg-secondary);border-radius:8px;">
+            <div style="font-size:1.8rem;font-weight:bold;">{{ total_rows }}</div>
+            <div style="color:var(--text-secondary);">总行数</div>
+        </div>
+        <div style="text-align:center;padding:0.8rem;background:var(--bg-secondary);border-radius:8px;">
+            <div style="font-size:1.8rem;font-weight:bold;color:#22c55e;">{{ valid_count }}</div>
+            <div style="color:var(--text-secondary);">可导入</div>
+        </div>
+        <div style="text-align:center;padding:0.8rem;background:var(--bg-secondary);border-radius:8px;">
+            <div style="font-size:1.8rem;font-weight:bold;color:#ef4444;">{{ error_count }}</div>
+            <div style="color:var(--text-secondary);">错误行</div>
+        </div>
+        <div style="text-align:center;padding:0.8rem;background:var(--bg-secondary);border-radius:8px;">
+            <div style="font-size:1.8rem;font-weight:bold;color:#f59e0b;">{{ duplicate_count }}</div>
+            <div style="color:var(--text-secondary);">重复题</div>
+        </div>
+    </div>
+    <p style="margin-top:0.8rem;color:var(--text-secondary);">文件：{{ filename }}</p>
+</div>
+
+{% if error_rows %}
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid #ef4444;">
+    <h2 style="color:#ef4444;">⚠️ 错误行（缺少必填字段）</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>行号</th><th>缺少字段</th><th>内容预览</th></tr>
+        </thead>
+        <tbody>
+            {% for er in error_rows %}
+            <tr style="background:rgba(239,68,68,0.1);">
+                <td>{{ er.row_num }}</td>
+                <td><span style="color:#ef4444;font-weight:bold;">{{ er.missing_fields | join(', ') }}</span></td>
+                <td>{{ er.data.get('content', '')[:50] or er.data.get('subject', '') or '(空)' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if duplicate_rows %}
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid #f59e0b;">
+    <h2 style="color:#f59e0b;">🔁 重复题（content+answer 已存在）</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>行号</th><th>题目内容</th><th>答案</th></tr>
+        </thead>
+        <tbody>
+            {% for dr in duplicate_rows %}
+            <tr style="background:rgba(245,158,11,0.1);">
+                <td>{{ dr.row_num }}</td>
+                <td>{{ dr.content[:60] }}</td>
+                <td>{{ dr.answer }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2>前 20 行预览（可导入的题目）</h2>
+    {% if preview_rows %}
+    <div style="overflow-x:auto;">
+        <table class="data-table">
+            <thead>
+                <tr><th>行号</th><th>科目</th><th>题型</th><th>题目内容</th><th>答案</th><th>难度</th></tr>
+            </thead>
+            <tbody>
+                {% for row in preview_rows %}
+                <tr>
+                    <td>{{ row._row_num }}</td>
+                    <td>{{ row.get('subject', '') }}</td>
+                    <td>{{ row.get('q_type', 'choice') }}</td>
+                    <td>{{ row.get('content', '')[:80] }}</td>
+                    <td>{{ row.get('answer', '') }}</td>
+                    <td>{{ row.get('difficulty', '2') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if valid_count > 20 %}
+    <p style="margin-top:0.5rem;color:var(--text-secondary);">仅显示前 20 行，共 {{ valid_count }} 行可导入</p>
+    {% endif %}
+    {% else %}
+    <p style="color:var(--text-secondary);">没有可导入的题目</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    {% if valid_count > 0 %}
+    <form action="/teacher/questions/import-confirm" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="import_token" value="{{ import_token }}">
+        <button type="submit" class="btn btn-primary">✅ 确认导入 {{ valid_count }} 道题目</button>
+    </form>
+    {% endif %}
+    <a href="/teacher/questions/import" class="btn btn-outline" style="margin-left:0.5rem;">❌ 取消</a>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}管理后台 - 付刷{% endblock %}
+
+{% block content %}
+<h1>管理后台</h1>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ user_count }}</div>
+        <div class="stat-label">用户数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ class_count }}</div>
+        <div class="stat-label">班级数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ question_count }}</div>
+        <div class="stat-label">题目数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ teacher_count }}</div>
+        <div class="stat-label">教师数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ guest_count }}</div>
+        <div class="stat-label">游客数</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>快捷操作</h2>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <a href="/admin/users" class="btn">用户管理</a>
+        <form action="/admin/cleanup-guests" method="POST" style="display:inline;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline" onclick="return confirm('确定清理所有过期游客？')">清理过期游客</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
@@ -7,7 +7,7 @@ from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
 from app.database import get_db
-from app.models import User, Question, Record, QUESTION_TYPES, Favorite, StudyPlan, Notification, SUBJECTS as MODEL_SUBJECTS, SEMESTERS
+from app.models import User, Question, Record, QUESTION_TYPES, Favorite, StudyPlan, Notification, SUBJECTS as MODEL_SUBJECTS, SEMESTERS, MasteryRecord, Assignment, AssignmentRecord
 from app.auth import require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, sanitize_input
 
@@ -27,6 +27,56 @@ def guest_expired_page(request: Request, db: Annotated[Session, Depends(get_db)]
     return request.app.state.templates.TemplateResponse(
         "student/guest_expired.html",
         {"request": request},
+    )
+
+
+@router.get("/dashboard")
+def dashboard(request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_non_guest(request, db)
+    today = date.today()
+
+    assignments = db.query(Assignment).order_by(Assignment.created_at.desc()).all()
+    completed_assignment_ids = set(
+        r.assignment_id for r in db.query(AssignmentRecord).filter(AssignmentRecord.user_id == user_id).all()
+    )
+    pending_assignments = [a for a in assignments if a.id not in completed_assignment_ids]
+
+    recommended = _smart_select(user_id, db, count=5)
+
+    wrong_qids = set(
+        r[0] for r in db.query(Record.question_id)
+        .filter(Record.user_id == user_id, Record.is_correct == False).distinct().all()
+    )
+    mastered_wrong = set()
+    if wrong_qids:
+        corrected = set(
+            r[0] for r in db.query(Record.question_id)
+            .filter(Record.user_id == user_id, Record.question_id.in_(wrong_qids), Record.is_correct == True)
+            .distinct().all()
+        )
+        mastered_wrong = corrected
+    unmastered_mistake_count = len(wrong_qids - mastered_wrong)
+
+    today_record_count = db.query(Record).filter(
+        Record.user_id == user_id,
+        sa_func.date(Record.created_at) == today,
+    ).count()
+
+    active_plan = db.query(StudyPlan).filter(StudyPlan.user_id == user_id, StudyPlan.active == True).first()
+    daily_goal = active_plan.daily_goal if active_plan else 10
+    progress = min(round(today_record_count / daily_goal * 100, 1), 100) if daily_goal > 0 else 0
+
+    return request.app.state.templates.TemplateResponse(
+        "student/dashboard.html",
+        {
+            "request": request,
+            "pending_assignments": pending_assignments,
+            "recommended": recommended,
+            "unmastered_mistake_count": unmastered_mistake_count,
+            "today_record_count": today_record_count,
+            "daily_goal": daily_goal,
+            "progress": progress,
+        },
     )
 
 
@@ -76,6 +126,10 @@ def _smart_select(user_id: int, db: Session, subject: str = "", semester: str = 
     if chapter:
         query = query.filter(Question.chapter == chapter)
 
+    all_questions = query.all()
+    if not all_questions:
+        return []
+
     if mode == "adaptive":
         recent_records = (
             db.query(Record)
@@ -95,67 +149,88 @@ def _smart_select(user_id: int, db: Session, subject: str = "", semester: str = 
                 max_difficulty = 3
         else:
             max_difficulty = 2
-        query = query.filter(Question.difficulty <= max_difficulty)
+        filtered = [q for q in all_questions if q.difficulty <= max_difficulty]
+        if not filtered:
+            filtered = all_questions
+        random.shuffle(filtered)
+        return [(q, "难度适配") for q in filtered[:count]]
 
-    all_questions = query.all()
-    if not all_questions:
-        return []
+    n_unmastered = max(1, round(count * 0.4))
+    n_weak_chapter = max(1, round(count * 0.3))
+    n_difficulty = max(1, round(count * 0.2))
+    n_random = count - n_unmastered - n_weak_chapter - n_difficulty
+    if n_random < 0:
+        n_random = 0
 
-    answered_ids = set(
-        r[0] for r in db.query(Record.question_id)
-        .filter(Record.user_id == user_id)
-        .distinct().all()
-    )
+    unmastered_records = db.query(MasteryRecord).filter(
+        MasteryRecord.user_id == user_id,
+        MasteryRecord.status == "unmastered",
+    ).all()
+    unmastered_qids = {mr.question_id for mr in unmastered_records}
+    unmastered_pool = [q for q in all_questions if q.id in unmastered_qids]
+    random.shuffle(unmastered_pool)
 
-    wrong_qids = set(
-        r[0] for r in db.query(Record.question_id)
-        .filter(Record.user_id == user_id, Record.is_correct == False)
-        .distinct().all()
-    )
-
-    mastered_wrong = set()
-    if wrong_qids:
-        corrected = set(
-            r[0] for r in db.query(Record.question_id)
-            .filter(Record.user_id == user_id, Record.question_id.in_(wrong_qids), Record.is_correct == True)
-            .distinct().all()
+    by_chapter = (
+        db.query(
+            Question.chapter,
+            sa_func.count(Record.id),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)),
         )
-        mastered_wrong = corrected
-    unmastered_wrong = wrong_qids - mastered_wrong
+        .join(Question, Record.question_id == Question.id)
+        .filter(Record.user_id == user_id, Question.chapter != "")
+        .group_by(Question.chapter)
+        .all()
+    )
+    weak_chapters = set()
+    for ch, t, c in by_chapter:
+        acc = (c or 0) / t if t > 0 else 0
+        if acc < 0.6:
+            weak_chapters.add(ch)
+    weak_chapter_pool = [q for q in all_questions if q.chapter in weak_chapters]
+    random.shuffle(weak_chapter_pool)
 
-    unanswered = [q for q in all_questions if q.id not in answered_ids]
+    total_records = db.query(Record).filter(Record.user_id == user_id).count()
+    correct_records = db.query(Record).filter(Record.user_id == user_id, Record.is_correct == True).count()
+    user_accuracy = correct_records / total_records if total_records > 0 else 0.5
 
-    all_weak = _get_weak_subjects(user_id, db)
-    weak_subjects = all_weak if not subject else ([subject] if subject in all_weak else [])
+    if user_accuracy > 0.8:
+        target_difficulty = [3, 4, 5]
+    elif user_accuracy < 0.4:
+        target_difficulty = [1, 2]
+    else:
+        target_difficulty = [2, 3]
+    difficulty_pool = [q for q in all_questions if q.difficulty in target_difficulty]
+    random.shuffle(difficulty_pool)
 
-    pool = []
-    priority_wrong = [q for q in all_questions if q.id in unmastered_wrong]
-    if weak_subjects:
-        priority_wrong = [q for q in priority_wrong if q.subject in weak_subjects]
-    pool.extend(priority_wrong[:count])
+    random_pool = list(all_questions)
+    random.shuffle(random_pool)
 
-    if len(pool) < count:
-        weak_unanswered = [q for q in unanswered if q.subject in weak_subjects]
-        pool.extend(weak_unanswered[:count - len(pool)])
+    selected = []
+    selected_ids = set()
 
-    if len(pool) < count:
-        remaining_wrong = [q for q in all_questions if q.id in unmastered_wrong and q not in pool]
-        pool.extend(remaining_wrong[:count - len(pool)])
+    def _pick(pool, n, reason):
+        picked = []
+        for q in pool:
+            if q.id not in selected_ids and len(picked) < n:
+                selected_ids.add(q.id)
+                picked.append((q, reason))
+        return picked
 
-    if len(pool) < count:
-        remaining_unanswered = [q for q in unanswered if q not in pool]
-        pool.extend(remaining_unanswered[:count - len(pool)])
+    selected.extend(_pick(unmastered_pool, n_unmastered, "错题复习"))
+    selected.extend(_pick(weak_chapter_pool, n_weak_chapter, "薄弱章节"))
+    selected.extend(_pick(difficulty_pool, n_difficulty, "难度适配"))
+    selected.extend(_pick(random_pool, n_random, "随机补充"))
 
-    if len(pool) < count:
-        easy_wrong = [q for q in all_questions if q.id in unmastered_wrong and q.difficulty == 1 and q not in pool]
-        pool.extend(easy_wrong[:count - len(pool)])
+    if len(selected) < count:
+        remaining = [q for q in all_questions if q.id not in selected_ids]
+        random.shuffle(remaining)
+        for q in remaining:
+            if len(selected) >= count:
+                break
+            selected_ids.add(q.id)
+            selected.append((q, "随机补充"))
 
-    if len(pool) < count:
-        rest = [q for q in all_questions if q not in pool]
-        random.shuffle(rest)
-        pool.extend(rest[:count - len(pool)])
-
-    return pool[:count]
+    return selected[:count]
 
 
 @router.get("/practice")
@@ -170,7 +245,8 @@ def practice_page(
 ):
     user_id = require_non_guest(request, db)
     if mode in ("smart", "adaptive"):
-        selected = _smart_select(user_id, db, subject, semester, chapter, count, mode=mode)
+        smart_result = _smart_select(user_id, db, subject, semester, chapter, count, mode=mode)
+        selected = [q for q, _ in smart_result]
     else:
         query = db.query(Question)
         if subject:
@@ -258,6 +334,31 @@ async def submit_practice(
             is_correct=is_correct,
         )
         db.add(record)
+
+        mastery = db.query(MasteryRecord).filter(
+            MasteryRecord.user_id == user_id,
+            MasteryRecord.question_id == qid,
+        ).first()
+        if mastery is None:
+            mastery = MasteryRecord(
+                user_id=user_id,
+                question_id=qid,
+                status="unmastered",
+                consecutive_correct=0,
+            )
+            db.add(mastery)
+            db.flush()
+
+        if is_correct:
+            mastery.consecutive_correct += 1
+            if mastery.consecutive_correct >= 3:
+                mastery.status = "mastered"
+            else:
+                mastery.status = "reviewing"
+        else:
+            mastery.consecutive_correct = 0
+            mastery.status = "unmastered"
+
         results.append(
             {
                 "question": question,
@@ -285,6 +386,7 @@ async def submit_practice(
 def mistake_book(
     request: Request,
     subject: str = "",
+    status: str = "",
     db: Annotated[Session, Depends(get_db)] = None,
 ):
     user_id = require_non_guest(request, db)
@@ -306,31 +408,61 @@ def mistake_book(
         unique_mistakes = [r for r in unique_mistakes if r.question.subject == subject]
 
     wrong_qids = list(seen)
-    correct_after = {}
+    mastery_map = {}
     if wrong_qids:
-        correct_records = (
-            db.query(Record.question_id)
-            .filter(
-                Record.user_id == user_id,
-                Record.question_id.in_(wrong_qids),
-                Record.is_correct == True,
-            )
-            .distinct()
+        mastery_records = (
+            db.query(MasteryRecord)
+            .filter(MasteryRecord.user_id == user_id, MasteryRecord.question_id.in_(wrong_qids))
             .all()
         )
-        corrected_qids = set(r[0] for r in correct_records)
+        for mr in mastery_records:
+            mastery_map[mr.question_id] = mr
+
+    if status:
+        filtered = []
         for r in unique_mistakes:
-            correct_after[r.question_id] = r.question_id in corrected_qids
+            mr = mastery_map.get(r.question_id)
+            ms = mr.status if mr else "unmastered"
+            if ms == status:
+                filtered.append(r)
+        unique_mistakes = filtered
+
+    all_wrong_unique = []
+    seen2 = set()
+    for r in db.query(Record).filter(Record.user_id == user_id, Record.is_correct == False).order_by(Record.created_at.desc()).all():
+        if r.question_id not in seen2:
+            seen2.add(r.question_id)
+            all_wrong_unique.append(r)
+
+    if subject:
+        all_wrong_unique = [r for r in all_wrong_unique if r.question.subject == subject]
+
+    all_wrong_qids = list(seen2)
+    all_mastery_map = {}
+    if all_wrong_qids:
+        all_mr = db.query(MasteryRecord).filter(
+            MasteryRecord.user_id == user_id, MasteryRecord.question_id.in_(all_wrong_qids)
+        ).all()
+        for mr in all_mr:
+            all_mastery_map[mr.question_id] = mr
+
+    status_counts = {"unmastered": 0, "reviewing": 0, "mastered": 0}
+    for r in all_wrong_unique:
+        mr = all_mastery_map.get(r.question_id)
+        ms = mr.status if mr else "unmastered"
+        status_counts[ms] = status_counts.get(ms, 0) + 1
 
     return request.app.state.templates.TemplateResponse(
         "student/mistakes.html",
         {
             "request": request,
             "mistakes": unique_mistakes,
-            "correct_after": correct_after,
+            "mastery_map": mastery_map,
             "subject": subject,
             "subjects": SUBJECTS,
             "question_types": QUESTION_TYPES,
+            "status_filter": status,
+            "status_counts": status_counts,
         },
     )
 
@@ -357,12 +489,14 @@ def retry_mistakes(
 
     still_wrong = []
     if wrong_qids:
-        corrected = set(
-            r[0] for r in db.query(Record.question_id)
-            .filter(Record.user_id == user_id, Record.question_id.in_(wrong_qids), Record.is_correct == True)
-            .distinct().all()
-        )
-        still_wrong = [qid for qid in wrong_qids if qid not in corrected]
+        mastery_records = db.query(MasteryRecord).filter(
+            MasteryRecord.user_id == user_id,
+            MasteryRecord.question_id.in_(wrong_qids),
+            MasteryRecord.status != "mastered",
+        ).all()
+        still_wrong = [mr.question_id for mr in mastery_records]
+        no_mastery = [qid for qid in wrong_qids if qid not in {mr.question_id for mr in mastery_records}]
+        still_wrong.extend(no_mastery)
 
     questions = db.query(Question).filter(Question.id.in_(still_wrong)).all()
     if subject:
@@ -374,10 +508,12 @@ def retry_mistakes(
             {
                 "request": request,
                 "mistakes": [],
-                "correct_after": {},
+                "mastery_map": {},
                 "subject": subject,
                 "subjects": SUBJECTS,
                 "question_types": QUESTION_TYPES,
+                "status_filter": "",
+                "status_counts": {"unmastered": 0, "reviewing": 0, "mastered": 0},
                 "message": "没有未掌握的错题，继续保持！",
             },
         )
@@ -579,6 +715,37 @@ def profile(
         mastered = set(r[0] for r in corrected)
     mistake_count = len(wrong_qids - mastered)
 
+    active_plan = db.query(StudyPlan).filter(StudyPlan.user_id == user_id, StudyPlan.active == True).first()
+    daily_goal = active_plan.daily_goal if active_plan else 10
+    today_goal_pct = min(round(today_count / daily_goal * 100, 1), 100) if daily_goal > 0 else 0
+
+    now = datetime.now()
+    recent_7_start = now - timedelta(days=7)
+    prev_7_start = now - timedelta(days=14)
+    recent_7 = db.query(Record).filter(Record.user_id == user_id, Record.created_at >= recent_7_start).all()
+    prev_7 = db.query(Record).filter(Record.user_id == user_id, Record.created_at >= prev_7_start, Record.created_at < recent_7_start).all()
+    recent_7_acc = sum(1 for r in recent_7 if r.is_correct) / len(recent_7) * 100 if recent_7 else 0
+    prev_7_acc = sum(1 for r in prev_7 if r.is_correct) / len(prev_7) * 100 if prev_7 else 0
+    accuracy_change = round(recent_7_acc - prev_7_acc, 1)
+
+    chapter_badges = (
+        db.query(
+            Question.subject,
+            Question.chapter,
+            sa_func.count(Record.id),
+            sa_func.sum(sa_func.cast(Record.is_correct, Integer)),
+        )
+        .join(Question, Record.question_id == Question.id)
+        .filter(Record.user_id == user_id, Question.chapter != "")
+        .group_by(Question.subject, Question.chapter)
+        .all()
+    )
+    badges = [
+        {"subject": s, "chapter": ch, "accuracy": round((c or 0) / t * 100, 1)}
+        for s, ch, t, c in chapter_badges
+        if t > 0 and (c or 0) / t > 0.8
+    ]
+
     return request.app.state.templates.TemplateResponse(
         "student/profile.html",
         {
@@ -593,6 +760,10 @@ def profile(
             "daily_stats": daily_stats,
             "subject_stats": subject_stats,
             "mistake_count": mistake_count,
+            "today_goal_pct": today_goal_pct,
+            "daily_goal": daily_goal,
+            "accuracy_change": accuracy_change,
+            "badges": badges,
         },
     )
 

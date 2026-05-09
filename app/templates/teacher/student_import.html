@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}批量导入学生 - {{ class_info.name }} - 付刷{% endblock %}
+
+{% block content %}
+<h1>批量导入学生 - {{ class_info.name }}</h1>
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2>格式说明</h2>
+    <div style="line-height:1.8;">
+        <p><strong>CSV格式：</strong>第一行必须是表头 <code>username,display_name</code></p>
+        <p><strong>默认密码：</strong>abc123</p>
+        <p><strong>已存在的用户：</strong>跳过创建，自动加入班级</p>
+    </div>
+    <pre class="format-example">username,display_name
+zhangsan,张三
+lisi,李四
+wangwu,王五</pre>
+</div>
+
+<div class="card">
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <form action="/teacher/classes/{{ class_info.id }}/import-students" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="csv_text">CSV数据</label>
+            <textarea id="csv_text" name="csv_text" rows="10" required placeholder="username,display_name
+zhangsan,张三
+lisi,李四" style="font-family:monospace;width:100%;"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">导入</button>
+        <a href="/classes/{{ class_info.id }}" class="btn btn-outline" style="margin-left:0.5rem;">返回班级</a>
+    </form>
+</div>
+{% endblock %}

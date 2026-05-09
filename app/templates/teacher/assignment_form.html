@@ -19,6 +19,15 @@
             <input type="date" id="deadline" name="deadline">
         </div>
         <div class="form-group">
+            <label for="class_id">选择班级</label>
+            <select id="class_id" name="class_id">
+                <option value="">不指定班级</option>
+                {% for c in classes %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label>选择题目 *（输入题目ID，逗号分隔）</label>
             <input type="text" name="question_ids" required placeholder="如：1,2,3">
             <small class="hint">可用题目：</small>

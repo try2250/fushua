@@ -40,6 +40,44 @@
 </div>
 
 <div class="card">
+    <h2>🏆 学习成就</h2>
+    <div class="achievement-grid">
+        <div class="achievement-item">
+            <div class="achievement-icon">🔥</div>
+            <div class="achievement-value">{{ streak }}</div>
+            <div class="achievement-label">连续学习天数</div>
+        </div>
+        <div class="achievement-item">
+            <div class="achievement-icon">🎯</div>
+            <div class="achievement-value">{{ today_goal_pct }}%</div>
+            <div class="achievement-label">今日目标 ({{ today_count }}/{{ daily_goal }})</div>
+            <div class="achievement-progress-track">
+                <div class="achievement-progress-fill" style="width: {{ today_goal_pct }}%"></div>
+            </div>
+        </div>
+        <div class="achievement-item">
+            <div class="achievement-icon">📈</div>
+            <div class="achievement-value">
+                {% if accuracy_change > 0 %}<span class="accuracy-up">↑ +{{ accuracy_change }}%</span>
+                {% elif accuracy_change < 0 %}<span class="accuracy-down">↓ {{ accuracy_change }}%</span>
+                {% else %}<span class="accuracy-flat">— 0%</span>{% endif %}
+            </div>
+            <div class="achievement-label">正确率变化(近7天)</div>
+        </div>
+    </div>
+    {% if badges %}
+    <div class="badge-section">
+        <div class="badge-section-title">章节徽章</div>
+        <div class="badge-list">
+            {% for b in badges %}
+            <span class="chapter-badge">{{ b.subject }}·{{ b.chapter }} {{ b.accuracy }}%</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
     <h2>📊 近14天刷题趋势</h2>
     {% if daily_stats %}
     <div class="trend-chart">

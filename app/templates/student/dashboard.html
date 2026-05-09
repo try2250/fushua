@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}今日学习 - 付刷{% endblock %}
+{% block content %}
+<h1>今日学习</h1>
+
+<div class="stats-row stats-row-4">
+    <div class="stat-card">
+        <div class="stat-number">{{ pending_assignments|length }}</div>
+        <div class="stat-label">待完成作业</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ recommended|length }}</div>
+        <div class="stat-label">推荐练习</div>
+    </div>
+    <div class="stat-card stat-wrong">
+        <div class="stat-number">{{ unmastered_mistake_count }}</div>
+        <div class="stat-label">错题待复习</div>
+    </div>
+    <div class="stat-card stat-correct">
+        <div class="stat-number">{{ progress }}%</div>
+        <div class="stat-label">今日进度</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>今日完成进度</h2>
+    <p>今天已刷 <strong>{{ today_record_count }}</strong> 题 / 目标 <strong>{{ daily_goal }}</strong> 题</p>
+    <div class="bar-chart" style="margin-top:0.8rem;">
+        <div class="bar-row">
+            <div class="bar-label">进度</div>
+            <div class="bar-track">
+                <div class="bar-fill {% if progress >= 80 %}bar-good{% elif progress >= 50 %}bar-warning{% else %}bar-danger{% endif %}" style="width:{{ progress }}%"></div>
+            </div>
+            <div class="bar-value">{{ progress }}%</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>待完成作业</h2>
+    {% if pending_assignments %}
+    {% for a in pending_assignments %}
+    <div class="question-item">
+        <div class="flex-between">
+            <strong>{{ a.title }}</strong>
+            <div class="question-meta">
+                <span class="badge">题目数: {{ a.question_ids.split(',')|length }}</span>
+                {% if a.deadline %}<span class="badge badge-semester">截止: {{ a.deadline.strftime('%Y-%m-%d') }}</span>{% endif %}
+            </div>
+        </div>
+        {% if a.description %}<p class="hint" style="margin-top:0.3rem;">{{ a.description }}</p>{% endif %}
+        <div style="margin-top:0.5rem;">
+            <a href="/student/practice" class="btn btn-primary btn-sm">开始做题</a>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty">暂无待完成作业 🎉</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>推荐练习</h2>
+    {% if recommended %}
+    <div class="question-list">
+        {% for q, reason in recommended %}
+        <div class="question-item">
+            <div class="flex-between">
+                <div>
+                    <span class="badge badge-subject">{{ q.subject }}</span>
+                    {% if q.chapter %}<span class="badge badge-chapter">{{ q.chapter }}</span>{% endif %}
+                    <span class="badge badge-diff-{{ q.difficulty }}">{% if q.difficulty == 1 %}简单{% elif q.difficulty == 2 %}中等{% else %}困难{% endif %}</span>
+                    <span class="badge badge-semester">{{ reason }}</span>
+                </div>
+            </div>
+            <p style="margin-top:0.4rem;font-size:0.9rem;color:#555;">{{ q.content[:60] }}{% if q.content|length > 60 %}...{% endif %}</p>
+        </div>
+        {% endfor %}
+    </div>
+    <div style="margin-top:1rem;">
+        <a href="/student/practice" class="btn btn-primary">开始智能练习</a>
+        <a href="/student/practice?mode=adaptive" class="btn btn-outline" style="margin-left:0.5rem;">自适应练习</a>
+    </div>
+    {% else %}
+    <p class="empty">暂无推荐题目</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>错题复习</h2>
+    {% if unmastered_mistake_count > 0 %}
+    <p>你有 <strong style="color:#e74c3c;">{{ unmastered_mistake_count }}</strong> 道未掌握的错题需要复习</p>
+    <div style="margin-top:0.8rem;">
+        <a href="/student/mistakes/retry" class="btn btn-danger">立即复习错题</a>
+        <a href="/student/mistakes" class="btn btn-outline" style="margin-left:0.5rem;">查看错题本</a>
+    </div>
+    {% else %}
+    <p class="empty">没有未掌握的错题，继续保持！🎉</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>快捷入口</h2>
+    <div class="quick-actions">
+        <a href="/student/practice" class="action-card">
+            <div class="action-icon">✏️</div>
+            <div class="action-text">刷题</div>
+        </a>
+        <a href="/student/mistakes" class="action-card">
+            <div class="action-icon">📕</div>
+            <div class="action-text">错题本</div>
+            {% if unmastered_mistake_count > 0 %}<span class="action-badge">{{ unmastered_mistake_count }}</span>{% endif %}
+        </a>
+        <a href="/student/analysis" class="action-card">
+            <div class="action-icon">📊</div>
+            <div class="action-text">分析</div>
+        </a>
+        <a href="/student/plans" class="action-card">
+            <div class="action-icon">📋</div>
+            <div class="action-text">计划</div>
+        </a>
+    </div>
+</div>
+{% endblock %}

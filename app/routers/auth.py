@@ -137,6 +137,10 @@ async def login(
         return request.app.state.templates.TemplateResponse(
             "login.html", {"request": request, "error": "用户名或密码错误", "csrf_token": request.session.get("csrf_token", "")}
         )
+    if user.is_disabled:
+        return request.app.state.templates.TemplateResponse(
+            "login.html", {"request": request, "error": "账号已被禁用，请联系管理员", "csrf_token": request.session.get("csrf_token", "")}
+        )
     request.session["user_id"] = user.id
     if user.is_guest and user.guest_expires_at:
         from datetime import datetime

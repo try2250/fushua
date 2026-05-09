@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ class_info.name }} - 班级统计 - 付刷{% endblock %}
+{% block content %}
+<h1>{{ class_info.name }} - 班级统计</h1>
+
+<a href="/classes/{{ class_info.id }}" class="btn btn-outline" style="margin-bottom:1rem;">返回班级详情</a>
+<a href="/teacher/classes/{{ class_info.id }}/export/excel" class="btn btn-primary" style="margin-bottom:1rem;">📤 导出Excel</a>
+
+<div class="card">
+    <h2>正确率趋势（近7天）</h2>
+    {% if trend_data %}
+    <div style="display:flex;align-items:flex-end;gap:8px;height:200px;padding:10px 0;">
+        {% for item in trend_data %}
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1;max-width:80px;">
+            <div style="width:100%;background:linear-gradient(to top,#4361ee,#7b8cff);border-radius:4px 4px 0 0;height:{{ item.accuracy }}%;min-height:4px;transition:height 0.3s;" title="{{ item.date }}: {{ item.accuracy }}%"></div>
+            <div style="font-size:0.7rem;margin-top:4px;color:var(--text-secondary);">{{ item.date[5:] }}</div>
+            <div style="font-size:0.7rem;font-weight:bold;">{{ item.accuracy }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+    <table class="data-table" style="margin-top:0.5rem;">
+        <thead><tr><th>日期</th><th>做题数</th><th>正确数</th><th>正确率</th></tr></thead>
+        <tbody>
+            {% for item in trend_data %}
+            <tr>
+                <td>{{ item.date }}</td>
+                <td>{{ item.total }}</td>
+                <td>{{ item.correct }}</td>
+                <td><span class="accuracy-badge {% if item.accuracy < 60 %}badge-wrong{% elif item.accuracy < 80 %}badge-chapter{% else %}badge-correct{% endif %}">{{ item.accuracy }}%</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">近7天暂无练习数据</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>薄弱章节（正确率最低的5个）</h2>
+    {% if weak_chapters %}
+    <table class="data-table">
+        <thead><tr><th>科目</th><th>章节</th><th>做题数</th><th>正确数</th><th>正确率</th></tr></thead>
+        <tbody>
+            {% for ch in weak_chapters %}
+            <tr>
+                <td><span class="badge badge-subject">{{ ch.subject }}</span></td>
+                <td>{{ ch.chapter or '-' }}</td>
+                <td>{{ ch.total }}</td>
+                <td>{{ ch.correct }}</td>
+                <td><span class="accuracy-badge {% if ch.accuracy < 60 %}badge-wrong{% elif ch.accuracy < 80 %}badge-chapter{% else %}badge-correct{% endif %}">{{ ch.accuracy }}%</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">暂无章节数据</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>学生排名（按正确率）</h2>
+    {% if ranking %}
+    <table class="data-table">
+        <thead><tr><th>排名</th><th>姓名</th><th>做题数</th><th>正确数</th><th>正确率</th></tr></thead>
+        <tbody>
+            {% for s in ranking %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ s.display_name or s.username }}</td>
+                <td>{{ s.total }}</td>
+                <td>{{ s.correct }}</td>
+                <td><span class="accuracy-badge {% if s.accuracy < 60 %}badge-wrong{% elif s.accuracy < 80 %}badge-chapter{% else %}badge-correct{% endif %}">{{ s.accuracy }}%</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">暂无学生练习数据</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>进步榜（提升最大的5人）</h2>
+    {% if progress_top5 %}
+    <table class="data-table">
+        <thead><tr><th>排名</th><th>姓名</th><th>前半段正确率</th><th>后半段正确率</th><th>提升</th></tr></thead>
+        <tbody>
+            {% for p in progress_top5 %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ p.display_name or p.username }}</td>
+                <td>{{ p.first_acc }}%</td>
+                <td>{{ p.second_acc }}%</td>
+                <td><span style="color:#22c55e;font-weight:bold;">+{{ p.improvement }}%</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">暂无进步数据</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>未练习名单</h2>
+    {% if no_practice %}
+    <table class="data-table">
+        <thead><tr><th>姓名</th><th>用户名</th></tr></thead>
+        <tbody>
+            {% for u in no_practice %}
+            <tr>
+                <td>{{ u.display_name or u.username }}</td>
+                <td>{{ u.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">所有学生均有练习记录</p>
+    {% endif %}
+</div>
+{% endblock %}
