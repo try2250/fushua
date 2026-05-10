@@ -3,6 +3,57 @@
 {% block content %}
 <h1>学生管理</h1>
 
+{% if join_request_data %}
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid #3b82f6;">
+    <h2>入班申请 ({{ join_request_data|length }})</h2>
+    <p style="color:var(--text-secondary);">以下学生申请加入您的班级，请审核。</p>
+    <table class="table">
+        <thead><tr><th>用户名</th><th>昵称</th><th>申请班级</th><th>申请时间</th><th>操作</th></tr></thead>
+        <tbody>
+        {% for jr in join_request_data %}
+        <tr>
+            <td>{{ jr.username }}</td>
+            <td>{{ jr.display_name }}</td>
+            <td>{{ jr.class_name }}</td>
+            <td>{{ jr.created_at.strftime('%m-%d %H:%M') if jr.created_at else '' }}</td>
+            <td>
+                <form action="/teacher/join-requests/{{ jr.id }}/approve" method="POST" style="display:inline;">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-primary btn-sm">通过</button>
+                </form>
+                <form action="/teacher/join-requests/{{ jr.id }}/reject" method="POST" style="display:inline;">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('确定拒绝该申请？')">拒绝</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if recovery_data %}
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid #8b5cf6;">
+    <h2>账号找回申请 ({{ recovery_data|length }})</h2>
+    <p style="color:var(--text-secondary);">以下学生申请找回账号，请核实身份后由管理员处理。</p>
+    <table class="table">
+        <thead><tr><th>用户名</th><th>姓名</th><th>所在班级</th><th>申请时间</th></tr></thead>
+        <tbody>
+        {% for rr in recovery_data %}
+        <tr>
+            <td>{{ rr.username }}</td>
+            <td>{{ rr.display_name or '未填写' }}</td>
+            <td>{{ rr.class_name }}</td>
+            <td>{{ rr.created_at.strftime('%m-%d %H:%M') if rr.created_at else '' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p style="color:var(--text-secondary);font-size:0.85rem;">找回申请需由管理员在管理后台处理，教师可核实信息后联系管理员。</p>
+</div>
+{% endif %}
+
 {% if guest_data %}
 <div class="card" style="margin-bottom:1.5rem;border-left:4px solid #f59e0b;">
     <h2>待审核游客 ({{ guest_data|length }})</h2>

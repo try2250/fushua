@@ -21,6 +21,12 @@ def index(request: Request, db: Annotated[Session, Depends(get_db)]):
     if logged_in:
         user, role, display_name = get_current_user_info(request, db)
 
+    if logged_in and role == "admin":
+        return RedirectResponse(url="/admin", status_code=303)
+
+    if logged_in and role == "teacher":
+        return RedirectResponse(url="/teacher/questions", status_code=303)
+
     if logged_in and role == "student":
         return RedirectResponse(url="/student/dashboard", status_code=303)
 

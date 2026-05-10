@@ -14,10 +14,9 @@ class TestAdminIndex:
         assert response.status_code == 403
 
     def test_admin_index_shows_stats(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser", "admin")
         db_session.commit()
-        register_and_login(client, "adminuser", "teacher")
+        register_and_login(client, "adminuser", "admin")
         response = client.get("/admin", follow_redirects=True)
         assert response.status_code == 200
         assert "用户数" in response.text
@@ -27,33 +26,30 @@ class TestAdminIndex:
 
 class TestAdminUsers:
     def test_admin_users_list(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser2", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser2", "admin")
         db_session.commit()
         create_test_user(db_session, "liststudent", "student")
-        register_and_login(client, "adminuser2", "teacher")
+        register_and_login(client, "adminuser2", "admin")
         response = client.get("/admin/users", follow_redirects=True)
         assert response.status_code == 200
         assert "liststudent" in response.text
 
     def test_admin_users_search(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser3", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser3", "admin")
         db_session.commit()
         create_test_user(db_session, "searchstudent", "student")
         create_test_user(db_session, "otherstudent", "student")
-        register_and_login(client, "adminuser3", "teacher")
+        register_and_login(client, "adminuser3", "admin")
         response = client.get("/admin/users?q=search", follow_redirects=True)
         assert response.status_code == 200
         assert "searchstudent" in response.text
         assert "otherstudent" not in response.text
 
     def test_admin_users_filter_by_role(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser4", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser4", "admin")
         db_session.commit()
         create_test_user(db_session, "filterstudent", "student")
-        register_and_login(client, "adminuser4", "teacher")
+        register_and_login(client, "adminuser4", "admin")
         response = client.get("/admin/users?role=student", follow_redirects=True)
         assert response.status_code == 200
         assert "filterstudent" in response.text
@@ -66,11 +62,10 @@ class TestAdminUsers:
 
 class TestAdminResetPassword:
     def test_reset_password(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser5", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser5", "admin")
         db_session.commit()
         target = create_test_user(db_session, "resetstudent", "student")
-        register_and_login(client, "adminuser5", "teacher")
+        register_and_login(client, "adminuser5", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/reset-password", data={
             "_csrf_token": csrf,
@@ -78,13 +73,12 @@ class TestAdminResetPassword:
         assert response.status_code == 303
         db_session.expire_all()
         updated = db_session.query(User).filter(User.id == target.id).first()
-        assert User.verify_password(updated.password_hash, "abc123")
+        assert User.verify_password(updated.password_hash, "abc12345")
 
     def test_reset_password_nonexistent_user(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser6", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser6", "admin")
         db_session.commit()
-        register_and_login(client, "adminuser6", "teacher")
+        register_and_login(client, "adminuser6", "admin")
         csrf = get_csrf_token(client)
         response = client.post("/admin/users/9999/reset-password", data={
             "_csrf_token": csrf,
@@ -94,11 +88,10 @@ class TestAdminResetPassword:
 
 class TestAdminToggleDisable:
     def test_disable_user(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser7", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser7", "admin")
         db_session.commit()
         target = create_test_user(db_session, "disablestudent", "student")
-        register_and_login(client, "adminuser7", "teacher")
+        register_and_login(client, "adminuser7", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/toggle-disable", data={
             "_csrf_token": csrf,
@@ -109,13 +102,12 @@ class TestAdminToggleDisable:
         assert updated.is_disabled is True
 
     def test_enable_user(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser8", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser8", "admin")
         db_session.commit()
         target = create_test_user(db_session, "enablestudent", "student")
         target.is_disabled = True
         db_session.commit()
-        register_and_login(client, "adminuser8", "teacher")
+        register_and_login(client, "adminuser8", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/toggle-disable", data={
             "_csrf_token": csrf,
@@ -126,13 +118,10 @@ class TestAdminToggleDisable:
         assert updated.is_disabled is False
 
     def test_cannot_disable_admin(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser9", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser9", "admin")
+        other_admin = create_test_user(db_session, "otheradmin", "admin")
         db_session.commit()
-        other_admin = create_test_user(db_session, "otheradmin", "teacher")
-        other_admin.is_admin = True
-        db_session.commit()
-        register_and_login(client, "adminuser9", "teacher")
+        register_and_login(client, "adminuser9", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{other_admin.id}/toggle-disable", data={
             "_csrf_token": csrf,
@@ -142,12 +131,11 @@ class TestAdminToggleDisable:
 
 class TestAdminCleanupGuests:
     def test_cleanup_expired_guests(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser10", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser10", "admin")
         db_session.commit()
         expired_guest = User(
             username="expiredguest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="expiredguest",
             is_guest=True,
@@ -155,7 +143,7 @@ class TestAdminCleanupGuests:
         )
         db_session.add(expired_guest)
         db_session.commit()
-        register_and_login(client, "adminuser10", "teacher")
+        register_and_login(client, "adminuser10", "admin")
         csrf = get_csrf_token(client)
         response = client.post("/admin/cleanup-guests", data={
             "_csrf_token": csrf,
@@ -166,12 +154,11 @@ class TestAdminCleanupGuests:
         assert remaining is None
 
     def test_cleanup_keeps_active_guests(self, client, db_session):
-        admin = create_test_user(db_session, "adminuser11", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "adminuser11", "admin")
         db_session.commit()
         active_guest = User(
             username="activeguest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="activeguest",
             is_guest=True,
@@ -179,7 +166,7 @@ class TestAdminCleanupGuests:
         )
         db_session.add(active_guest)
         db_session.commit()
-        register_and_login(client, "adminuser11", "teacher")
+        register_and_login(client, "adminuser11", "admin")
         csrf = get_csrf_token(client)
         response = client.post("/admin/cleanup-guests", data={
             "_csrf_token": csrf,
@@ -198,7 +185,7 @@ class TestDisabledUserLogin:
         csrf = get_csrf_token(client)
         response = client.post("/login", data={
             "username": "disableduser",
-            "password": "abc123",
+            "password": "abc12345",
             "_csrf_token": csrf,
         })
         assert response.status_code == 200

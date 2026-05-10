@@ -12,24 +12,13 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
-from app.routers import pages, auth, teacher, student, assignment, classgroup, admin
+from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor
 from app.models import User, Notification
 
 if not os.environ.get("DATABASE_URL", "").startswith("postgresql"):
     Base.metadata.create_all(bind=engine)
 
 from app.models import SiteConfig, User as InitUser
-_init_db = SessionLocal()
-if not _init_db.query(SiteConfig).filter(SiteConfig.key == "teacher_invite_code").first():
-    _init_db.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    _init_db.commit()
-first_teacher = _init_db.query(InitUser).filter(InitUser.role == "teacher").first()
-if first_teacher and not first_teacher.is_admin:
-    first_teacher.is_admin = True
-    _init_db.commit()
-_init_db.close()
-
-app = FastAPI(title="付刷", version="3.0.0")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,8 +27,48 @@ logging.basicConfig(
 )
 logger = logging.getLogger("fushua")
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key-" + secrets.token_hex(8))
-if SECRET_KEY.startswith("dev-only-insecure-key"):
+_init_db = SessionLocal()
+if not _init_db.query(SiteConfig).filter(SiteConfig.key == "teacher_invite_code").first():
+    _init_db.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
+    _init_db.commit()
+if not _init_db.query(SiteConfig).filter(SiteConfig.key == "admin_invite_code").first():
+    _init_db.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
+    _init_db.commit()
+first_admin = _init_db.query(InitUser).filter(InitUser.role == "admin").first()
+if not first_admin:
+    first_teacher = _init_db.query(InitUser).filter(InitUser.role == "teacher", InitUser.is_admin == True).first()
+    if first_teacher:
+        first_teacher.role = "admin"
+        _init_db.commit()
+default_admin_user = _init_db.query(InitUser).filter(InitUser.username == "admin").first()
+if not default_admin_user:
+    admin_password = secrets.token_hex(8)
+    default_admin_user = InitUser(
+        username="admin",
+        password_hash=InitUser.hash_password(admin_password),
+        role="admin",
+        display_name="系统管理员",
+        is_admin=True,
+        force_password_change=True,
+    )
+    _init_db.add(default_admin_user)
+    _init_db.commit()
+    logger.info(f"默认管理员已创建 — 用户名: admin, 密码: {admin_password}（请立即登录修改）")
+_init_db.close()
+
+_is_production = os.environ.get("ENVIRONMENT", "development") == "production"
+
+app = FastAPI(
+    title="付刷",
+    version="3.0.0",
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
+)
+
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+if not SECRET_KEY:
+    SECRET_KEY = "dev-only-insecure-key-" + secrets.token_hex(32)
     import warnings
     warnings.warn("使用开发模式密钥，生产环境请设置 SECRET_KEY 环境变量！")
 
@@ -84,11 +113,11 @@ def health_check(request: Request):
     try:
         from app.database import SessionLocal
         db = SessionLocal()
-        user_count = db.query(User).count()
+        db.query(User).count()
         db.close()
-        return {"status": "ok", "db": "ok", "user_count": user_count, "version": "1.0"}
-    except Exception as e:
-        return {"status": "degraded", "db": "error", "error": str(e)}
+        return {"status": "ok"}
+    except Exception:
+        return {"status": "degraded"}
 
 app.add_middleware(
     SessionMiddleware,
@@ -96,6 +125,35 @@ app.add_middleware(
     same_site="lax",
     https_only=HTTPS_ONLY,
 )
+
+
+class CookieHardeningMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_httponly(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                new_headers = []
+                for name, value in headers:
+                    if name == b"set-cookie":
+                        cookie_str = value.decode("latin-1")
+                        if cookie_str.startswith("session=") and "httponly" not in cookie_str.lower():
+                            cookie_str += "; HttpOnly"
+                            value = cookie_str.encode("latin-1")
+                    new_headers.append((name, value))
+                message["headers"] = new_headers
+            await send(message)
+
+        await self.app(scope, receive, send_with_httponly)
+
+
+app.add_middleware(CookieHardeningMiddleware)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -129,7 +187,7 @@ def _global_template_vars(request: Request) -> dict:
                 role = user.role
                 display_name = user.display_name
                 is_guest = user.is_guest
-                is_admin = user.is_admin
+                is_admin = user.role == "admin"
                 if role == "student":
                     unread_count = db.query(Notification).filter(
                         Notification.user_id == user.id, Notification.is_read == False
@@ -212,3 +270,4 @@ app.include_router(student.router)
 app.include_router(assignment.router)
 app.include_router(classgroup.router)
 app.include_router(admin.router)
+app.include_router(extractor.router)

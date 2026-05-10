@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}题库提取 - 付刷{% endblock %}
+
+{% block content %}
+<h1>📝 题库提取工具</h1>
+
+{% if futi_available %}
+<div class="alert alert-success" style="margin-bottom:1.5rem;">
+    ✅ 付题服务已连接（{{ futi_url }}）
+</div>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem;">
+<div class="card" style="cursor:pointer;" onclick="window.open('{{ futi_url }}', '_blank')">
+    <h2>📝 打开付题</h2>
+    <p>在新窗口中打开付题题库提取工具，进行试卷提取、知识出题、题型转换等操作。</p>
+    <a href="{{ futi_url }}" target="_blank" class="btn btn-primary">打开付题</a>
+</div>
+
+<div class="card" style="cursor:pointer;" onclick="location.href='/extractor/import'">
+    <h2>📥 导入题目</h2>
+    <p>从付题中导出题目，导入到付刷题库中，供学生刷题使用。</p>
+    <ul style="line-height:2;">
+        <li>输入付题中的题目ID</li>
+        <li>选择目标题库和科目</li>
+        <li>一键导入到付刷</li>
+    </ul>
+    <a href="/extractor/import" class="btn btn-primary">导入题目</a>
+</div>
+
+<div class="card" style="cursor:pointer;" onclick="location.href='/extractor/questions'">
+    <h2>📋 浏览付题题库</h2>
+    <p>查看付题中的所有题目，选择需要的题目导入付刷。</p>
+    <a href="/extractor/questions" class="btn btn-primary">浏览题目</a>
+</div>
+</div>
+
+{% else %}
+<div class="alert alert-error" style="margin-bottom:1.5rem;">
+    ⚠️ 无法连接付题服务（{{ futi_url }}）
+</div>
+
+<div class="card">
+    <h2>请启动付题服务</h2>
+    <div style="line-height:1.8;">
+        <p>付题是独立的题库提取工具，需要单独启动。请按以下步骤操作：</p>
+        <ol>
+            <li>进入付题项目目录</li>
+            <li>运行 <code>启动.bat</code> 或 <code>python -m uvicorn app.main:app --port 8001</code></li>
+            <li>刷新此页面</li>
+        </ol>
+        <p>如果付题运行在其他地址，请设置环境变量 <code>FUTI_BASE_URL</code></p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

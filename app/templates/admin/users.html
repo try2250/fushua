@@ -1,20 +1,23 @@
 {% extends "base.html" %}
-
 {% block title %}用户管理 - 付刷{% endblock %}
-
 {% block content %}
 <h1>用户管理</h1>
 
 <div class="card">
     <form method="GET" action="/admin/users" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-        <input type="text" name="q" value="{{ q }}" placeholder="搜索用户名或昵称" class="form-input" style="max-width:250px;">
-        <select name="role" class="form-input" style="max-width:150px;">
-            <option value="">全部角色</option>
-            <option value="student" {% if role == 'student' %}selected{% endif %}>学生</option>
-            <option value="teacher" {% if role == 'teacher' %}selected{% endif %}>教师</option>
-        </select>
-        <button type="submit" class="btn">搜索</button>
-        <a href="/admin/users" class="btn btn-outline">重置</a>
+        <div class="form-group" style="margin-bottom:0;">
+            <input type="text" name="q" value="{{ q }}" placeholder="搜索用户名或昵称" style="max-width:250px;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <select name="role" style="max-width:150px;">
+                <option value="">全部角色</option>
+                <option value="student" {% if role == 'student' %}selected{% endif %}>学生</option>
+                <option value="teacher" {% if role == 'teacher' %}selected{% endif %}>教师</option>
+                <option value="admin" {% if role == 'admin' %}selected{% endif %}>管理员</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">搜索</button>
+        <a href="/admin/users" class="btn btn-outline btn-sm">重置</a>
     </form>
 </div>
 
@@ -36,31 +39,39 @@
             {% for u in users %}
             <tr>
                 <td>{{ u.id }}</td>
-                <td>{{ u.username }}</td>
+                <td><strong>{{ u.username }}</strong></td>
                 <td>{{ u.display_name }}</td>
                 <td>
-                    {% if u.role == 'teacher' %}
+                    {% if u.role == 'admin' %}
+                        <span class="badge badge-correct">管理员</span>
+                    {% elif u.role == 'teacher' %}
                         <span class="badge badge-subject">教师</span>
                     {% else %}
                         <span class="badge">学生</span>
                     {% endif %}
-                    {% if u.is_admin %}
-                        <span class="badge badge-correct">管理员</span>
+                    {% if u.is_admin and u.role != 'admin' %}
+                        <span class="badge badge-correct">管理权限</span>
                     {% endif %}
                 </td>
-                <td>{% if u.is_guest %}<span class="badge badge-warning">是</span>{% else %}否{% endif %}</td>
+                <td>{% if u.is_guest %}<span class="badge badge-wrong">是</span>{% else %}否{% endif %}</td>
                 <td>{% if u.is_disabled %}<span class="badge badge-wrong">已禁用</span>{% else %}正常{% endif %}</td>
                 <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '' }}</td>
                 <td>
-                    {% if not u.is_admin %}
+                    {% if u.role != 'admin' %}
                         <form action="/admin/users/{{ u.id }}/reset-password" method="POST" style="display:inline;">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('确定重置密码为 abc123？')">重置密码</button>
+                            <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('确定重置密码为 abc12345？')">重置密码</button>
                         </form>
                         <form action="/admin/users/{{ u.id }}/toggle-disable" method="POST" style="display:inline;">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-outline btn-sm">{% if u.is_disabled %}启用{% else %}禁用{% endif %}</button>
                         </form>
+                        {% if u.role == 'teacher' %}
+                        <form action="/admin/users/{{ u.id }}/toggle-admin" method="POST" style="display:inline;">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-outline btn-sm">{% if u.is_admin %}撤销管理权限{% else %}授予管理权限{% endif %}</button>
+                        </form>
+                        {% endif %}
                     {% endif %}
                 </td>
             </tr>
@@ -72,5 +83,5 @@
     {% endif %}
 </div>
 
-<a href="/admin" class="btn btn-outline" style="margin-top:1rem;">返回管理首页</a>
+<a href="/admin" class="btn btn-outline" style="margin-top:0.5rem;">返回管理首页</a>
 {% endblock %}

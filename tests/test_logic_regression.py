@@ -7,7 +7,7 @@ class TestGuestExpiredLogin:
     def test_expired_guest_login_redirected(self, client, db_session):
         user = User(
             username="expiredguest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="expiredguest",
             is_guest=True,
@@ -15,14 +15,14 @@ class TestGuestExpiredLogin:
         )
         db_session.add(user)
         db_session.commit()
-        resp = login_as(client, "expiredguest", "abc123")
+        resp = login_as(client, "expiredguest", "abc12345")
         assert resp.status_code == 303
         assert "/student/guest-expired" in resp.headers.get("location", "")
 
     def test_active_guest_login_succeeds(self, client, db_session):
         user = User(
             username="activeguest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="activeguest",
             is_guest=True,
@@ -30,13 +30,13 @@ class TestGuestExpiredLogin:
         )
         db_session.add(user)
         db_session.commit()
-        resp = login_as(client, "activeguest", "abc123")
+        resp = login_as(client, "activeguest", "abc12345")
         assert resp.status_code == 303
         assert resp.headers.get("location", "") == "/"
 
     def test_non_guest_login_unaffected(self, client, db_session):
         create_test_user(db_session, username="normalstudent")
-        resp = login_as(client, "normalstudent", "abc123")
+        resp = login_as(client, "normalstudent", "abc12345")
         assert resp.status_code == 303
         assert resp.headers.get("location", "") == "/"
 
@@ -61,7 +61,7 @@ class TestAddMemberSyncClassId:
         teacher = create_test_user(db_session, "guestmemteacher", "teacher")
         guest = User(
             username="guestmemstudent",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="guestmemstudent",
             is_guest=True,
@@ -87,7 +87,7 @@ class TestAssignmentGuestAccess:
     def test_expired_guest_cannot_see_assignments(self, client, db_session):
         user = User(
             username="guestassign",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="guestassign",
             is_guest=True,
@@ -95,7 +95,7 @@ class TestAssignmentGuestAccess:
         )
         db_session.add(user)
         db_session.commit()
-        login_as(client, "guestassign", "abc123")
+        login_as(client, "guestassign", "abc12345")
         resp = client.get("/student/assignments", follow_redirects=False)
         assert resp.status_code == 303
         assert "/student/guest-expired" in resp.headers.get("location", "")
@@ -104,7 +104,7 @@ class TestAssignmentGuestAccess:
         teacher = create_test_user(db_session, "assignteacher", "teacher")
         user = User(
             username="guestcomplete",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="guestcomplete",
             is_guest=True,
@@ -118,7 +118,7 @@ class TestAssignmentGuestAccess:
         )
         db_session.add(assignment)
         db_session.commit()
-        login_as(client, "guestcomplete", "abc123")
+        login_as(client, "guestcomplete", "abc12345")
         csrf = get_csrf_token(client)
         resp = client.post(f"/assignments/{assignment.id}/complete", data={
             "_csrf_token": csrf,
@@ -132,7 +132,7 @@ class TestLeaderboardExcludesGuests:
         teacher = create_test_user(db_session, "lbteacher", "teacher")
         guest = User(
             username="lbguest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="游客学生",
             is_guest=True,
@@ -160,9 +160,10 @@ class TestRegisterInvalidClassId:
         csrf = get_csrf_token(client)
         resp = client.post("/register", data={
             "username": "badclassuser",
-            "password": "abc123",
+            "password": "abc12345",
             "role": "student",
             "display_name": "badclassuser",
+            "join_mode": "formal",
             "class_id": "99999",
             "_csrf_token": csrf,
         }, follow_redirects=True)
@@ -172,9 +173,10 @@ class TestRegisterInvalidClassId:
         csrf = get_csrf_token(client)
         resp = client.post("/register", data={
             "username": "noclassuser",
-            "password": "abc123",
+            "password": "abc12345",
             "role": "student",
             "display_name": "noclassuser",
+            "join_mode": "guest",
             "_csrf_token": csrf,
         }, follow_redirects=True)
         db_session.expire_all()
@@ -208,7 +210,7 @@ class TestApproveStudentDuplicate:
         teacher = create_test_user(db_session, "approveteacher2", "teacher")
         guest = User(
             username="approveguest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="approveguest",
             is_guest=True,
@@ -293,7 +295,7 @@ class TestRateLimitCaseInsensitive:
         csrf = get_csrf_token(client)
         resp = client.post("/login", data={
             "username": "caseuser",
-            "password": "abc123",
+            "password": "abc12345",
             "_csrf_token": csrf,
         }, follow_redirects=False)
         assert resp.status_code == 429

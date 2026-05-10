@@ -35,7 +35,7 @@ class TestStudentImport:
         assert u1.display_name == "学生一"
         assert u1.class_id == cls.id
         assert u1.role == "student"
-        assert User.verify_password(u1.password_hash, "abc123")
+        assert User.verify_password(u1.password_hash, "abc12345")
 
     def test_import_skips_existing_users(self, client, db_session):
         teacher = create_test_user(db_session, "importteacher3", "teacher")
@@ -76,7 +76,7 @@ class TestStudentImport:
         teacher = create_test_user(db_session, "importteacher5", "teacher")
         guest = User(
             username="gueststu",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="游客学生",
             is_guest=True,

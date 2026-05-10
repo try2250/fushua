@@ -101,11 +101,11 @@ class TestDashboard:
         assert response.status_code == 303
         assert "/student/dashboard" in response.headers.get("location", "")
 
-    def test_index_no_redirect_for_teacher(self, client, db_session):
+    def test_index_redirects_teacher_to_questions(self, client, db_session):
         register_and_login(client, "dashteacher", "teacher")
-        response = client.get("/", follow_redirects=True)
-        assert response.status_code == 200
-        assert "教师工作台" in response.text
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 303
+        assert "/teacher/questions" in response.headers.get("location", "")
 
     def test_index_no_redirect_for_anonymous(self, client, db_session):
         response = client.get("/", follow_redirects=True)

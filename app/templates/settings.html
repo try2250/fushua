@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}账户设置 - 付刷{% endblock %}
 {% block content %}
+{% if request.query_params.get('force_change') == '1' %}
+<div class="alert alert-error" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:1rem;border-radius:8px;margin-bottom:1rem;">
+    ⚠️ 您的密码已被管理员重置，请立即修改密码后继续使用。
+</div>
+{% endif %}
 <div class="card" style="max-width:600px;margin:2rem auto;">
     <h1>⚙️ 账户设置</h1>
 

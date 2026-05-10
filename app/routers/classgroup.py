@@ -100,9 +100,10 @@ async def add_member(class_id: int, request: Request, db: Annotated[Session, Dep
             db.add(ClassMember(class_id=class_id, user_id=user.id))
         if not user.class_id:
             user.class_id = class_id
-            if user.is_guest:
-                user.is_guest = False
-                user.guest_expires_at = None
+        if user.is_guest:
+            user.is_guest = False
+            user.guest_expires_at = None
+            user.join_mode = "formal"
         db.commit()
     return RedirectResponse(url=f"/classes/{class_id}", status_code=303)
 

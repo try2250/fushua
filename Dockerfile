@@ -16,8 +16,8 @@ RUN mkdir -p /app/data
 EXPOSE 8000
 
 ENV DATABASE_URL=sqlite:///./data/fushua.db
-ENV SECRET_KEY=change-me-in-production
 ENV HTTPS_ONLY=false
+ENV ENVIRONMENT=development
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

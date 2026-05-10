@@ -9,9 +9,10 @@ class TestRegisterLoginFlow:
     def test_register_auto_login_redirect(self, client, db_session):
         response = client.post("/register", data={
             "username": "newuser",
-            "password": "abc123",
+            "password": "abc12345",
             "role": "student",
             "display_name": "NewUser",
+            "join_mode": "guest",
             "_csrf_token": get_csrf_token(client),
         })
         assert response.status_code == 303

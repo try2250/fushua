@@ -31,11 +31,13 @@ class User(Base):
     display_name = Column(String(100), default="")
     created_at = Column(DateTime, server_default=func.now())
 
+    join_mode = Column(String(20), default="")
     is_guest = Column(Boolean, default=False)
     guest_expires_at = Column(DateTime, nullable=True)
     class_id = Column(Integer, nullable=True, index=True)
     is_admin = Column(Boolean, default=False)
     is_disabled = Column(Boolean, default=False)
+    force_password_change = Column(Boolean, default=False)
 
     records = relationship("Record", back_populates="user")
 
@@ -287,4 +289,35 @@ class AuditLog(Base):
     target_type = Column(String(50), default="")
     target_id = Column(Integer, nullable=True)
     detail = Column(Text, default="")
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class ClassJoinRequest(Base):
+    __tablename__ = "class_join_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    class_id = Column(Integer, ForeignKey("class_groups.id"), nullable=False, index=True)
+    display_name = Column(String(100), default="")
+    status = Column(String(20), default="pending")
+    reviewed_by = Column(Integer, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "class_id", name="uq_join_request_user_class"),
+    )
+
+
+class AccountRecoveryRequest(Base):
+    __tablename__ = "account_recovery_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), nullable=False, index=True)
+    class_id = Column(Integer, ForeignKey("class_groups.id"), nullable=True)
+    display_name = Column(String(100), default="")
+    status = Column(String(20), default="pending")
+    reviewed_by = Column(Integer, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    new_password_hash = Column(String(128), nullable=True)
     created_at = Column(DateTime, server_default=func.now())

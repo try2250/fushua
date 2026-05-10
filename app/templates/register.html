@@ -2,7 +2,7 @@
 {% block title %}注册 - 付刷{% endblock %}
 {% block content %}
 <div class="auth-card">
-    <h1>注册</h1>
+    <h1>创建账号</h1>
     {% if error %}
     <div class="alert alert-error">{{ error }}</div>
     {% endif %}
@@ -18,43 +18,115 @@
         </div>
         <div class="form-group">
             <label for="password">密码</label>
-            <input type="password" id="password" name="password" required placeholder="请输入密码（至少6位，非纯数字）">
+            <input type="password" id="password" name="password" required placeholder="至少6位，非纯数字">
         </div>
         <div class="form-group">
             <label>我是</label>
-            <div class="role-select" style="display:flex;gap:1rem;">
-                <label style="cursor:pointer;">
-                    <input type="radio" name="role" value="student" checked onchange="toggleFields()"> 🎓 学生
+            <div class="role-select" style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+                <label style="cursor:pointer;flex:1;text-align:center;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);font-weight:500;" class="role-option" onclick="toggleFields()">
+                    <input type="radio" name="role" value="student" checked style="margin-right:0.3rem;"> 🎓 学生
                 </label>
-                <label style="cursor:pointer;">
-                    <input type="radio" name="role" value="teacher" onchange="toggleFields()"> 👨‍🏫 教师
+                <label style="cursor:pointer;flex:1;text-align:center;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);font-weight:500;" class="role-option" onclick="toggleFields()">
+                    <input type="radio" name="role" value="teacher" style="margin-right:0.3rem;"> 👨‍🏫 教师
+                </label>
+                <label style="cursor:pointer;flex:1;text-align:center;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);font-weight:500;" class="role-option" onclick="toggleFields()">
+                    <input type="radio" name="role" value="admin" style="margin-right:0.3rem;"> 🛡️ 管理员
                 </label>
             </div>
         </div>
-        <div class="form-group" id="classSelectGroup">
-            <label for="class_id">选择班级</label>
-            <select name="class_id" id="class_id">
-                <option value="">暂不选择（将以游客身份体验1小时）</option>
-                {% for c in classes %}
-                <option value="{{ c.id }}" {{ 'selected' if c.id|string == preselected_class else '' }}>{{ c.name }}</option>
-                {% endfor %}
-            </select>
+        <div id="studentModeGroup">
+            <div class="form-group">
+                <label>注册方式</label>
+                <div style="display:flex;flex-direction:column;gap:0.6rem;margin-top:0.4rem;">
+                    <label style="cursor:pointer;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);" class="join-mode-option" data-mode="formal">
+                        <input type="radio" name="join_mode" value="formal" onchange="toggleJoinMode()" style="margin-right:0.4rem;">
+                        <strong>✅ 正式加入班级</strong>
+                        <div style="color:var(--ink-muted);font-size:0.82rem;margin-top:0.2rem;">选择班级后立即加入，可使用全部功能</div>
+                    </label>
+                    <label style="cursor:pointer;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);" class="join-mode-option" data-mode="apply">
+                        <input type="radio" name="join_mode" value="apply" onchange="toggleJoinMode()" style="margin-right:0.4rem;">
+                        <strong>📝 申请加入班级</strong>
+                        <div style="color:var(--ink-muted);font-size:0.82rem;margin-top:0.2rem;">提交申请，等待教师审核通过后正式加入</div>
+                    </label>
+                    <label style="cursor:pointer;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);" class="join-mode-option" data-mode="guest">
+                        <input type="radio" name="join_mode" value="guest" onchange="toggleJoinMode()" style="margin-right:0.4rem;">
+                        <strong>👀 临时游客</strong>
+                        <div style="color:var(--ink-muted);font-size:0.82rem;margin-top:0.2rem;">无需选择班级，仅可体验1小时</div>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group" id="classSelectGroup" style="display:none;">
+                <label for="class_id">选择班级</label>
+                <select name="class_id" id="class_id">
+                    <option value="">请选择班级</option>
+                    {% for c in classes %}
+                    <option value="{{ c.id }}" {{ 'selected' if c.id|string == preselected_class else '' }}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <div class="form-group" id="inviteCodeGroup" style="display:none;">
-            <label for="invite_code">教师邀请码 *</label>
-            <input type="text" id="invite_code" name="invite_code" placeholder="请输入管理员提供的邀请码">
-            <small style="color:var(--text-secondary);">教师注册需要邀请码，请联系管理员获取</small>
+            <label for="invite_code">邀请码 *</label>
+            <input type="text" id="invite_code" name="invite_code" placeholder="请输入邀请码">
+            <small id="inviteCodeHint" style="color:var(--ink-muted);font-size:0.82rem;">教师注册需要邀请码，请联系管理员获取</small>
         </div>
-        <button type="submit" class="btn btn-primary btn-block">注册</button>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">注册</button>
     </form>
     <p class="auth-switch">已有账号？<a href="/login">去登录</a></p>
 </div>
 <script>
 function toggleFields() {
     var role = document.querySelector('input[name="role"]:checked').value;
-    document.getElementById('inviteCodeGroup').style.display = role === 'teacher' ? 'block' : 'none';
-    document.getElementById('classSelectGroup').style.display = role === 'student' ? 'block' : 'none';
+    var inviteGroup = document.getElementById('inviteCodeGroup');
+    var studentGroup = document.getElementById('studentModeGroup');
+    var hint = document.getElementById('inviteCodeHint');
+    var roleOptions = document.querySelectorAll('.role-option');
+    roleOptions.forEach(function(opt) {
+        opt.style.borderColor = 'var(--ivory-dark)';
+        opt.style.background = '';
+    });
+    var selected = document.querySelector('.role-option input:checked');
+    if (selected && selected.closest('.role-option')) {
+        selected.closest('.role-option').style.borderColor = 'var(--gold)';
+        selected.closest('.role-option').style.background = 'var(--gold-bg)';
+    }
+    if (role === 'teacher') {
+        inviteGroup.style.display = 'block';
+        hint.textContent = '教师注册需要邀请码，请联系管理员获取';
+    } else if (role === 'admin') {
+        inviteGroup.style.display = 'block';
+        hint.textContent = '管理员注册需要管理员邀请码';
+    } else {
+        inviteGroup.style.display = 'none';
+    }
+    studentGroup.style.display = role === 'student' ? 'block' : 'none';
 }
-document.addEventListener('DOMContentLoaded', function() { toggleFields(); });
+function toggleJoinMode() {
+    var mode = document.querySelector('input[name="join_mode"]:checked');
+    var classGroup = document.getElementById('classSelectGroup');
+    var options = document.querySelectorAll('.join-mode-option');
+    options.forEach(function(opt) {
+        opt.style.borderColor = 'var(--ivory-dark)';
+        opt.style.background = '';
+    });
+    if (mode) {
+        var selected = document.querySelector('.join-mode-option[data-mode="' + mode.value + '"]');
+        if (selected) {
+            selected.style.borderColor = 'var(--gold)';
+            selected.style.background = 'var(--gold-bg)';
+        }
+        if (mode.value === 'formal' || mode.value === 'apply') {
+            classGroup.style.display = 'block';
+        } else {
+            classGroup.style.display = 'none';
+        }
+    } else {
+        classGroup.style.display = 'none';
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    toggleFields();
+    toggleJoinMode();
+});
 </script>
 {% endblock %}

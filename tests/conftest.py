@@ -69,7 +69,7 @@ def db_session():
         db.close()
 
 
-def create_test_user(db, username="testuser", role="student", password="abc123"):
+def create_test_user(db, username="testuser", role="student", password="abc12345"):
     user = User(
         username=username,
         password_hash=User.hash_password(password),
@@ -115,7 +115,7 @@ def get_csrf_token(client):
     return text[val_start:val_end]
 
 
-def login_as(client, username, password="abc123"):
+def login_as(client, username, password="abc12345"):
     csrf = get_csrf_token(client)
     return client.post("/login", data={
         "username": username,
@@ -124,7 +124,7 @@ def login_as(client, username, password="abc123"):
     }, follow_redirects=False)
 
 
-def register_and_login(client, username="testuser", role="student", password="abc123"):
+def register_and_login(client, username="testuser", role="student", password="abc12345"):
     if role == "teacher":
         db = TestingSessionLocal()
         try:
@@ -134,6 +134,18 @@ def register_and_login(client, username="testuser", role="student", password="ab
                 db.add(config)
             else:
                 config.value = "FUSHUA2024"
+            db.commit()
+        finally:
+            db.close()
+    if role == "admin":
+        db = TestingSessionLocal()
+        try:
+            config = db.query(SiteConfig).filter(SiteConfig.key == "admin_invite_code").first()
+            if not config:
+                config = SiteConfig(key="admin_invite_code", value="ADMIN2026")
+                db.add(config)
+            else:
+                config.value = "ADMIN2026"
             db.commit()
         finally:
             db.close()
@@ -147,5 +159,9 @@ def register_and_login(client, username="testuser", role="student", password="ab
     }
     if role == "teacher":
         data["invite_code"] = "FUSHUA2024"
+    if role == "admin":
+        data["invite_code"] = "ADMIN2026"
+    if role == "student":
+        data["join_mode"] = "guest"
     client.post("/register", data=data, follow_redirects=True)
     return login_as(client, username, password)

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}付题题库浏览 - 付刷{% endblock %}
+
+{% block content %}
+<h1>📋 付题题库浏览</h1>
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+        <span><strong>付题题目数：</strong>{{ questions|length }}</span>
+        <a href="{{ futi_url }}" target="_blank" class="btn btn-outline btn-sm">打开付题管理</a>
+    </div>
+</div>
+
+{% if questions %}
+<div class="card">
+    <form action="/extractor/import" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <div style="margin-bottom:1rem;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="toggleSelectAll()">全选/取消</button>
+            <span id="selected_count" style="margin-left:1rem;color:#666;">已选 0 道</span>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr><th>选择</th><th>ID</th><th>题型</th><th>科目</th><th>题目内容</th><th>答案</th></tr>
+            </thead>
+            <tbody>
+                {% for q in questions %}
+                <tr>
+                    <td><input type="checkbox" class="q-checkbox" value="{{ q.id }}" onchange="updateSelectedCount()"></td>
+                    <td>{{ q.id }}</td>
+                    <td>{{ question_types.get(q.q_type, q.q_type) }}</td>
+                    <td>{{ q.subject }}</td>
+                    <td>{{ q.content | truncate(60) }}</td>
+                    <td>{{ q.answer | truncate(20) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top:1rem;">
+            <input type="hidden" name="question_ids" id="question_ids_input" value="">
+            <button type="submit" class="btn btn-primary" onclick="return prepareSubmit()">导入选中题目到付刷</button>
+            <a href="/extractor/" class="btn btn-outline" style="margin-left:0.5rem;">返回</a>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="card">
+    <p>付题题库中暂无题目，请先在付题中提取或生成题目。</p>
+    <a href="{{ futi_url }}" target="_blank" class="btn btn-primary">打开付题</a>
+</div>
+{% endif %}
+
+<script>
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.q-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+    updateSelectedCount();
+}
+function updateSelectedCount() {
+    const checked = document.querySelectorAll('.q-checkbox:checked').length;
+    document.getElementById('selected_count').textContent = '已选 ' + checked + ' 道';
+}
+function prepareSubmit() {
+    const checked = document.querySelectorAll('.q-checkbox:checked');
+    if (checked.length === 0) { alert('请至少选择一道题目'); return false; }
+    const ids = Array.from(checked).map(cb => cb.value).join(',');
+    document.getElementById('question_ids_input').value = ids;
+    return true;
+}
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@
     <title>{% block title %}付刷{% endblock %}</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#4361ee">
+    <meta name="theme-color" content="#0f172a">
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="/static/icon-192.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -42,12 +42,21 @@
                         <a href="/teacher/fields" class="nav-link">字段</a>
                         <a href="/teacher/banks" class="nav-link">题库</a>
                         <a href="/teacher/questions/import" class="nav-link">导入</a>
+                        <a href="/extractor/" class="nav-link">提取</a>
                         <a href="/teacher/stats" class="nav-link">统计</a>
                         <a href="/teacher/assignments" class="nav-link">作业</a>
                         <a href="/teacher/classes" class="nav-link">班级</a>
                         <a href="/teacher/students" class="nav-link">学生</a>
-                        {% if is_admin %}<a href="/teacher/invite" class="nav-link">邀请码</a>{% endif %}
-                        {% if is_admin %}<a href="/admin" class="nav-link">管理</a>{% endif %}
+                        <a href="/leaderboard" class="nav-link">排行</a>
+                        <a href="/help" class="nav-link">帮助</a>
+                        <a href="/settings" class="nav-link">设置</a>
+                    {% elif role == 'admin' %}
+                        <a href="/admin" class="nav-link">管理后台</a>
+                        <a href="/admin/users" class="nav-link">用户</a>
+                        <a href="/admin/classes" class="nav-link">班级</a>
+                        <a href="/admin/invite" class="nav-link">邀请码</a>
+                        <a href="/admin/recovery-requests" class="nav-link">找回</a>
+                        <a href="/browse" class="nav-link">题库</a>
                         <a href="/leaderboard" class="nav-link">排行</a>
                         <a href="/help" class="nav-link">帮助</a>
                         <a href="/settings" class="nav-link">设置</a>

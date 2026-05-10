@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 import openpyxl
 
 from app.database import get_db
-from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES
-from app.auth import require_teacher
+from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES
+from app.auth import require_teacher, require_admin_role, get_current_user
 from app.routers.permissions import teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int
@@ -39,11 +39,8 @@ def _parse_owned_bank_id(db: Session, teacher_id: int, raw_bank_id) -> int | Non
 
 
 def require_admin(request: Request, db: Session) -> int:
-    user_id = require_teacher(request, db)
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.is_admin:
-        raise HTTPException(status_code=403, detail="仅管理员可操作")
-    return user_id
+    from app.auth import require_admin_role
+    return require_admin_role(request, db)
 
 
 @router.get("/questions")
@@ -494,7 +491,7 @@ async def import_questions(
             "teacher/import.html",
             {
                 "request": request,
-                "error": f"导入失败：{str(e)}",
+                "error": "导入失败，请检查文件格式是否正确",
                 "success": None,
                 "question_types": QUESTION_TYPES,
                 "custom_fields": custom_fields,
@@ -627,7 +624,7 @@ async def import_preview(
             "teacher/import.html",
             {
                 "request": request,
-                "error": f"文件解析失败：{str(e)}",
+                "error": "文件解析失败，请检查文件格式是否正确",
                 "success": None,
                 "question_types": QUESTION_TYPES,
                 "custom_fields": custom_fields,
@@ -1381,9 +1378,46 @@ def student_management(request: Request, db: Annotated[Session, Depends(get_db)]
         for g in guests
     ]
 
+    pending_join_requests = (
+        db.query(ClassJoinRequest)
+        .filter(ClassJoinRequest.class_id.in_(class_ids), ClassJoinRequest.status == "pending")
+        .all()
+    ) if class_ids else []
+    join_request_data = []
+    for jr in pending_join_requests:
+        jr_user = db.query(User).filter(User.id == jr.user_id).first()
+        jr_class = db.query(ClassGroup).filter(ClassGroup.id == jr.class_id).first()
+        if jr_user and jr_class:
+            join_request_data.append({
+                "id": jr.id,
+                "user_id": jr_user.id,
+                "username": jr_user.username,
+                "display_name": jr.display_name or jr_user.display_name,
+                "class_name": jr_class.name,
+                "class_id": jr_class.id,
+                "created_at": jr.created_at,
+            })
+
+    from app.models import AccountRecoveryRequest
+    class_recovery_requests = (
+        db.query(AccountRecoveryRequest)
+        .filter(AccountRecoveryRequest.class_id.in_(class_ids), AccountRecoveryRequest.status == "pending")
+        .all()
+    ) if class_ids else []
+    recovery_data = []
+    for rr in class_recovery_requests:
+        rr_class = db.query(ClassGroup).filter(ClassGroup.id == rr.class_id).first()
+        recovery_data.append({
+            "id": rr.id,
+            "username": rr.username,
+            "display_name": rr.display_name,
+            "class_name": rr_class.name if rr_class else "",
+            "created_at": rr.created_at,
+        })
+
     return request.app.state.templates.TemplateResponse(
         "teacher/students.html",
-        {"request": request, "class_data": class_data, "guest_data": guest_data},
+        {"request": request, "class_data": class_data, "guest_data": guest_data, "join_request_data": join_request_data, "recovery_data": recovery_data, "csrf_token": request.session.get("csrf_token", "")},
     )
 
 
@@ -1418,6 +1452,64 @@ async def approve_student(student_id: int, request: Request, db: Annotated[Sessi
             content=f"您已被教师审核通过，正式加入班级，现在可以正常使用所有功能。",
         ))
         db.commit()
+    return RedirectResponse(url="/teacher/students", status_code=303)
+
+
+@router.post("/join-requests/{request_id}/approve")
+async def approve_join_request(request_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    await validate_csrf_async(request)
+    join_req = db.query(ClassJoinRequest).filter(ClassJoinRequest.id == request_id, ClassJoinRequest.status == "pending").first()
+    if not join_req:
+        return RedirectResponse(url="/teacher/students", status_code=303)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == join_req.class_id, ClassGroup.created_by == user_id).first()
+    if not cls:
+        return RedirectResponse(url="/teacher/students", status_code=303)
+    student = db.query(User).filter(User.id == join_req.user_id).first()
+    if not student:
+        return RedirectResponse(url="/teacher/students", status_code=303)
+    existing_member = db.query(ClassMember).filter(ClassMember.class_id == cls.id, ClassMember.user_id == student.id).first()
+    if not existing_member:
+        db.add(ClassMember(class_id=cls.id, user_id=student.id))
+    student.is_guest = False
+    student.guest_expires_at = None
+    student.class_id = cls.id
+    student.join_mode = "formal"
+    join_req.status = "approved"
+    join_req.reviewed_by = user_id
+    from datetime import datetime
+    join_req.reviewed_at = datetime.now()
+    db.add(Notification(
+        user_id=student.id,
+        title="入班申请已通过",
+        content=f"您申请加入班级「{cls.name}」已通过审核，现在可以正常使用所有功能。",
+    ))
+    db.commit()
+    return RedirectResponse(url="/teacher/students", status_code=303)
+
+
+@router.post("/join-requests/{request_id}/reject")
+async def reject_join_request(request_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
+    user_id = require_teacher(request, db)
+    await validate_csrf_async(request)
+    join_req = db.query(ClassJoinRequest).filter(ClassJoinRequest.id == request_id, ClassJoinRequest.status == "pending").first()
+    if not join_req:
+        return RedirectResponse(url="/teacher/students", status_code=303)
+    cls = db.query(ClassGroup).filter(ClassGroup.id == join_req.class_id, ClassGroup.created_by == user_id).first()
+    if not cls:
+        return RedirectResponse(url="/teacher/students", status_code=303)
+    join_req.status = "rejected"
+    join_req.reviewed_by = user_id
+    from datetime import datetime
+    join_req.reviewed_at = datetime.now()
+    student = db.query(User).filter(User.id == join_req.user_id).first()
+    if student:
+        db.add(Notification(
+            user_id=student.id,
+            title="入班申请未通过",
+            content=f"您申请加入班级「{cls.name}」未通过审核，请选择其他班级或以游客身份体验。",
+        ))
+    db.commit()
     return RedirectResponse(url="/teacher/students", status_code=303)
 
 
@@ -1520,7 +1612,7 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
             else:
                 new_user = User(
                     username=username,
-                    password_hash=User.hash_password("abc123"),
+                    password_hash=User.hash_password("abc12345"),
                     role="student",
                     display_name=display_name or username,
                     class_id=cls.id,
@@ -1537,7 +1629,7 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
             {
                 "request": request,
                 "class_info": cls,
-                "error": f"导入失败：{str(e)}",
+                "error": "导入失败，请检查文件格式是否正确",
                 "success": None,
                 "created_count": 0,
                 "skipped_count": 0,

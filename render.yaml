@@ -4,7 +4,7 @@ services:
     plan: free
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && python -c "from app.database import SessionLocal; from app.models import SiteConfig; db = SessionLocal(); db.query(SiteConfig).filter(SiteConfig.key == 'teacher_invite_code').first() or (db.add(SiteConfig(key='teacher_invite_code', value='FUSHUA2024')), db.commit()); db.close()" && gunicorn app.main:app -c gunicorn.conf.py
+    startCommand: alembic upgrade head && gunicorn app.main:app -c gunicorn.conf.py
     envVars:
       - key: SECRET_KEY
         generateValue: true
@@ -14,6 +14,8 @@ services:
           property: connectionString
       - key: HTTPS_ONLY
         value: "true"
+      - key: ENVIRONMENT
+        value: "production"
       - key: GUNICORN_WORKERS
         value: "2"
       - key: PYTHON_VERSION

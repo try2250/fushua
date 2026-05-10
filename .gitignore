@@ -51,3 +51,7 @@ alembic/op.pyi
 alembic/py.typed
 alembic/__init__.py
 alembic/__main__.py
+
+app/static/uploads/
+docs/superpowers/
+security_best_practices_report.md

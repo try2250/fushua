@@ -9,7 +9,6 @@ def test_health_check(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
-    assert "version" in data
 
 
 def test_security_headers(client):
@@ -37,7 +36,7 @@ def test_csrf_required_for_login(client, db_session):
     create_test_user(db_session, username="csrfuser")
     resp = client.post("/login", data={
         "username": "csrfuser",
-        "password": "abc123",
+        "password": "abc12345",
     }, follow_redirects=False)
     assert resp.status_code in (403, 400)
 
@@ -45,7 +44,7 @@ def test_csrf_required_for_login(client, db_session):
 def test_csrf_required_for_register(client, db_session):
     resp = client.post("/register", data={
         "username": "newcsrfuser",
-        "password": "abc123",
+        "password": "abc12345",
         "role": "student",
         "display_name": "test",
     }, follow_redirects=False)
@@ -80,7 +79,7 @@ def test_short_username_rejected(client, db_session):
     csrf = get_csrf_token(client)
     resp = client.post("/register", data={
         "username": "a",
-        "password": "abc123",
+        "password": "abc12345",
         "role": "student",
         "display_name": "test",
         "_csrf_token": csrf,
@@ -100,7 +99,7 @@ def test_login_rate_limit(client, db_session):
     csrf = get_csrf_token(client)
     resp = client.post("/login", data={
         "username": "ratelimituser",
-        "password": "abc123",
+        "password": "abc12345",
         "_csrf_token": csrf,
     }, follow_redirects=False)
     assert resp.status_code == 429
@@ -135,7 +134,7 @@ def test_username_length_limit(client, db_session):
     long_name = "a" * 200
     resp = client.post("/register", data={
         "username": long_name,
-        "password": "abc123",
+        "password": "abc12345",
         "role": "student",
         "display_name": "test",
         "_csrf_token": csrf,

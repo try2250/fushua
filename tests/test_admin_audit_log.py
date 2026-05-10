@@ -5,11 +5,10 @@ from tests.conftest import create_test_user, register_and_login, get_csrf_token
 
 class TestAdminAuditLogResetPassword:
     def test_reset_password_creates_audit_log(self, client, db_session):
-        admin = create_test_user(db_session, "audit_admin_reset", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "audit_admin_reset", "admin")
         db_session.commit()
         target = create_test_user(db_session, "audit_reset_target", "student")
-        register_and_login(client, "audit_admin_reset", "teacher")
+        register_and_login(client, "audit_admin_reset", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/reset-password", data={
             "_csrf_token": csrf,
@@ -28,11 +27,10 @@ class TestAdminAuditLogResetPassword:
 
 class TestAdminAuditLogToggleDisable:
     def test_disable_user_creates_audit_log(self, client, db_session):
-        admin = create_test_user(db_session, "audit_admin_disable", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "audit_admin_disable", "admin")
         db_session.commit()
         target = create_test_user(db_session, "audit_disable_target", "student")
-        register_and_login(client, "audit_admin_disable", "teacher")
+        register_and_login(client, "audit_admin_disable", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/toggle-disable", data={
             "_csrf_token": csrf,
@@ -49,13 +47,12 @@ class TestAdminAuditLogToggleDisable:
         assert f"禁用用户 {target.username}" in log.detail
 
     def test_enable_user_creates_audit_log(self, client, db_session):
-        admin = create_test_user(db_session, "audit_admin_enable", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "audit_admin_enable", "admin")
         db_session.commit()
         target = create_test_user(db_session, "audit_enable_target", "student")
         target.is_disabled = True
         db_session.commit()
-        register_and_login(client, "audit_admin_enable", "teacher")
+        register_and_login(client, "audit_admin_enable", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/toggle-disable", data={
             "_csrf_token": csrf,
@@ -74,12 +71,11 @@ class TestAdminAuditLogToggleDisable:
 
 class TestAdminAuditLogCleanupGuests:
     def test_cleanup_guests_creates_audit_log(self, client, db_session):
-        admin = create_test_user(db_session, "audit_admin_cleanup", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "audit_admin_cleanup", "admin")
         db_session.commit()
         expired_guest = User(
             username="audit_expired_guest",
-            password_hash=User.hash_password("abc123"),
+            password_hash=User.hash_password("abc12345"),
             role="student",
             display_name="audit_expired_guest",
             is_guest=True,
@@ -87,7 +83,7 @@ class TestAdminAuditLogCleanupGuests:
         )
         db_session.add(expired_guest)
         db_session.commit()
-        register_and_login(client, "audit_admin_cleanup", "teacher")
+        register_and_login(client, "audit_admin_cleanup", "admin")
         csrf = get_csrf_token(client)
         response = client.post("/admin/cleanup-guests", data={
             "_csrf_token": csrf,
@@ -102,10 +98,9 @@ class TestAdminAuditLogCleanupGuests:
         assert "清理了 1 个过期游客" in log.detail
 
     def test_cleanup_guests_zero_count(self, client, db_session):
-        admin = create_test_user(db_session, "audit_admin_no_guests", "teacher")
-        admin.is_admin = True
+        admin = create_test_user(db_session, "audit_admin_no_guests", "admin")
         db_session.commit()
-        register_and_login(client, "audit_admin_no_guests", "teacher")
+        register_and_login(client, "audit_admin_no_guests", "admin")
         csrf = get_csrf_token(client)
         response = client.post("/admin/cleanup-guests", data={
             "_csrf_token": csrf,
@@ -121,13 +116,11 @@ class TestAdminAuditLogCleanupGuests:
 
 class TestAdminAuditLogActorId:
     def test_audit_log_contains_correct_actor_id(self, client, db_session):
-        admin1 = create_test_user(db_session, "audit_actor_admin1", "teacher")
-        admin1.is_admin = True
-        admin2 = create_test_user(db_session, "audit_actor_admin2", "teacher")
-        admin2.is_admin = True
+        admin1 = create_test_user(db_session, "audit_actor_admin1", "admin")
+        admin2 = create_test_user(db_session, "audit_actor_admin2", "admin")
         db_session.commit()
         target = create_test_user(db_session, "audit_actor_target", "student")
-        register_and_login(client, "audit_actor_admin2", "teacher")
+        register_and_login(client, "audit_actor_admin2", "admin")
         csrf = get_csrf_token(client)
         response = client.post(f"/admin/users/{target.id}/reset-password", data={
             "_csrf_token": csrf,
