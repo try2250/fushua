@@ -2,7 +2,7 @@
 {% block title %}账户设置 - 付刷{% endblock %}
 {% block content %}
 {% if request.query_params.get('force_change') == '1' %}
-<div class="alert alert-error" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:1rem;border-radius:8px;margin-bottom:1rem;">
+<div class="alert alert-error" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:1rem;border-radius:var(--radius);margin-bottom:1rem;">
     ⚠️ 您的密码已被管理员重置，请立即修改密码后继续使用。
 </div>
 {% endif %}
@@ -21,8 +21,8 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label>用户名</label>
-                <input type="text" value="{{ user.username }}" disabled style="background:var(--bg-secondary);cursor:not-allowed;">
-                <small style="color:var(--text-secondary);">用户名不可修改</small>
+                <input type="text" value="{{ user.username }}" disabled style="background:var(--ivory-dark);cursor:not-allowed;">
+                <small style="color:var(--ink-muted);">用户名不可修改</small>
             </div>
             <div class="form-group">
                 <label for="display_name">昵称</label>
@@ -30,20 +30,20 @@
             </div>
             <div class="form-group">
                 <label>角色</label>
-                <input type="text" value="{% if user.role == 'teacher' %}教师{% else %}学生{% endif %}" disabled style="background:var(--bg-secondary);cursor:not-allowed;">
+                <input type="text" value="{% if user.role == 'admin' %}管理员{% elif user.role == 'teacher' %}教师{% else %}学生{% endif %}" disabled style="background:var(--ivory-dark);cursor:not-allowed;">
             </div>
             {% if user.is_guest %}
             <div class="form-group">
                 <label>状态</label>
-                <span class="badge badge-warning">游客</span>
-                <small style="color:var(--text-secondary);margin-left:0.5rem;">请联系教师加入班级以获得完整权限</small>
+                <span class="badge badge-wrong">游客</span>
+                <small style="color:var(--ink-muted);margin-left:0.5rem;">请联系教师加入班级以获得完整权限</small>
             </div>
             {% endif %}
             <button type="submit" class="btn btn-primary">保存修改</button>
         </form>
     </div>
 
-    <hr style="margin:2rem 0;border-color:var(--border-color);">
+    <hr style="margin:2rem 0;border-color:var(--ivory-dark);">
 
     <div>
         <h2>🔒 修改密码</h2>
@@ -61,7 +61,7 @@
             </div>
             <div class="form-group">
                 <label for="new_password">新密码</label>
-                <input type="password" id="new_password" name="new_password" required placeholder="至少6位，非纯数字">
+                <input type="password" id="new_password" name="new_password" required placeholder="至少8位，需含字母和数字">
             </div>
             <div class="form-group">
                 <label for="confirm_password">确认新密码</label>

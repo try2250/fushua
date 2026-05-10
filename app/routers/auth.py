@@ -222,7 +222,7 @@ def logout(request: Request):
 
 @router.get("/settings")
 def settings_page(request: Request, db: Annotated[Session, Depends(get_db)] = None):
-    user_id = require_login(request)
+    user_id = require_login(request, db)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         request.session.clear()
@@ -242,7 +242,7 @@ def settings_page(request: Request, db: Annotated[Session, Depends(get_db)] = No
 
 @router.post("/settings/password")
 async def change_password(request: Request, db: Annotated[Session, Depends(get_db)] = None):
-    user_id = require_login(request)
+    user_id = require_login(request, db)
     await validate_csrf_async(request)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -279,7 +279,7 @@ async def change_password(request: Request, db: Annotated[Session, Depends(get_d
 
 @router.post("/settings/profile")
 async def update_profile(request: Request, db: Annotated[Session, Depends(get_db)] = None):
-    user_id = require_login(request)
+    user_id = require_login(request, db)
     await validate_csrf_async(request)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
