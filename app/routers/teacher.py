@@ -714,11 +714,14 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
     rows = pending["rows"]
     bank_id = pending["bank_id"]
     count = 0
+    batch_size = 50
     for row in rows:
         item = {k: v for k, v in row.items() if k != "_row_num"}
         q = _build_question_from_dict(item, user_id, bank_id=bank_id)
         db.add(q)
         count += 1
+        if count > 0 and count % batch_size == 0:
+            db.commit()
     db.add(AuditLog(
         actor_id=user_id,
         action="import_questions",
@@ -777,11 +780,14 @@ def _import_json(content_bytes: bytes, user_id: int, db: Session, bank_id: int =
     if not isinstance(data, list):
         data = [data]
     count = 0
-    for item in data:
+    batch_size = 50
+    for i, item in enumerate(data):
         q = _build_question_from_dict(item, user_id, bank_id=bank_id)
         if q.subject and q.content and q.answer:
             db.add(q)
             count += 1
+        if count > 0 and count % batch_size == 0:
+            db.commit()
     db.commit()
     return count
 
@@ -790,12 +796,15 @@ def _import_csv(content_bytes: bytes, user_id: int, db: Session, bank_id: int = 
     text = content_bytes.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
     count = 0
+    batch_size = 50
     for row in reader:
         item = {k: v.strip() for k, v in row.items() if v is not None}
         q = _build_question_from_dict(item, user_id, bank_id=bank_id)
         if q.subject and q.content and q.answer:
             db.add(q)
             count += 1
+        if count > 0 and count % batch_size == 0:
+            db.commit()
     db.commit()
     return count
 
