@@ -136,6 +136,7 @@ async def extractor_import_questions(request: Request, db: Annotated[Session, De
             bank_id = bid
 
     count = 0
+    batch_size = 50
     for q_data in questions_data:
         if subject and not q_data.get("subject"):
             q_data["subject"] = subject
@@ -159,6 +160,8 @@ async def extractor_import_questions(request: Request, db: Annotated[Session, De
         )
         db.add(q)
         count += 1
+        if count > 0 and count % batch_size == 0:
+            db.commit()
     db.commit()
 
     banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
