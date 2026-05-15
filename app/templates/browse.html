@@ -5,6 +5,40 @@
 {% block content %}
 <h1>📚 题库浏览</h1>
 
+{% if teacher_banks %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2>👨‍🏫 教师题库</h2>
+    <div class="chapter-list">
+        {% for b in teacher_banks %}
+        <a href="/student/practice?bank_id={{ b.id }}" class="chapter-item">
+            <span class="chapter-name">
+                {{ b.name }}
+                {% if b.visibility == 'public' %}
+                    <span class="badge badge-correct" style="font-size:0.7rem;">公开</span>
+                {% elif b.visibility == 'private' %}
+                    <span class="badge badge-subject" style="font-size:0.7rem;">本班</span>
+                {% elif b.visibility == 'code' %}
+                    <span class="badge" style="font-size:0.7rem;background:var(--gold-bg);color:var(--gold);">准入码</span>
+                {% endif %}
+            </span>
+            <span style="color:var(--ink-muted);font-size:0.85rem;">{{ b.creator.display_name or b.creator.username if b.creator else '' }}</span>
+            <span class="chapter-count">{{ b.q_count }} 题</span>
+            <span class="chapter-action">去刷题 →</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2>🔑 输入准入码</h2>
+    <form action="/browse/unlock-bank" method="post" style="display:flex;gap:0.5rem;align-items:center;">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="access_code" placeholder="输入教师提供的准入码" style="flex:1;">
+        <button type="submit" class="btn btn-primary btn-sm">解锁</button>
+    </form>
+</div>
+
 <div class="breadcrumb">
     <a href="/browse" class="breadcrumb-item {% if not subject %}active{% endif %}">全部科目</a>
     {% if subject %}
@@ -23,7 +57,7 @@
 
 {% if not subject %}
 <div class="card">
-    <h2>选择科目</h2>
+    <h2>📚 系统题库 · 选择科目</h2>
     <div class="subject-grid">
         {% for s, count in subject_counts.items() %}
         <a href="/browse?subject={{ s }}" class="subject-card">

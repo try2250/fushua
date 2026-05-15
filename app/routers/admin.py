@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig
 from app.auth import get_current_user, require_admin_role
 from app.security import validate_csrf_async, sanitize_input
+from app.utils.validation import parse_int
 
 router = APIRouter()
 
@@ -283,4 +284,80 @@ def admin_classes(request: Request, db: Annotated[Session, Depends(get_db)]):
     return request.app.state.templates.TemplateResponse(
         "admin/classes.html",
         {"request": request, "class_data": class_data},
+    )
+
+
+@router.get("/admin/audit-log")
+def audit_log_page(request: Request, db: Annotated[Session, Depends(get_db)], action: str = "", page: str = "1"):
+    require_admin(request, db)
+    query = db.query(AuditLog)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    total = query.count()
+    page_num = parse_int(page, default=1, min_value=1) or 1
+    per_page = 50
+    offset = (page_num - 1) * per_page
+    logs = query.order_by(AuditLog.created_at.desc()).offset(offset).limit(per_page).all()
+    total_pages = (total + per_page - 1) // per_page
+
+    actor_ids = list({log.actor_id for log in logs if log.actor_id})
+    actors = {}
+    if actor_ids:
+        for u in db.query(User).filter(User.id.in_(actor_ids)).all():
+            actors[u.id] = u.display_name or u.username
+
+    actions = [row[0] for row in db.query(AuditLog.action).distinct().order_by(AuditLog.action).all()]
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/audit_log.html",
+        {
+            "request": request,
+            "logs": logs,
+            "actors": actors,
+            "actions": actions,
+            "current_action": action,
+            "page": page_num,
+            "total_pages": total_pages,
+            "total": total,
+        },
+    )
+
+
+@router.get("/admin/audit-log/export")
+def audit_log_export(request: Request, db: Annotated[Session, Depends(get_db)], action: str = ""):
+    require_admin(request, db)
+    query = db.query(AuditLog)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    logs = query.order_by(AuditLog.created_at.desc()).limit(5000).all()
+
+    actor_ids = list({log.actor_id for log in logs if log.actor_id})
+    actors = {}
+    if actor_ids:
+        for u in db.query(User).filter(User.id.in_(actor_ids)).all():
+            actors[u.id] = u.display_name or u.username
+
+    import csv
+    import io
+    import urllib.parse
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["时间", "操作者", "操作", "目标类型", "目标ID", "详情"])
+    for log in logs:
+        writer.writerow([
+            log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else "",
+            actors.get(log.actor_id, str(log.actor_id or "")),
+            log.action,
+            log.target_type,
+            log.target_id or "",
+            log.detail,
+        ])
+    buf.seek(0)
+    output = buf.getvalue().encode("utf-8-sig")
+    from fastapi.responses import StreamingResponse
+    filename = urllib.parse.quote("审计日志.csv")
+    return StreamingResponse(
+        io.BytesIO(output),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
     )

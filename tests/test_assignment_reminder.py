@@ -2,15 +2,24 @@ from tests.conftest import create_test_user, create_test_question, register_and_
 from app.models import Assignment, AssignmentRecord, ClassGroup, ClassMember, Notification
 
 
+def _create_class_with_teacher(db_session, teacher):
+    cls = ClassGroup(name=f"班级_{teacher.username}", created_by=teacher.id)
+    db_session.add(cls)
+    db_session.commit()
+    return cls
+
+
 class TestAssignmentReminder:
     def test_teacher_can_view_assignment_detail(self, client, db_session):
         teacher = create_test_user(db_session, "detailteacher", "teacher")
         q = create_test_question(db_session, created_by=teacher.id)
+        cls = _create_class_with_teacher(db_session, teacher)
         register_and_login(client, "detailteacher", "teacher")
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "详情测试作业", "description": "查看详情",
             "question_ids": str(q.id), "deadline": "2026-06-01",
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()
@@ -36,6 +45,7 @@ class TestAssignmentReminder:
         client.post("/assignments/create", data={
             "title": "提醒测试作业", "description": "测试提醒",
             "question_ids": str(q.id), "deadline": "2026-06-01",
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()
@@ -74,6 +84,7 @@ class TestAssignmentReminder:
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "完成作业", "question_ids": str(q.id),
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()
@@ -98,11 +109,13 @@ class TestAssignmentReminder:
         teacher = create_test_user(db_session, "remindt2", "teacher")
         student = create_test_user(db_session, "remindstu3", "student")
         q = create_test_question(db_session, created_by=teacher.id)
+        cls = _create_class_with_teacher(db_session, teacher)
 
         register_and_login(client, "remindt2", "teacher")
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "权限测试", "question_ids": str(q.id),
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()
@@ -115,11 +128,13 @@ class TestAssignmentReminder:
         teacher1 = create_test_user(db_session, "ownt1", "teacher")
         teacher2 = create_test_user(db_session, "ownt2", "teacher")
         q = create_test_question(db_session, created_by=teacher1.id)
+        cls = _create_class_with_teacher(db_session, teacher1)
 
         register_and_login(client, "ownt1", "teacher")
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "他人作业", "question_ids": str(q.id),
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()
@@ -147,6 +162,7 @@ class TestAssignmentReminder:
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "计数作业", "question_ids": str(q.id),
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()
@@ -176,6 +192,7 @@ class TestAssignmentReminder:
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "通知作业", "question_ids": str(q.id),
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assignment = db_session.query(Assignment).first()

@@ -19,9 +19,9 @@
             <input type="date" id="deadline" name="deadline">
         </div>
         <div class="form-group">
-            <label for="class_id">选择班级</label>
-            <select id="class_id" name="class_id">
-                <option value="">不指定班级</option>
+            <label for="class_id">选择班级 *</label>
+            <select id="class_id" name="class_id" required>
+                <option value="">请选择班级</option>
                 {% for c in classes %}
                 <option value="{{ c.id }}">{{ c.name }}</option>
                 {% endfor %}

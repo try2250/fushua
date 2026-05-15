@@ -14,11 +14,11 @@ from datetime import datetime, timedelta
 import openpyxl
 
 from app.database import get_db
-from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES
+from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES, AuditLog
 from app.auth import require_teacher, require_admin_role, get_current_user
 from app.routers.permissions import teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
-from app.utils.validation import parse_int
+from app.utils.validation import parse_int, paginate
 
 router = APIRouter(prefix="/teacher")
 
@@ -48,6 +48,7 @@ def manage_questions(
     request: Request,
     subject: str = "",
     q_type: str = "",
+    page: str = "1",
     db: Annotated[Session, Depends(get_db)] = None,
 ):
     user_id = require_teacher(request, db)
@@ -56,14 +57,21 @@ def manage_questions(
         query = query.filter(Question.subject == subject)
     if q_type:
         query = query.filter(Question.q_type == q_type)
-    questions = query.order_by(Question.created_at.desc()).all()
+    query = query.order_by(Question.created_at.desc())
+    page_num = parse_int(page, default=1, min_value=1) or 1
+    pagination = paginate(query, page_num, per_page=20)
     subjects = [s[0] for s in db.query(Question.subject).distinct().all()]
     custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+    query_params = []
+    if subject:
+        query_params.append(f"subject={subject}")
+    if q_type:
+        query_params.append(f"q_type={q_type}")
     return request.app.state.templates.TemplateResponse(
         "teacher/questions.html",
         {
             "request": request,
-            "questions": questions,
+            "questions": pagination["items"],
             "subjects": subjects,
             "current_subject": subject,
             "current_type": q_type,
@@ -71,6 +79,9 @@ def manage_questions(
             "semesters": SEMESTERS,
             "custom_fields": custom_fields,
             "csrf_token": request.session.get("csrf_token", ""),
+            "pagination": pagination,
+            "base_url": "/teacher/questions?",
+            "query_params": "&".join(query_params),
         },
     )
 
@@ -236,10 +247,10 @@ def bank_list(request: Request, db: Annotated[Session, Depends(get_db)]):
     bank_data = []
     for b in banks:
         q_count = db.query(Question).filter(Question.bank_id == b.id).count()
-        bank_data.append({"id": b.id, "name": b.name, "subject": b.subject, "semester": b.semester, "bank_type": b.bank_type, "description": b.description, "q_count": q_count, "created_at": b.created_at})
+        bank_data.append({"id": b.id, "name": b.name, "subject": b.subject, "semester": b.semester, "bank_type": b.bank_type, "visibility": b.visibility, "access_code": b.access_code, "description": b.description, "q_count": q_count, "created_at": b.created_at})
     return request.app.state.templates.TemplateResponse(
         "teacher/banks.html",
-        {"request": request, "banks": bank_data, "subjects": SUBJECTS, "semesters": SEMESTERS},
+        {"request": request, "banks": bank_data, "subjects": SUBJECTS, "semesters": SEMESTERS, "csrf_token": request.session.get("csrf_token", "")},
     )
 
 
@@ -270,6 +281,8 @@ async def create_bank(request: Request, db: Annotated[Session, Depends(get_db)])
         semester=form.get("semester", ""),
         description=sanitize_input(form.get("description", "").strip(), max_length=500),
         bank_type=form.get("bank_type", "custom"),
+        visibility=form.get("visibility", "public"),
+        access_code=sanitize_input(form.get("access_code", "").strip(), max_length=50) if form.get("visibility") == "code" else "",
         created_by=user_id,
     )
     db.add(bank)
@@ -284,6 +297,13 @@ async def delete_bank(bank_id: int, request: Request, db: Annotated[Session, Dep
     bank = db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
     if not bank or not teacher_owns_bank(db, user_id, bank_id):
         raise HTTPException(status_code=404)
+    db.add(AuditLog(
+        actor_id=user_id,
+        action="delete_bank",
+        target_type="question_bank",
+        target_id=bank_id,
+        detail=f"删除题库「{bank.name}」"
+    ))
     db.query(Question).filter(Question.bank_id == bank_id).update({"bank_id": None})
     db.delete(bank)
     db.commit()
@@ -699,8 +719,13 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
         q = _build_question_from_dict(item, user_id, bank_id=bank_id)
         db.add(q)
         count += 1
+    db.add(AuditLog(
+        actor_id=user_id,
+        action="import_questions",
+        target_type="question",
+        detail=f"批量导入 {count} 道题目，题库ID={bank_id or '无'}"
+    ))
     db.commit()
-
     custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
     banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
     return request.app.state.templates.TemplateResponse(
@@ -900,31 +925,34 @@ async def batch_edit_questions(request: Request, db: Annotated[Session, Depends(
                 ids = [qid.strip() for qid in a.question_ids.split(",") if qid.strip() and qid.strip() != str(q.id)]
                 a.question_ids = ",".join(ids)
             db.delete(q)
-        db.commit()
     elif action == "difficulty":
         diff = parse_int(value, min_value=1, max_value=5)
         if diff is None:
             raise HTTPException(status_code=400, detail="难度值必须为1-5的数字")
         for q in questions:
             q.difficulty = diff
-        db.commit()
     elif action == "semester":
         value = sanitize_input(value, max_length=20)
         for q in questions:
             q.semester = value
-        db.commit()
     elif action == "chapter":
         value = sanitize_input(value, max_length=100)
         for q in questions:
             q.chapter = value
-        db.commit()
     elif action == "bank":
         bank_id = _parse_owned_bank_id(db, user_id, value)
         for q in questions:
             q.bank_id = bank_id
-        db.commit()
     else:
         raise HTTPException(status_code=400, detail="不支持的操作类型")
+
+    db.add(AuditLog(
+        actor_id=user_id,
+        action="batch_edit",
+        target_type="question",
+        detail=f"批量操作：{action}，影响 {len(questions)} 道题目"
+    ))
+    db.commit()
 
     return RedirectResponse(url="/teacher/questions", status_code=303)
 
@@ -938,6 +966,13 @@ async def delete_question(question_id: int, request: Request, db: Annotated[Sess
     ).first()
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
+    db.add(AuditLog(
+        actor_id=user_id,
+        action="delete_question",
+        target_type="question",
+        target_id=question_id,
+        detail=f"删除题目「{question.content[:30]}」"
+    ))
     db.query(Record).filter(Record.question_id == question_id).delete()
     db.query(Favorite).filter(Favorite.question_id == question_id).delete()
     affected_assignments = db.query(Assignment).filter(Assignment.question_ids.contains(str(question_id))).all()
@@ -1357,6 +1392,7 @@ def student_management(request: Request, db: Annotated[Session, Depends(get_db)]
         .all()
     )
     class_member_map = {}
+    class_member_count = {}
     for row in member_rows:
         class_member_map.setdefault(row.class_id, []).append({
             "id": row.id,
@@ -1367,10 +1403,20 @@ def student_management(request: Request, db: Annotated[Session, Depends(get_db)]
             "correct": int(row.correct or 0),
             "accuracy": round((row.correct or 0) / row.total * 100, 1) if row.total > 0 else 0,
         })
+        class_member_count[row.class_id] = class_member_count.get(row.class_id, 0) + 1
 
+    MEMBERS_PER_CLASS = 20
     class_data = []
     for cls in classes:
-        class_data.append({"id": cls.id, "name": cls.name, "members": class_member_map.get(cls.id, [])})
+        all_members = class_member_map.get(cls.id, [])
+        shown_members = all_members[:MEMBERS_PER_CLASS]
+        class_data.append({
+            "id": cls.id,
+            "name": cls.name,
+            "members": shown_members,
+            "total_members": len(all_members),
+            "has_more": len(all_members) > MEMBERS_PER_CLASS,
+        })
 
     guests = db.query(User).filter(User.role == "student", User.is_guest == True).all()
     guest_data = [

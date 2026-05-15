@@ -1,5 +1,4 @@
 def parse_int(value, default=None, min_value=None, max_value=None):
-    """安全解析整数，无效时返回default"""
     if value is None or (isinstance(value, str) and value.strip() == ""):
         return default
     try:
@@ -14,7 +13,6 @@ def parse_int(value, default=None, min_value=None, max_value=None):
 
 
 def parse_float(value, default=None, min_value=None, max_value=None):
-    """安全解析浮点数，无效时返回default"""
     if value is None or (isinstance(value, str) and value.strip() == ""):
         return default
     try:
@@ -26,3 +24,20 @@ def parse_float(value, default=None, min_value=None, max_value=None):
     if max_value is not None and result > max_value:
         return default
     return result
+
+
+def paginate(query, page, per_page=20):
+    total = query.count()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    offset = (page - 1) * per_page
+    items = query.offset(offset).limit(per_page).all()
+    return {
+        "items": items,
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+    }

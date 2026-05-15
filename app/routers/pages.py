@@ -5,7 +5,7 @@ from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
 from app.database import get_db
-from app.models import Question, Record, User, QuestionBank, SUBJECTS, SEMESTERS, Feedback
+from app.models import Question, Record, User, QuestionBank, ClassGroup, ClassMember, SUBJECTS, SEMESTERS, Feedback
 from app.auth import get_current_user, get_current_user_info
 from app.security import validate_csrf_async, sanitize_input
 
@@ -74,6 +74,7 @@ def browse(
     semester: str = "",
     chapter: str = "",
     bank_id: int = 0,
+    access_code_input: str = "",
     db: Annotated[Session, Depends(get_db)] = None,
 ):
     user_id = get_current_user(request)
@@ -94,6 +95,40 @@ def browse(
     questions = []
     banks = []
 
+    teacher_banks = []
+    if logged_in and user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and user.role == "student":
+            all_teacher_banks = db.query(QuestionBank).filter(QuestionBank.created_by != None).order_by(QuestionBank.name).all()
+            student_class_ids = [c.class_id for c in db.query(ClassMember).filter(ClassMember.user_id == user_id).all()]
+            unlocked_bank_ids = request.session.get("unlocked_banks", [])
+            for b in all_teacher_banks:
+                if b.visibility == "public":
+                    q_count = db.query(Question).filter(Question.bank_id == b.id).count()
+                    creator = db.query(User).filter(User.id == b.created_by).first()
+                    teacher_banks.append({"id": b.id, "name": b.name, "subject": b.subject, "visibility": "public", "q_count": q_count, "creator": creator})
+                elif b.visibility == "private":
+                    bank_creator = db.query(User).filter(User.id == b.created_by).first()
+                    if bank_creator:
+                        creator_class_ids = [c.id for c in db.query(ClassGroup).filter(ClassGroup.created_by == bank_creator.id).all()]
+                        if set(student_class_ids) & set(creator_class_ids):
+                            q_count = db.query(Question).filter(Question.bank_id == b.id).count()
+                            teacher_banks.append({"id": b.id, "name": b.name, "subject": b.subject, "visibility": "private", "q_count": q_count, "creator": bank_creator})
+                elif b.visibility == "code":
+                    if b.id in unlocked_bank_ids:
+                        q_count = db.query(Question).filter(Question.bank_id == b.id).count()
+                        creator = db.query(User).filter(User.id == b.created_by).first()
+                        teacher_banks.append({"id": b.id, "name": b.name, "subject": b.subject, "visibility": "code", "q_count": q_count, "creator": creator})
+
+            if access_code_input:
+                matched = db.query(QuestionBank).filter(QuestionBank.visibility == "code", QuestionBank.access_code == access_code_input).first()
+                if matched and matched.id not in unlocked_bank_ids:
+                    unlocked_bank_ids.append(matched.id)
+                    request.session["unlocked_banks"] = unlocked_bank_ids
+                    q_count = db.query(Question).filter(Question.bank_id == matched.id).count()
+                    creator = db.query(User).filter(User.id == matched.created_by).first()
+                    teacher_banks.append({"id": matched.id, "name": matched.name, "subject": matched.subject, "visibility": "code", "q_count": q_count, "creator": creator})
+
     if subject:
         sem_rows = (
             db.query(Question.semester, sa_func.count(Question.id))
@@ -105,7 +140,10 @@ def browse(
             label = sem if sem else "未分类"
             semester_counts[label] = cnt
 
-        bank_list = db.query(QuestionBank).filter(QuestionBank.subject == subject).order_by(QuestionBank.name).all()
+        bank_list = db.query(QuestionBank).filter(
+            QuestionBank.subject == subject,
+            (QuestionBank.visibility == "public") | (QuestionBank.visibility == None) | (QuestionBank.visibility == "")
+        ).order_by(QuestionBank.name).all()
         bank_ids = [b.id for b in bank_list]
         bank_count_rows = (
             db.query(Question.bank_id, sa_func.count(Question.id))
@@ -181,6 +219,8 @@ def browse(
             "semesters": SEMESTERS,
             "banks": banks,
             "bank_id": bank_id,
+            "teacher_banks": teacher_banks,
+            "csrf_token": request.session.get("csrf_token", ""),
         },
     )
 
@@ -251,3 +291,13 @@ async def submit_feedback(request: Request, db: Annotated[Session, Depends(get_d
     db.add(fb)
     db.commit()
     return JSONResponse({"ok": True})
+
+
+@router.post("/browse/unlock-bank")
+async def unlock_bank(request: Request, db: Annotated[Session, Depends(get_db)]):
+    await validate_csrf_async(request)
+    form = await request.form()
+    access_code = sanitize_input(form.get("access_code", "").strip(), max_length=50)
+    if not access_code:
+        return RedirectResponse(url="/browse", status_code=303)
+    return RedirectResponse(url=f"/browse?access_code_input={access_code}", status_code=303)

@@ -8,20 +8,29 @@
         <a href="/teacher/banks/create" class="btn btn-primary">+ 新建题库</a>
     </div>
     {% if banks %}
-    <table class="table">
-        <thead><tr><th>名称</th><th>科目</th><th>学期</th><th>类型</th><th>题目数</th><th>操作</th></tr></thead>
+    <table class="data-table">
+        <thead><tr><th>名称</th><th>科目</th><th>学期</th><th>类型</th><th>可见性</th><th>题目数</th><th>操作</th></tr></thead>
         <tbody>
         {% for b in banks %}
         <tr>
-            <td>{{ b.name }}</td>
+            <td><strong>{{ b.name }}</strong></td>
             <td>{{ b.subject }}</td>
             <td>{{ b.semester or '全部' }}</td>
             <td>{{ '真题' if b.bank_type == 'exam' else '模拟' if b.bank_type == 'mock' else '自定义' }}</td>
+            <td>
+                {% if b.visibility == 'public' or not b.visibility %}
+                    <span class="badge badge-correct">🌍 公开</span>
+                {% elif b.visibility == 'private' %}
+                    <span class="badge badge-subject">🔒 本班</span>
+                {% elif b.visibility == 'code' %}
+                    <span class="badge" style="background:var(--gold-bg);color:var(--gold);">🔑 准入码</span>
+                {% endif %}
+            </td>
             <td>{{ b.q_count }}</td>
             <td>
                 <form action="/teacher/banks/{{ b.id }}/delete" method="POST" style="display:inline;" onsubmit="return confirm('确定删除？题库中的题目不会被删除。')">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                    <button type="submit" class="btn btn-outline btn-sm">删除</button>
                 </form>
             </td>
         </tr>
@@ -29,7 +38,7 @@
         </tbody>
     </table>
     {% else %}
-    <p style="color:var(--text-secondary);">还没有题库，点击上方按钮创建</p>
+    <p style="color:var(--ink-muted);">还没有题库，点击上方按钮创建</p>
     {% endif %}
 </div>
 {% endblock %}

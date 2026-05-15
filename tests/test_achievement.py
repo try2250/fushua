@@ -29,7 +29,7 @@ class TestAchievement:
     def test_profile_today_goal_with_plan(self, client, db_session):
         user = create_test_user(db_session, "achplan", "student")
         q = create_test_question(db_session, subject="数学", created_by=user.id)
-        record = Record(user_id=user.id, question_id=q.id, user_answer="B", is_correct=True)
+        record = Record(user_id=user.id, question_id=q.id, user_answer="B", is_correct=True, created_at=datetime.now())
         db_session.add(record)
         plan = StudyPlan(user_id=user.id, subject="数学", daily_goal=5, active=True)
         db_session.add(plan)

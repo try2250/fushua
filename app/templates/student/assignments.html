@@ -2,6 +2,14 @@
 {% block title %}我的作业 - 付刷{% endblock %}
 {% block content %}
 <h1>我的作业</h1>
+{% if not request.state.current_user or not request.state.current_user.class_id %}
+<div class="card" style="border-left:4px solid #ff9800; background:#fff3e0;">
+    <h3><span style="color:#ff9800;">⚠️</span> 您还没有加入班级</h3>
+    <p class="hint">请联系老师将您添加到班级后才能查看和完成作业。</p>
+    <p>您可以先在<a href="/browse">题库浏览</a>进行自主练习！</p>
+</div>
+{% endif %}
+
 {% if assignments %}
 {% for a in assignments %}
 <div class="card">
@@ -24,7 +32,8 @@
     </div>
 </div>
 {% endfor %}
-{% else %}
+{% include "partials/_pagination.html" %}
+{% elif request.state.current_user and request.state.current_user.class_id %}
 <div class="card"><p class="empty">暂无作业</p></div>
 {% endif %}
 {% endblock %}

@@ -214,6 +214,8 @@ class QuestionBank(Base):
     semester = Column(String(20), default="")
     description = Column(Text, default="")
     bank_type = Column(String(20), default="custom")
+    visibility = Column(String(20), default="public")
+    access_code = Column(String(50), default="")
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, server_default=func.now())
 
@@ -258,6 +260,8 @@ class Assignment(Base):
     class_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
 
+    records = relationship("AssignmentRecord", back_populates="assignment", cascade="all, delete-orphan")
+
 
 class AssignmentRecord(Base):
     __tablename__ = "assignment_records"
@@ -267,6 +271,8 @@ class AssignmentRecord(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
+
+    assignment = relationship("Assignment", back_populates="records")
 
 
 class Feedback(Base):

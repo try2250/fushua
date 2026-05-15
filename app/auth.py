@@ -39,7 +39,7 @@ def require_teacher(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         raise HTTPException(status_code=303, headers={"Location": "/login"})
     user = db.query(User).filter(User.id == user_id).first()
-    if not user or user.role != "teacher":
+    if not user or (user.role != "teacher" and user.role != "admin"):
         raise HTTPException(status_code=403, detail="仅教师可访问")
     return user_id
 

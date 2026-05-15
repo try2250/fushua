@@ -1,0 +1,38 @@
+{% if pagination and pagination.total_pages > 1 %}
+<div class="pagination" style="display:flex;gap:0.5rem;align-items:center;justify-content:center;margin-top:1rem;flex-wrap:wrap;">
+    {% if pagination.has_prev %}
+    <a href="{{ base_url }}page={{ pagination.page - 1 }}{% if query_params %}&{{ query_params }}{% endif %}" class="btn btn-outline btn-sm">上一页</a>
+    {% endif %}
+
+    {% set start_page = [1, pagination.page - 2]|max %}
+    {% set end_page = [pagination.total_pages, pagination.page + 2]|min %}
+
+    {% if start_page > 1 %}
+    <a href="{{ base_url }}page=1{% if query_params %}&{{ query_params }}{% endif %}" class="btn btn-outline btn-sm">1</a>
+    {% if start_page > 2 %}
+    <span style="color:var(--text-secondary);">...</span>
+    {% endif %}
+    {% endif %}
+
+    {% for p in range(start_page, end_page + 1) %}
+        {% if p == pagination.page %}
+        <span class="btn btn-primary btn-sm" style="pointer-events:none;">{{ p }}</span>
+        {% else %}
+        <a href="{{ base_url }}page={{ p }}{% if query_params %}&{{ query_params }}{% endif %}" class="btn btn-outline btn-sm">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if end_page < pagination.total_pages %}
+    {% if end_page < pagination.total_pages - 1 %}
+    <span style="color:var(--text-secondary);">...</span>
+    {% endif %}
+    <a href="{{ base_url }}page={{ pagination.total_pages }}{% if query_params %}&{{ query_params }}{% endif %}" class="btn btn-outline btn-sm">{{ pagination.total_pages }}</a>
+    {% endif %}
+
+    {% if pagination.has_next %}
+    <a href="{{ base_url }}page={{ pagination.page + 1 }}{% if query_params %}&{{ query_params }}{% endif %}" class="btn btn-outline btn-sm">下一页</a>
+    {% endif %}
+
+    <span class="hint" style="margin-left:0.5rem;">共 {{ pagination.total }} 条</span>
+</div>
+{% endif %}

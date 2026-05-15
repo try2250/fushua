@@ -110,14 +110,31 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
 def health_check(request: Request):
+    from app.models import Question, ClassGroup, Assignment
+    checks = {}
+    overall = "ok"
     try:
         from app.database import SessionLocal
         db = SessionLocal()
-        db.query(User).count()
+        user_count = db.query(User).count()
+        question_count = db.query(Question).count()
+        class_count = db.query(ClassGroup).count()
+        assignment_count = db.query(Assignment).count()
         db.close()
-        return {"status": "ok"}
-    except Exception:
-        return {"status": "degraded"}
+        checks["database"] = "ok"
+        checks["user_count"] = user_count
+        checks["question_count"] = question_count
+        checks["class_count"] = class_count
+        checks["assignment_count"] = assignment_count
+    except Exception as e:
+        checks["database"] = f"error: {str(e)[:100]}"
+        overall = "degraded"
+
+    import os
+    checks["version"] = "3.0.0"
+    checks["environment"] = os.environ.get("ENVIRONMENT", "development")
+
+    return {"status": overall, "checks": checks}
 
 app.add_middleware(
     SessionMiddleware,
@@ -226,15 +243,20 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         location = exc.headers.get("Location", "/") if exc.headers else "/"
         return RedirectResponse(url=location, status_code=303)
     error_map = {
-        400: ("请求错误", "您的请求无法被处理"),
-        403: ("访问被拒绝", "您没有权限访问此页面"),
-        404: ("页面未找到", "您访问的页面不存在"),
+        400: ("请求错误", "您的请求无法被处理，请检查输入后重试"),
+        403: ("访问被拒绝", "您没有权限执行此操作"),
+        404: ("页面未找到", "您访问的页面不存在或已被删除"),
         405: ("方法不允许", "该请求方法不被允许"),
-        429: ("请求过于频繁", "请稍后再试"),
+        429: ("请求过于频繁", "操作过于频繁，请稍后再试"),
         500: ("服务器错误", "服务器内部发生错误，请稍后重试"),
     }
-    title, message = error_map.get(exc.status_code, ("出错了", str(exc.detail or "")))
-    if exc.detail and exc.status_code not in (404, 405):
+    title, message = error_map.get(exc.status_code, ("出错了", "发生了未知错误"))
+    safe_details = {
+        "作业不存在", "您不属于该作业班级", "该作业未绑定班级，无法完成",
+        "题目不存在", "题库不存在", "班级不存在",
+        "Invalid class id", "请选择班级",
+    }
+    if exc.detail and exc.detail in safe_details:
         message = exc.detail
     return request.app.state.templates.TemplateResponse(
         "error.html",

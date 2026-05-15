@@ -6,23 +6,57 @@ from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
 from app.database import get_db
-from app.models import Question, Assignment, AssignmentRecord, User, Record, ClassGroup, ClassMember, Notification, QUESTION_TYPES
+from app.models import Question, Assignment, AssignmentRecord, User, Record, ClassGroup, ClassMember, Notification, QUESTION_TYPES, AuditLog
 from app.auth import require_teacher, require_login, require_non_guest, get_current_user
 from app.routers.permissions import teacher_owns_class
 from app.security import validate_csrf_async, sanitize_input
-from app.utils.validation import parse_int
+from app.utils.validation import parse_int, paginate
 
 router = APIRouter()
 
 
 @router.get("/teacher/assignments")
-def teacher_assignments(request: Request, db: Annotated[Session, Depends(get_db)]):
+def teacher_assignments(request: Request, page: str = "1", db: Annotated[Session, Depends(get_db)] = None):
     user_id = require_teacher(request, db)
-    assignments = db.query(Assignment).filter(Assignment.created_by == user_id).order_by(Assignment.created_at.desc()).all()
+    query = db.query(Assignment).filter(Assignment.created_by == user_id).order_by(Assignment.created_at.desc())
+    page_num = parse_int(page, default=1, min_value=1) or 1
+    pagination = paginate(query, page_num, per_page=15)
     return request.app.state.templates.TemplateResponse(
         "teacher/assignments.html",
-        {"request": request, "assignments": assignments},
+        {
+            "request": request,
+            "assignments": pagination["items"],
+            "pagination": pagination,
+            "base_url": "/teacher/assignments?",
+            "query_params": "",
+            "csrf_token": request.session.get("csrf_token", ""),
+        },
     )
+
+
+@router.post("/teacher/assignments/{assignment_id}/delete")
+async def delete_assignment(request: Request, assignment_id: int, db: Annotated[Session, Depends(get_db)]):
+    teacher_id = require_teacher(request, db)
+    await validate_csrf_async(request)
+    from app.routers.permissions import is_admin
+    if is_admin(db, teacher_id):
+        assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    else:
+        assignment = db.query(Assignment).filter(
+            Assignment.id == assignment_id, Assignment.created_by == teacher_id
+        ).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="作业不存在")
+    db.add(AuditLog(
+        actor_id=teacher_id,
+        action="delete_assignment",
+        target_type="assignment",
+        target_id=assignment_id,
+        detail=f"删除作业「{assignment.title}」"
+    ))
+    db.delete(assignment)
+    db.commit()
+    return RedirectResponse(url="/teacher/assignments", status_code=303)
 
 
 @router.get("/assignments/create")
@@ -84,14 +118,21 @@ async def create_assignment(request: Request, db: Annotated[Session, Depends(get
         if not teacher_owns_class(db, user_id, class_id_value):
             raise HTTPException(status_code=403, detail="Class does not belong to current teacher")
 
+    if class_id_value is None:
+        questions = db.query(Question).filter(Question.created_by == user_id).order_by(Question.subject, Question.id).all()
+        classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).order_by(ClassGroup.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/assignment_form.html",
+            {"request": request, "questions": questions, "classes": classes, "error": "请选择班级"},
+        )
+
     assignment = Assignment(
         title=title,
         description=description,
         question_ids=question_ids,
         created_by=user_id,
+        class_id=class_id_value,
     )
-    if class_id_value is not None:
-        assignment.class_id = class_id_value
     if deadline:
         from datetime import datetime
         try:
@@ -100,27 +141,43 @@ async def create_assignment(request: Request, db: Annotated[Session, Depends(get
             pass
 
     db.add(assignment)
+    db.add(AuditLog(
+        actor_id=user_id,
+        action="create_assignment",
+        target_type="assignment",
+        detail=f"创建作业「{title}」，班级ID={class_id_value}，题目数={len(question_id_values)}"
+    ))
     db.commit()
     return RedirectResponse(url="/teacher/assignments", status_code=303)
 
 
 @router.get("/student/assignments")
-def student_assignments(request: Request, db: Annotated[Session, Depends(get_db)]):
+def student_assignments(request: Request, page: str = "1", db: Annotated[Session, Depends(get_db)] = None):
     user_id = require_non_guest(request, db)
     user = db.query(User).filter(User.id == user_id).first()
     if user.class_id:
-        assignments = db.query(Assignment).filter(
+        query = db.query(Assignment).filter(
             Assignment.class_id == user.class_id
-        ).order_by(Assignment.created_at.desc()).all()
+        ).order_by(Assignment.created_at.desc())
     else:
-        assignments = []
+        from sqlalchemy.orm import Query
+        query = db.query(Assignment).filter(Assignment.id == 0)
+    page_num = parse_int(page, default=1, min_value=1) or 1
+    pagination = paginate(query, page_num, per_page=15)
     completed_ids = set()
     records = db.query(AssignmentRecord).filter(AssignmentRecord.user_id == user_id).all()
     for r in records:
         completed_ids.add(r.assignment_id)
     return request.app.state.templates.TemplateResponse(
         "student/assignments.html",
-        {"request": request, "assignments": assignments, "completed_ids": completed_ids},
+        {
+            "request": request,
+            "assignments": pagination["items"],
+            "completed_ids": completed_ids,
+            "pagination": pagination,
+            "base_url": "/student/assignments?",
+            "query_params": "",
+        },
     )
 
 
@@ -131,13 +188,14 @@ async def complete_assignment(assignment_id: int, request: Request, db: Annotate
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(status_code=404, detail="作业不存在")
-    if assignment.class_id:
-        member = db.query(ClassMember).filter(
-            ClassMember.class_id == assignment.class_id,
-            ClassMember.user_id == user_id,
-        ).first()
-        if not member:
-            raise HTTPException(status_code=403, detail="您不属于该作业班级")
+    if not assignment.class_id:
+        raise HTTPException(status_code=403, detail="该作业未绑定班级，无法完成")
+    member = db.query(ClassMember).filter(
+        ClassMember.class_id == assignment.class_id,
+        ClassMember.user_id == user_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="您不属于该作业班级")
     existing = db.query(AssignmentRecord).filter(
         AssignmentRecord.assignment_id == assignment_id,
         AssignmentRecord.user_id == user_id,
@@ -168,10 +226,7 @@ def assignment_detail(assignment_id: int, request: Request, db: Annotated[Sessio
         members = db.query(ClassMember).filter(ClassMember.class_id == assignment.class_id).all()
         student_ids = [m.user_id for m in members]
     else:
-        classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).all()
-        class_ids = [c.id for c in classes]
-        members = db.query(ClassMember).filter(ClassMember.class_id.in_(class_ids)).all() if class_ids else []
-        student_ids = list({m.user_id for m in members})
+        student_ids = []
 
     total_students = len(student_ids)
     completed_count = len(completed_user_ids & set(student_ids))
@@ -258,10 +313,7 @@ async def send_reminder(assignment_id: int, request: Request, db: Annotated[Sess
         members = db.query(ClassMember).filter(ClassMember.class_id == assignment.class_id).all()
         student_ids = [m.user_id for m in members]
     else:
-        classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).all()
-        class_ids = [c.id for c in classes]
-        members = db.query(ClassMember).filter(ClassMember.class_id.in_(class_ids)).all() if class_ids else []
-        student_ids = list({m.user_id for m in members})
+        student_ids = []
 
     total_students = len(student_ids)
     completed_count = len(completed_user_ids & set(student_ids))

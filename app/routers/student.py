@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models import User, Question, Record, QUESTION_TYPES, Favorite, StudyPlan, Notification, SUBJECTS as MODEL_SUBJECTS, SEMESTERS, MasteryRecord, Assignment, AssignmentRecord
 from app.auth import require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, sanitize_input
-from app.utils.validation import parse_int
+from app.utils.validation import parse_int, paginate
 
 router = APIRouter(prefix="/student")
 
@@ -36,7 +36,13 @@ def dashboard(request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_non_guest(request, db)
     today = date.today()
 
-    assignments = db.query(Assignment).order_by(Assignment.created_at.desc()).all()
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.class_id:
+        assignments = db.query(Assignment).filter(
+            Assignment.class_id == user.class_id
+        ).order_by(Assignment.created_at.desc()).all()
+    else:
+        assignments = []
     completed_assignment_ids = set(
         r.assignment_id for r in db.query(AssignmentRecord).filter(AssignmentRecord.user_id == user_id).all()
     )
@@ -118,7 +124,7 @@ def _get_weak_subjects(user_id: int, db: Session) -> list:
     return [w[0] for w in weak]
 
 
-def _smart_select(user_id: int, db: Session, subject: str = "", semester: str = "", chapter: str = "", count: int = 10, mode: str = "smart") -> list:
+def _smart_select(user_id: int, db: Session, subject: str = "", semester: str = "", chapter: str = "", count: int = 10, mode: str = "smart", bank_id: int = 0) -> list:
     query = db.query(Question)
     if subject:
         query = query.filter(Question.subject == subject)
@@ -126,6 +132,8 @@ def _smart_select(user_id: int, db: Session, subject: str = "", semester: str = 
         query = query.filter(Question.semester == semester)
     if chapter:
         query = query.filter(Question.chapter == chapter)
+    if bank_id:
+        query = query.filter(Question.bank_id == bank_id)
 
     all_questions = query.all()
     if not all_questions:
@@ -242,11 +250,12 @@ def practice_page(
     chapter: str = "",
     count: int = 10,
     mode: str = "smart",
+    bank_id: int = 0,
     db: Annotated[Session, Depends(get_db)] = None,
 ):
     user_id = require_non_guest(request, db)
     if mode in ("smart", "adaptive"):
-        smart_result = _smart_select(user_id, db, subject, semester, chapter, count, mode=mode)
+        smart_result = _smart_select(user_id, db, subject, semester, chapter, count, mode=mode, bank_id=bank_id)
         selected = [q for q, _ in smart_result]
     else:
         query = db.query(Question)
@@ -256,6 +265,8 @@ def practice_page(
             query = query.filter(Question.semester == semester)
         if chapter:
             query = query.filter(Question.chapter == chapter)
+        if bank_id:
+            query = query.filter(Question.bank_id == bank_id)
         all_questions = query.all()
         if not all_questions:
             return request.app.state.templates.TemplateResponse(
@@ -772,6 +783,7 @@ def profile(
 @router.get("/records")
 def my_records(
     request: Request,
+    page: str = "1",
     db: Annotated[Session, Depends(get_db)] = None,
 ):
     user_id = require_non_guest(request, db)
@@ -795,13 +807,9 @@ def my_records(
         for s, t, c in by_subject
     ]
 
-    recent = (
-        db.query(Record)
-        .filter(Record.user_id == user_id)
-        .order_by(Record.created_at.desc())
-        .limit(50)
-        .all()
-    )
+    query = db.query(Record).filter(Record.user_id == user_id).order_by(Record.created_at.desc())
+    page_num = parse_int(page, default=1, min_value=1) or 1
+    pagination = paginate(query, page_num, per_page=20)
 
     return request.app.state.templates.TemplateResponse(
         "student/records.html",
@@ -811,8 +819,11 @@ def my_records(
             "correct": correct,
             "accuracy": accuracy,
             "subject_stats": subject_stats,
-            "recent": recent,
+            "recent": pagination["items"],
             "question_types": QUESTION_TYPES,
+            "pagination": pagination,
+            "base_url": "/student/records?",
+            "query_params": "",
         },
     )
 

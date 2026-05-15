@@ -17,9 +17,14 @@
     </div>
     <div style="margin-top:0.5rem;">
         <a href="/teacher/assignments/{{ a.id }}" class="btn btn-outline btn-sm">查看详情</a>
+        <form action="/teacher/assignments/{{ a.id }}/delete" method="post" style="display:inline;" onsubmit="return confirm('确定要删除这份作业吗？这将删除所有相关的完成记录！');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-danger btn-sm">删除</button>
+        </form>
     </div>
 </div>
 {% endfor %}
+{% include "partials/_pagination.html" %}
 {% else %}
 <div class="card"><p class="empty">暂无作业，点击上方按钮布置</p></div>
 {% endif %}

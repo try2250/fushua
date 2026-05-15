@@ -5,7 +5,7 @@ from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
 from app.database import get_db
-from app.models import ClassGroup, ClassMember, User, Record, Question, QUESTION_TYPES
+from app.models import ClassGroup, ClassMember, User, Record, Question, QUESTION_TYPES, AuditLog
 from app.auth import require_teacher
 from app.security import validate_csrf_async, sanitize_input
 
@@ -118,6 +118,14 @@ async def remove_member(class_id: int, member_id: int, request: Request, db: Ann
     member = db.query(ClassMember).filter(ClassMember.class_id == class_id, ClassMember.user_id == member_id).first()
     if member:
         removed_user_id = member.user_id
+        removed_user = db.query(User).filter(User.id == removed_user_id).first()
+        db.add(AuditLog(
+            actor_id=user_id,
+            action="remove_member",
+            target_type="class_member",
+            target_id=member_id,
+            detail=f"从班级「{cls.name}」移出学生「{removed_user.username if removed_user else member_id}」"
+        ))
         db.delete(member)
         user = db.query(User).filter(User.id == removed_user_id).first()
         if user and user.class_id == class_id:
@@ -132,6 +140,13 @@ async def delete_class(class_id: int, request: Request, db: Annotated[Session, D
     await validate_csrf_async(request)
     cls = db.query(ClassGroup).filter(ClassGroup.id == class_id, ClassGroup.created_by == user_id).first()
     if cls:
+        db.add(AuditLog(
+            actor_id=user_id,
+            action="delete_class",
+            target_type="class",
+            target_id=class_id,
+            detail=f"删除班级「{cls.name}」"
+        ))
         db.query(ClassMember).filter(ClassMember.class_id == class_id).delete()
         db.query(User).filter(User.class_id == class_id).update({"class_id": None})
         db.delete(cls)

@@ -34,6 +34,31 @@
             </select>
         </div>
         <div class="form-group">
+            <label>可见性</label>
+            <div style="display:flex;flex-direction:column;gap:0.6rem;margin-top:0.4rem;">
+                <label style="cursor:pointer;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);" class="visibility-option" data-vis="public">
+                    <input type="radio" name="visibility" value="public" {{ 'checked' if not bank or bank.visibility == 'public' else '' }} style="margin-right:0.4rem;">
+                    <strong>🌍 公开</strong>
+                    <div style="color:var(--ink-muted);font-size:0.82rem;margin-top:0.2rem;">所有学生均可看到此题库</div>
+                </label>
+                <label style="cursor:pointer;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);" class="visibility-option" data-vis="private">
+                    <input type="radio" name="visibility" value="private" {{ 'checked' if bank and bank.visibility == 'private' else '' }} style="margin-right:0.4rem;">
+                    <strong>🔒 仅本班学生</strong>
+                    <div style="color:var(--ink-muted);font-size:0.82rem;margin-top:0.2rem;">只有您班级内的学生可以看到</div>
+                </label>
+                <label style="cursor:pointer;padding:0.7rem;border:2px solid var(--ivory-dark);border-radius:var(--radius);transition:var(--transition);" class="visibility-option" data-vis="code">
+                    <input type="radio" name="visibility" value="code" {{ 'checked' if bank and bank.visibility == 'code' else '' }} style="margin-right:0.4rem;">
+                    <strong>🔑 准入码</strong>
+                    <div style="color:var(--ink-muted);font-size:0.82rem;margin-top:0.2rem;">学生需要输入准入码才能看到此题库</div>
+                </label>
+            </div>
+        </div>
+        <div class="form-group" id="accessCodeGroup" style="display:none;">
+            <label for="access_code">准入码 *</label>
+            <input type="text" id="access_code" name="access_code" placeholder="设置一个准入码，如 CLASS2024" value="{{ bank.access_code if bank else '' }}">
+            <small style="color:var(--ink-muted);font-size:0.82rem;">将此码告知学生，学生输入后即可访问题库</small>
+        </div>
+        <div class="form-group">
             <label>描述</label>
             <textarea name="description" rows="3" placeholder="题库说明（可选）">{{ bank.description if bank else '' }}</textarea>
         </div>
@@ -41,4 +66,26 @@
         <a href="/teacher/banks" class="btn btn-outline">取消</a>
     </form>
 </div>
+<script>
+document.querySelectorAll('input[name="visibility"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        var codeGroup = document.getElementById('accessCodeGroup');
+        codeGroup.style.display = this.value === 'code' ? 'block' : 'none';
+        document.querySelectorAll('.visibility-option').forEach(function(opt) {
+            opt.style.borderColor = 'var(--ivory-dark)';
+            opt.style.background = '';
+        });
+        if (this.closest('.visibility-option')) {
+            this.closest('.visibility-option').style.borderColor = 'var(--gold)';
+            this.closest('.visibility-option').style.background = 'var(--gold-bg)';
+        }
+    });
+});
+document.addEventListener('DOMContentLoaded', function() {
+    var checked = document.querySelector('input[name="visibility"]:checked');
+    if (checked) {
+        checked.dispatchEvent(new Event('change'));
+    }
+});
+</script>
 {% endblock %}

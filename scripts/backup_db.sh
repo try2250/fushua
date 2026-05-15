@@ -1,0 +1,37 @@
+#!/bin/bash
+set -euo pipefail
+
+BACKUP_DIR="${BACKUP_DIR:-./backups}"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="${BACKUP_DIR}/fushua_${TIMESTAMP}"
+
+mkdir -p "${BACKUP_DIR}"
+
+if [ -n "${DATABASE_URL:-}" ] && echo "${DATABASE_URL}" | grep -q "postgresql"; then
+    echo "[备份] 检测到 PostgreSQL 数据库"
+    PGHOST=$(echo "${DATABASE_URL}" | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
+    PGPORT=$(echo "${DATABASE_URL}" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+    PGUSER=$(echo "${DATABASE_URL}" | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
+    PGDB=$(echo "${DATABASE_URL}" | sed -n 's/.*\/\([^?]*\).*/\1/p')
+    PGPASSWORD=$(echo "${DATABASE_URL}" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')
+
+    BACKUP_FILE="${BACKUP_FILE}.sql.gz"
+    echo "[备份] 导出 PostgreSQL → ${BACKUP_FILE}"
+    PGPASSWORD="${PGPASSWORD}" pg_dump -h "${PGHOST}" -p "${PGPORT:-5432}" -U "${PGUSER}" "${PGDB}" | gzip > "${BACKUP_FILE}"
+    echo "[备份] 完成！文件大小: $(du -h "${BACKUP_FILE}" | cut -f1)"
+else
+    DB_FILE="${DB_FILE:-./fushua.db}"
+    if [ ! -f "${DB_FILE}" ]; then
+        echo "[错误] SQLite 数据库文件不存在: ${DB_FILE}"
+        exit 1
+    fi
+    BACKUP_FILE="${BACKUP_FILE}.db"
+    echo "[备份] 复制 SQLite → ${BACKUP_FILE}"
+    sqlite3 "${DB_FILE}" ".backup '${BACKUP_FILE}'"
+    echo "[备份] 完成！文件大小: $(du -h "${BACKUP_FILE}" | cut -f1)"
+fi
+
+KEEP_DAYS="${KEEP_DAYS:-30}"
+echo "[清理] 删除 ${KEEP_DAYS} 天前的备份..."
+find "${BACKUP_DIR}" -name "fushua_*" -mtime +${KEEP_DAYS} -delete 2>/dev/null || true
+echo "[清理] 完成"

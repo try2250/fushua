@@ -85,7 +85,7 @@
 
 {% for c in class_data %}
 <div class="card" style="margin-bottom:1rem;">
-    <h2>{{ c.name }} ({{ c.members|length }}人)</h2>
+    <h2>{{ c.name }} ({{ c.total_members }}人)</h2>
     {% if c.members %}
     <table class="table">
         <thead><tr><th>用户名</th><th>昵称</th><th>做题数</th><th>正确率</th><th>状态</th></tr></thead>
@@ -101,6 +101,9 @@
         {% endfor %}
         </tbody>
     </table>
+    {% if c.has_more %}
+    <p style="text-align:center;margin-top:0.5rem;"><a href="/teacher/classes/{{ c.id }}/stats" class="btn btn-outline btn-sm">查看全部 {{ c.total_members }} 名学生</a></p>
+    {% endif %}
     {% else %}
     <p style="color:var(--text-secondary);">暂无学生</p>
     {% endif %}

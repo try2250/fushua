@@ -1,16 +1,20 @@
 from tests.conftest import create_test_user, create_test_question, register_and_login, get_csrf_token
-from app.models import Assignment
+from app.models import Assignment, ClassGroup, ClassMember
 
 
 class TestAssignment:
     def test_teacher_create_assignment(self, client, db_session):
         teacher = create_test_user(db_session, "assteacher", "teacher")
         q = create_test_question(db_session, created_by=teacher.id)
+        cls = ClassGroup(name="作业测试班", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
         register_and_login(client, "assteacher", "teacher")
         csrf = get_csrf_token(client)
         response = client.post("/assignments/create", data={
             "title": "第一次作业", "description": "完成以下题目",
             "question_ids": str(q.id), "deadline": "2026-06-01",
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         assert response.status_code == 303
@@ -21,10 +25,14 @@ class TestAssignment:
     def test_teacher_see_assignments(self, client, db_session):
         teacher = create_test_user(db_session, "assteacher2", "teacher")
         q = create_test_question(db_session, created_by=teacher.id)
+        cls = ClassGroup(name="作业查看班", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
         register_and_login(client, "assteacher2", "teacher")
         csrf = get_csrf_token(client)
         client.post("/assignments/create", data={
             "title": "作业1", "question_ids": str(q.id), "deadline": "2026-06-01",
+            "class_id": str(cls.id),
             "_csrf_token": csrf,
         })
         response = client.get("/teacher/assignments", follow_redirects=True)
@@ -32,7 +40,6 @@ class TestAssignment:
         assert "作业1" in response.text
 
     def test_student_see_assignments(self, client, db_session):
-        from app.models import ClassGroup, ClassMember
         teacher = create_test_user(db_session, "assteacher3", "teacher")
         student = create_test_user(db_session, "assstudent", "student")
         q = create_test_question(db_session, created_by=teacher.id)

@@ -1,5 +1,5 @@
 from tests.conftest import create_test_user, register_and_login, get_csrf_token, create_test_question
-from app.models import Record, Assignment, AssignmentRecord, StudyPlan
+from app.models import Record, Assignment, AssignmentRecord, StudyPlan, ClassGroup, ClassMember
 
 
 class TestDashboard:
@@ -16,14 +16,24 @@ class TestDashboard:
 
     def test_dashboard_shows_pending_assignments(self, client, db_session):
         user = create_test_user(db_session, "dashassign", "student")
+        teacher = create_test_user(db_session, "dashteacher", "teacher")
+        cls = ClassGroup(name="测试班级", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        user.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=user.id))
+        db_session.commit()
+        
         assignment = Assignment(
             title="数学作业",
             description="完成第三章",
             question_ids="1,2,3",
-            created_by=user.id,
+            created_by=teacher.id,
+            class_id=cls.id
         )
         db_session.add(assignment)
         db_session.commit()
+        
         register_and_login(client, "dashassign", "student")
         response = client.get("/student/dashboard", follow_redirects=True)
         assert response.status_code == 200
@@ -32,14 +42,24 @@ class TestDashboard:
 
     def test_dashboard_hides_completed_assignments(self, client, db_session):
         user = create_test_user(db_session, "dashcomp", "student")
+        teacher = create_test_user(db_session, "dashteacher2", "teacher")
+        cls = ClassGroup(name="测试班级2", created_by=teacher.id)
+        db_session.add(cls)
+        db_session.commit()
+        user.class_id = cls.id
+        db_session.add(ClassMember(class_id=cls.id, user_id=user.id))
+        db_session.commit()
+        
         assignment = Assignment(
             title="已完成作业",
             description="",
             question_ids="1",
-            created_by=user.id,
+            created_by=teacher.id,
+            class_id=cls.id
         )
         db_session.add(assignment)
         db_session.commit()
+        
         ar = AssignmentRecord(
             assignment_id=assignment.id,
             user_id=user.id,
@@ -47,6 +67,7 @@ class TestDashboard:
         )
         db_session.add(ar)
         db_session.commit()
+        
         register_and_login(client, "dashcomp", "student")
         response = client.get("/student/dashboard", follow_redirects=True)
         assert response.status_code == 200

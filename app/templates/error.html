@@ -5,6 +5,17 @@
     <h1 style="font-size:4rem;margin-bottom:0.5rem;">{{ error_code }}</h1>
     <h2>{{ error_title }}</h2>
     <p style="color:var(--text-secondary);margin:1rem 0;">{{ error_message }}</p>
-    <a href="/" class="btn btn-primary">返回首页</a>
+    <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+        <a href="javascript:history.back()" class="btn btn-outline">返回上一页</a>
+        {% if logged_in %}
+            {% if role == "teacher" or role == "admin" %}
+            <a href="/teacher/questions" class="btn btn-primary">题目管理</a>
+            {% else %}
+            <a href="/student/dashboard" class="btn btn-primary">学习主页</a>
+            {% endif %}
+        {% else %}
+        <a href="/" class="btn btn-primary">返回首页</a>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
