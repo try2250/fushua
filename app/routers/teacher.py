@@ -1465,7 +1465,25 @@ def student_management(request: Request, db: Annotated[Session, Depends(get_db)]
             "has_more": len(all_members) > MEMBERS_PER_CLASS,
         })
 
-    guests = db.query(User).filter(User.role == "student", User.is_guest == True).all()
+    # Get guest students - filter by pending join requests to teacher's classes
+    if is_admin(db, user_id):
+        # Admin can see all guest students
+        guests = db.query(User).filter(User.role == "student", User.is_guest == True).all()
+    else:
+        # Regular teacher: only guests who have pending requests to their classes
+        if class_ids:
+            guest_user_ids = [
+                jr.user_id for jr in db.query(ClassJoinRequest)
+                .filter(ClassJoinRequest.class_id.in_(class_ids), ClassJoinRequest.status == "pending")
+                .all()
+            ]
+            guests = db.query(User).filter(
+                User.id.in_(guest_user_ids),
+                User.role == "student",
+                User.is_guest == True
+            ).all() if guest_user_ids else []
+        else:
+            guests = []
     guest_data = [
         {"id": g.id, "username": g.username, "display_name": g.display_name, "guest_expires_at": g.guest_expires_at}
         for g in guests
