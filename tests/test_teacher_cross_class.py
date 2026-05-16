@@ -271,3 +271,125 @@ def test_admin_sees_all_students_in_stats_page(client, db_session):
     assert response.status_code == 200
     html_content = response.text
     assert "student_stats_admin" in html_content or student.display_name in html_content
+
+
+def test_teacher_only_sees_own_class_guest_students(client, db_session):
+    """Teacher A should not see guest students who applied to Teacher B's classes"""
+    from datetime import datetime, timedelta
+    from app.models import ClassJoinRequest
+
+    # Setup: Two teachers with separate classes
+    teacher_a = create_test_user(db_session, "teacher_a_guests", role="teacher")
+    teacher_b = create_test_user(db_session, "teacher_b_guests", role="teacher")
+
+    # Teacher A's class
+    class_a = ClassGroup(name="Class A Guests", created_by=teacher_a.id)
+    db_session.add(class_a)
+    db_session.commit()
+    db_session.refresh(class_a)
+
+    # Teacher B's class
+    class_b = ClassGroup(name="Class B Guests", created_by=teacher_b.id)
+    db_session.add(class_b)
+    db_session.commit()
+    db_session.refresh(class_b)
+
+    # Guest student who applied to Teacher A's class
+    guest_a = create_test_user(db_session, "guest_a", role="student")
+    guest_a.is_guest = True
+    guest_a.guest_expires_at = datetime.now() + timedelta(days=7)
+    db_session.commit()
+
+    # Create join request for Teacher A's class
+    join_req_a = ClassJoinRequest(
+        user_id=guest_a.id,
+        class_id=class_a.id,
+        display_name="Guest A",
+        status="pending"
+    )
+    db_session.add(join_req_a)
+
+    # Guest student who applied to Teacher B's class
+    guest_b = create_test_user(db_session, "guest_b", role="student")
+    guest_b.is_guest = True
+    guest_b.guest_expires_at = datetime.now() + timedelta(days=7)
+    db_session.commit()
+
+    # Create join request for Teacher B's class
+    join_req_b = ClassJoinRequest(
+        user_id=guest_b.id,
+        class_id=class_b.id,
+        display_name="Guest B",
+        status="pending"
+    )
+    db_session.add(join_req_b)
+    db_session.commit()
+
+    # Test: Teacher A views student management page
+    login_as(client, "teacher_a_guests", "abc12345")
+    response = client.get("/teacher/students")
+
+    # Verify: Response should be successful
+    assert response.status_code == 200
+    html_content = response.text
+
+    # Verify: Should show guest_a but NOT guest_b
+    assert "guest_a" in html_content or "Guest A" in html_content
+    assert "guest_b" not in html_content
+    assert "Guest B" not in html_content
+
+
+def test_admin_sees_all_guest_students(client, db_session):
+    """Admin should see all guest students regardless of which class they applied to"""
+    from datetime import datetime, timedelta
+    from app.models import ClassJoinRequest
+
+    admin = create_test_user(db_session, "admin_guests", role="admin")
+    teacher = create_test_user(db_session, "teacher_guests_admin", role="teacher")
+
+    # Teacher's class
+    class_group = ClassGroup(name="Teacher Guests Class", created_by=teacher.id)
+    db_session.add(class_group)
+    db_session.commit()
+    db_session.refresh(class_group)
+
+    # Guest student
+    guest = create_test_user(db_session, "guest_admin", role="student")
+    guest.is_guest = True
+    guest.guest_expires_at = datetime.now() + timedelta(days=7)
+    db_session.commit()
+
+    # Create join request
+    join_req = ClassJoinRequest(
+        user_id=guest.id,
+        class_id=class_group.id,
+        display_name="Guest Admin",
+        status="pending"
+    )
+    db_session.add(join_req)
+    db_session.commit()
+
+    # Admin views student management
+    login_as(client, "admin_guests", "abc12345")
+    response = client.get("/teacher/students")
+
+    assert response.status_code == 200
+    html_content = response.text
+    assert "guest_admin" in html_content or "Guest Admin" in html_content
+
+
+def test_teacher_sees_no_guests_when_no_pending_requests(client, db_session):
+    """Teacher with no pending guest requests should see empty guest list"""
+    teacher = create_test_user(db_session, "teacher_no_guests", role="teacher")
+
+    # Create a class but no guest requests
+    class_group = ClassGroup(name="No Guests Class", created_by=teacher.id)
+    db_session.add(class_group)
+    db_session.commit()
+
+    # Test: Teacher views student management page
+    login_as(client, "teacher_no_guests", "abc12345")
+    response = client.get("/teacher/students")
+
+    assert response.status_code == 200
+    # Should not error, just show empty guest list
