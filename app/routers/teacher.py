@@ -16,7 +16,7 @@ import openpyxl
 from app.database import get_db
 from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES, AuditLog
 from app.auth import require_teacher, require_admin_role, get_current_user
-from app.routers.permissions import teacher_owns_bank, teacher_owns_student
+from app.routers.permissions import is_admin, teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int, paginate
 
@@ -1169,7 +1169,15 @@ def export_stats_pdf(request: Request, db: Annotated[Session, Depends(get_db)]):
     correct_records = db.query(Record).filter(Record.question_id.in_(question_ids), Record.is_correct == True).count() if question_ids else 0
     accuracy = round(correct_records / total_records * 100, 1) if total_records > 0 else 0
 
-    students = db.query(User).filter(User.role == "student").all()
+    if is_admin(db, user_id):
+        students = db.query(User).filter(User.role == "student").all()
+    else:
+        teacher_class_ids = [c.id for c in db.query(ClassGroup).filter(ClassGroup.created_by == user_id).all()]
+        if teacher_class_ids:
+            student_ids = [m.user_id for m in db.query(ClassMember).filter(ClassMember.class_id.in_(teacher_class_ids)).all()]
+            students = db.query(User).filter(User.id.in_(student_ids), User.role == "student").all() if student_ids else []
+        else:
+            students = []
     student_stats = []
     for s in students:
         s_total = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(question_ids)).count() if question_ids else 0

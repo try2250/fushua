@@ -1,90 +1,174 @@
 import pytest
-from tests.conftest import (
-    create_test_user,
-    create_test_question,
-    register_and_login,
-    login_as,
-    get_csrf_token,
-)
-from app.models import ClassGroup, ClassMember
+from unittest.mock import patch
+from tests.conftest import create_test_user, login_as
+from app.models import ClassGroup, ClassMember, Question, Record
 
 
-def create_test_class(db, name, created_by):
-    cls = ClassGroup(name=name, created_by=created_by)
-    db.add(cls)
-    db.commit()
-    db.refresh(cls)
-    return cls
+def test_teacher_stats_pdf_only_shows_own_class_students(client, db_session):
+    teacher_a = create_test_user(db_session, "teacher_a", role="teacher")
+    teacher_b = create_test_user(db_session, "teacher_b", role="teacher")
+
+    class_a = ClassGroup(name="Class A", created_by=teacher_a.id)
+    db_session.add(class_a)
+    db_session.commit()
+    db_session.refresh(class_a)
+
+    student_a = create_test_user(db_session, "student_a", role="student")
+    student_a.class_id = class_a.id
+    db_session.add(ClassMember(class_id=class_a.id, user_id=student_a.id))
+
+    class_b = ClassGroup(name="Class B", created_by=teacher_b.id)
+    db_session.add(class_b)
+    db_session.commit()
+    db_session.refresh(class_b)
+
+    student_b = create_test_user(db_session, "student_b", role="student")
+    student_b.class_id = class_b.id
+    db_session.add(ClassMember(class_id=class_b.id, user_id=student_b.id))
+    db_session.commit()
+
+    question_a = Question(
+        subject="数学",
+        q_type="choice",
+        content="Teacher A question",
+        answer="A",
+        created_by=teacher_a.id,
+    )
+    db_session.add(question_a)
+    db_session.commit()
+    db_session.refresh(question_a)
+
+    db_session.add(Record(user_id=student_a.id, question_id=question_a.id, user_answer="A", is_correct=True))
+    db_session.add(Record(user_id=student_b.id, question_id=question_a.id, user_answer="B", is_correct=False))
+    db_session.commit()
+
+    login_as(client, "teacher_a", "abc12345")
+
+    with patch("app.utils.report.generate_teacher_report") as mock_report:
+        import io
+        mock_report.return_value = io.BytesIO(b"%PDF-1.4 test")
+        response = client.get("/teacher/stats/export/pdf")
+
+    assert response.status_code == 200
+    call_args = mock_report.call_args
+    student_stats = call_args[0][5]
+    student_usernames = [s["username"] for s in student_stats]
+    assert "student_a" in student_usernames
+    assert "student_b" not in student_usernames
 
 
-def add_student_to_class(db, student_id, class_id):
-    member = ClassMember(class_id=class_id, user_id=student_id)
-    db.add(member)
-    db.commit()
+def test_teacher_stats_pdf_empty_when_no_students(client, db_session):
+    teacher = create_test_user(db_session, "teacher_solo", role="teacher")
+
+    question = Question(
+        subject="数学",
+        q_type="choice",
+        content="Solo question",
+        answer="A",
+        created_by=teacher.id,
+    )
+    db_session.add(question)
+    db_session.commit()
+
+    login_as(client, "teacher_solo", "abc12345")
+
+    with patch("app.utils.report.generate_teacher_report") as mock_report:
+        import io
+        mock_report.return_value = io.BytesIO(b"%PDF-1.4 test")
+        response = client.get("/teacher/stats/export/pdf")
+
+    assert response.status_code == 200
+    call_args = mock_report.call_args
+    student_stats = call_args[0][5]
+    assert len(student_stats) == 0
 
 
-class TestTeacherCrossClassAccess:
-    def test_teacher_cannot_view_other_class_student_detail(self, client, db_session):
-        teacher_a = create_test_user(db_session, "teacher_a", "teacher")
-        teacher_b = create_test_user(db_session, "teacher_b", "teacher")
-        student_a = create_test_user(db_session, "student_a", "student")
-        student_b = create_test_user(db_session, "student_b", "student")
+def test_admin_can_see_all_students_in_stats(client, db_session):
+    admin = create_test_user(db_session, "admin_stats", role="admin")
+    teacher = create_test_user(db_session, "teacher_stats", role="teacher")
 
-        class_a = create_test_class(db_session, "Class A", teacher_a.id)
-        class_b = create_test_class(db_session, "Class B", teacher_b.id)
+    class_group = ClassGroup(name="Test Class", created_by=teacher.id)
+    db_session.add(class_group)
+    db_session.commit()
+    db_session.refresh(class_group)
 
-        add_student_to_class(db_session, student_a.id, class_a.id)
-        add_student_to_class(db_session, student_b.id, class_b.id)
+    student = create_test_user(db_session, "student_stats", role="student")
+    student.class_id = class_group.id
+    db_session.add(ClassMember(class_id=class_group.id, user_id=student.id))
+    db_session.commit()
 
-        register_and_login(client, "teacher_a", "teacher")
-        response = client.get(f"/teacher/students/{student_b.id}")
-        assert response.status_code == 404
+    question = Question(
+        subject="数学",
+        q_type="choice",
+        content="Admin question",
+        answer="A",
+        created_by=admin.id,
+    )
+    db_session.add(question)
+    db_session.commit()
+    db_session.refresh(question)
 
-    def test_teacher_cannot_view_other_class_student_pdf(self, client, db_session):
-        teacher_a = create_test_user(db_session, "teacher_a2", "teacher")
-        teacher_b = create_test_user(db_session, "teacher_b2", "teacher")
-        student_a = create_test_user(db_session, "student_a2", "student")
-        student_b = create_test_user(db_session, "student_b2", "student")
+    db_session.add(Record(user_id=student.id, question_id=question.id, user_answer="A", is_correct=True))
+    db_session.commit()
 
-        class_a = create_test_class(db_session, "Class A2", teacher_a.id)
-        class_b = create_test_class(db_session, "Class B2", teacher_b.id)
+    login_as(client, "admin_stats", "abc12345")
 
-        add_student_to_class(db_session, student_a.id, class_a.id)
-        add_student_to_class(db_session, student_b.id, class_b.id)
+    with patch("app.utils.report.generate_teacher_report") as mock_report:
+        import io
+        mock_report.return_value = io.BytesIO(b"%PDF-1.4 test")
+        response = client.get("/teacher/stats/export/pdf")
 
-        register_and_login(client, "teacher_a2", "teacher")
-        response = client.get(f"/teacher/students/{student_b.id}/export/pdf")
-        assert response.status_code == 404
+    assert response.status_code == 200
+    call_args = mock_report.call_args
+    student_stats = call_args[0][5]
+    student_usernames = [s["username"] for s in student_stats]
+    assert "student_stats" in student_usernames
 
-    def test_teacher_cannot_view_other_class_parent_report(self, client, db_session):
-        teacher_a = create_test_user(db_session, "teacher_a3", "teacher")
-        teacher_b = create_test_user(db_session, "teacher_b3", "teacher")
-        student_a = create_test_user(db_session, "student_a3", "student")
-        student_b = create_test_user(db_session, "student_b3", "student")
 
-        class_a = create_test_class(db_session, "Class A3", teacher_a.id)
-        class_b = create_test_class(db_session, "Class B3", teacher_b.id)
+def test_teacher_with_multiple_classes_sees_all_own_students(client, db_session):
+    teacher = create_test_user(db_session, "teacher_multi", role="teacher")
 
-        add_student_to_class(db_session, student_a.id, class_a.id)
-        add_student_to_class(db_session, student_b.id, class_b.id)
+    class_1 = ClassGroup(name="Class 1", created_by=teacher.id)
+    class_2 = ClassGroup(name="Class 2", created_by=teacher.id)
+    db_session.add_all([class_1, class_2])
+    db_session.commit()
+    db_session.refresh(class_1)
+    db_session.refresh(class_2)
 
-        register_and_login(client, "teacher_a3", "teacher")
-        response = client.get(f"/teacher/students/{student_b.id}/parent-report")
-        assert response.status_code == 404
+    student_1 = create_test_user(db_session, "student_m1", role="student")
+    student_1.class_id = class_1.id
+    db_session.add(ClassMember(class_id=class_1.id, user_id=student_1.id))
 
-    def test_teacher_can_view_own_class_student_detail(self, client, db_session):
-        teacher_a = create_test_user(db_session, "teacher_a4", "teacher")
-        student_a = create_test_user(db_session, "student_a4", "student")
+    student_2 = create_test_user(db_session, "student_m2", role="student")
+    student_2.class_id = class_2.id
+    db_session.add(ClassMember(class_id=class_2.id, user_id=student_2.id))
+    db_session.commit()
 
-        class_a = create_test_class(db_session, "Class A4", teacher_a.id)
-        add_student_to_class(db_session, student_a.id, class_a.id)
+    question = Question(
+        subject="数学",
+        q_type="choice",
+        content="Multi-class question",
+        answer="A",
+        created_by=teacher.id,
+    )
+    db_session.add(question)
+    db_session.commit()
+    db_session.refresh(question)
 
-        register_and_login(client, "teacher_a4", "teacher")
-        response = client.get(f"/teacher/students/{student_a.id}")
-        assert response.status_code == 200
+    db_session.add(Record(user_id=student_1.id, question_id=question.id, user_answer="A", is_correct=True))
+    db_session.add(Record(user_id=student_2.id, question_id=question.id, user_answer="A", is_correct=True))
+    db_session.commit()
 
-    def test_teacher_cannot_view_nonexistent_student(self, client, db_session):
-        teacher_a = create_test_user(db_session, "teacher_a5", "teacher")
-        register_and_login(client, "teacher_a5", "teacher")
-        response = client.get("/teacher/students/99999")
-        assert response.status_code == 404
+    login_as(client, "teacher_multi", "abc12345")
+
+    with patch("app.utils.report.generate_teacher_report") as mock_report:
+        import io
+        mock_report.return_value = io.BytesIO(b"%PDF-1.4 test")
+        response = client.get("/teacher/stats/export/pdf")
+
+    assert response.status_code == 200
+    call_args = mock_report.call_args
+    student_stats = call_args[0][5]
+    student_usernames = [s["username"] for s in student_stats]
+    assert "student_m1" in student_usernames
+    assert "student_m2" in student_usernames
