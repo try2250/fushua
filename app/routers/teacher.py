@@ -1025,19 +1025,49 @@ def teacher_stats(request: Request, db: Annotated[Session, Depends(get_db)]):
         .all()
     )
 
-    student_records = (
-        db.query(
-            User.id,
-            User.username,
-            User.display_name,
-            sa_func.count(Record.id).label("total"),
-            sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
-        )
-        .join(Record, Record.user_id == User.id)
-        .filter(Record.question_id.in_(question_ids), User.role == "student")
-        .group_by(User.id)
-        .all()
-    ) if question_ids else []
+    # Get student stats - filter by class membership for regular teachers
+    if question_ids:
+        if is_admin(db, user_id):
+            # Admin can see all students
+            student_records = (
+                db.query(
+                    User.id,
+                    User.username,
+                    User.display_name,
+                    sa_func.count(Record.id).label("total"),
+                    sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+                )
+                .join(Record, Record.user_id == User.id)
+                .filter(Record.question_id.in_(question_ids), User.role == "student")
+                .group_by(User.id)
+                .all()
+            )
+        else:
+            # Regular teacher: only students from their classes
+            teacher_class_ids = [c.id for c in db.query(ClassGroup).filter(ClassGroup.created_by == user_id).all()]
+            if teacher_class_ids:
+                student_ids_in_classes = [m.user_id for m in db.query(ClassMember).filter(ClassMember.class_id.in_(teacher_class_ids)).all()]
+                student_records = (
+                    db.query(
+                        User.id,
+                        User.username,
+                        User.display_name,
+                        sa_func.count(Record.id).label("total"),
+                        sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct"),
+                    )
+                    .join(Record, Record.user_id == User.id)
+                    .filter(
+                        Record.question_id.in_(question_ids),
+                        User.role == "student",
+                        User.id.in_(student_ids_in_classes)
+                    )
+                    .group_by(User.id)
+                    .all()
+                )
+            else:
+                student_records = []
+    else:
+        student_records = []
     student_stats = [
         {
             "id": s.id,
