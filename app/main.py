@@ -141,6 +141,7 @@ app.add_middleware(
     secret_key=SECRET_KEY,
     same_site="lax",
     https_only=HTTPS_ONLY,
+    max_age=86400 * 7,  # 7天会话有效期
 )
 
 

@@ -25,7 +25,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: sqlite:///./test_ci.db
-        ENVIRONMENT: test
+          ENVIRONMENT: test
         run: |
           python -m pytest tests/ -v --tb=short -q
 

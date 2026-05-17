@@ -19,15 +19,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # 扩大 q_type 字段长度从 10 到 50
-    op.alter_column('questions', 'q_type',
-                    existing_type=sa.String(length=10),
-                    type_=sa.String(length=50),
-                    existing_nullable=False)
+    with op.batch_alter_table('questions', schema=None) as batch_op:
+        batch_op.alter_column('q_type',
+                              existing_type=sa.String(length=10),
+                              type_=sa.String(length=50),
+                              existing_nullable=False)
 
 
 def downgrade() -> None:
     # 恢复 q_type 字段长度到 10
-    op.alter_column('questions', 'q_type',
-                    existing_type=sa.String(length=50),
-                    type_=sa.String(length=10),
-                    existing_nullable=False)
+    with op.batch_alter_table('questions', schema=None) as batch_op:
+        batch_op.alter_column('q_type',
+                              existing_type=sa.String(length=50),
+                              type_=sa.String(length=10),
+                              existing_nullable=False)

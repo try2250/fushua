@@ -80,8 +80,18 @@ async def validate_csrf_async(request: Request) -> None:
         raise HTTPException(status_code=403, detail="缺少 CSRF token")
     if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
         return
-    form = await request.form()
-    form_token = form.get("_csrf_token", "")
+    form_token = ""
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            payload = await request.json()
+            if isinstance(payload, dict):
+                form_token = payload.get("_csrf_token", "")
+        except Exception:
+            form_token = ""
+    else:
+        form = await request.form()
+        form_token = form.get("_csrf_token", "")
     if not form_token or form_token != token:
         raise HTTPException(status_code=403, detail="CSRF 校验失败")
 
