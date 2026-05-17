@@ -84,7 +84,7 @@ class Question(Base):
     semester = Column(String(20), default="")
     chapter = Column(String(100), default="")
     difficulty = Column(Integer, default=1)
-    q_type = Column(String(10), nullable=False, default="choice")
+    q_type = Column(String(50), nullable=False, default="choice")
     content = Column(Text, nullable=False)
     option_a = Column(String(500), default="")
     option_b = Column(String(500), default="")
