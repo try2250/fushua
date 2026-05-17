@@ -29,11 +29,11 @@ _pending_imports = {}
 
 
 def _cleanup_expired_imports():
-    """清理超过30分钟的过期导入预览"""
+    """清理超过2小时的过期导入预览"""
     now = time.time()
     expired_tokens = [
         token for token, data in _pending_imports.items()
-        if now - data.get("created_at", 0) > 1800  # 30分钟
+        if now - data.get("created_at", 0) > 7200  # 2小时
     ]
     for token in expired_tokens:
         _pending_imports.pop(token, None)
@@ -718,7 +718,7 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
             "teacher/import.html",
             {
                 "request": request,
-                "error": "导入会话已过期，请重新上传文件",
+                "error": "导入会话已过期（超过2小时或服务器重启），请重新上传文件并尽快确认导入",
                 "success": None,
                 "question_types": QUESTION_TYPES,
                 "custom_fields": custom_fields,
