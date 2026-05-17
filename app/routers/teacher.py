@@ -713,15 +713,22 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
 
     rows = pending["rows"]
     bank_id = pending["bank_id"]
-    count = 0
-    batch_size = 50
+
+    # 使用 bulk_insert_mappings 进行批量插入（更快）
+    question_mappings = []
     for row in rows:
         item = {k: v for k, v in row.items() if k != "_row_num"}
-        q = _build_question_from_dict(item, user_id, bank_id=bank_id)
-        db.add(q)
-        count += 1
-        if count > 0 and count % batch_size == 0:
-            db.commit()
+        q_dict = _build_question_dict(item, user_id, bank_id=bank_id)
+        question_mappings.append(q_dict)
+
+    # 批量插入，每次 100 条
+    batch_size = 100
+    for i in range(0, len(question_mappings), batch_size):
+        batch = question_mappings[i:i + batch_size]
+        db.bulk_insert_mappings(Question, batch)
+        db.flush()  # 刷新但不提交
+
+    count = len(question_mappings)
     db.add(AuditLog(
         actor_id=user_id,
         action="import_questions",
@@ -773,6 +780,36 @@ def _build_question_from_dict(item: dict, user_id: int, bank_id: int = None) -> 
         created_by=user_id,
     )
     return q
+
+
+def _build_question_dict(item: dict, user_id: int, bank_id: int = None) -> dict:
+    """构建题目字典（用于 bulk_insert_mappings）"""
+    builtin_data = {}
+    extra_data = {}
+    all_builtin = set(BUILTIN_FIELDS)
+    for k, v in item.items():
+        if k in all_builtin:
+            builtin_data[k] = v
+        else:
+            extra_data[k] = v
+
+    return {
+        "subject": builtin_data.get("subject", ""),
+        "semester": builtin_data.get("semester", ""),
+        "chapter": builtin_data.get("chapter", ""),
+        "difficulty": parse_int(builtin_data.get("difficulty"), default=2, min_value=1, max_value=5) or 2,
+        "q_type": builtin_data.get("q_type", "choice"),
+        "content": builtin_data.get("content", ""),
+        "option_a": builtin_data.get("option_a", ""),
+        "option_b": builtin_data.get("option_b", ""),
+        "option_c": builtin_data.get("option_c", ""),
+        "option_d": builtin_data.get("option_d", ""),
+        "answer": builtin_data.get("answer", ""),
+        "explanation": builtin_data.get("explanation", ""),
+        "extra_data": json.dumps(extra_data, ensure_ascii=False) if extra_data else "{}",
+        "bank_id": bank_id,
+        "created_by": user_id,
+    }
 
 
 def _import_json(content_bytes: bytes, user_id: int, db: Session, bank_id: int = None) -> int:
