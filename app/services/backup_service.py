@@ -29,6 +29,29 @@ class BackupService:
         Returns:
             包含备份结果的字典
         """
+        # 检查是否有正在运行的备份
+        running_backups = self.db.query(BackupLog).filter(
+            BackupLog.status == "running"
+        ).count()
+
+        if running_backups > 0:
+            raise ValueError("已有备份任务正在运行，请稍后再试")
+
+        # 清理僵尸状态（超过2小时的 running 状态）
+        stale_threshold = datetime.utcnow() - timedelta(hours=2)
+        stale_backups = self.db.query(BackupLog).filter(
+            BackupLog.status == "running",
+            BackupLog.created_at < stale_threshold
+        ).all()
+
+        for backup in stale_backups:
+            backup.status = "failed"
+            backup.error_message = "备份超时或进程异常终止"
+            backup.duration_seconds = 7200  # 2小时
+
+        if stale_backups:
+            self.db.commit()
+
         # 创建备份记录
         backup_log = BackupLog(
             status="running",

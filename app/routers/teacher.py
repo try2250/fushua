@@ -1,6 +1,7 @@
 import json
 import csv
 import io
+import time
 import uuid
 import urllib.parse
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
@@ -25,6 +26,17 @@ router = APIRouter(prefix="/teacher")
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 
 _pending_imports = {}
+
+
+def _cleanup_expired_imports():
+    """清理超过30分钟的过期导入预览"""
+    now = time.time()
+    expired_tokens = [
+        token for token, data in _pending_imports.items()
+        if now - data.get("created_at", 0) > 1800  # 30分钟
+    ]
+    for token in expired_tokens:
+        _pending_imports.pop(token, None)
 
 
 def _parse_owned_bank_id(db: Session, teacher_id: int, raw_bank_id) -> int | None:
@@ -666,7 +678,11 @@ async def import_preview(
         "user_id": user_id,
         "bank_id": bank_id,
         "filename": filename,
+        "created_at": time.time(),
     }
+
+    # 清理过期的导入预览
+    _cleanup_expired_imports()
 
     return request.app.state.templates.TemplateResponse(
         "teacher/import_preview.html",
@@ -714,42 +730,60 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
     rows = pending["rows"]
     bank_id = pending["bank_id"]
 
-    # 使用 bulk_insert_mappings 进行批量插入（更快）
-    question_mappings = []
-    for row in rows:
-        item = {k: v for k, v in row.items() if k != "_row_num"}
-        q_dict = _build_question_dict(item, user_id, bank_id=bank_id)
-        question_mappings.append(q_dict)
+    try:
+        # 使用 bulk_insert_mappings 进行批量插入（更快）
+        question_mappings = []
+        for row in rows:
+            item = {k: v for k, v in row.items() if k != "_row_num"}
+            q_dict = _build_question_dict(item, user_id, bank_id=bank_id)
+            question_mappings.append(q_dict)
 
-    # 批量插入，每次 100 条
-    batch_size = 100
-    for i in range(0, len(question_mappings), batch_size):
-        batch = question_mappings[i:i + batch_size]
-        db.bulk_insert_mappings(Question, batch)
-        db.flush()  # 刷新但不提交
+        # 批量插入，每次 100 条
+        batch_size = 100
+        for i in range(0, len(question_mappings), batch_size):
+            batch = question_mappings[i:i + batch_size]
+            db.bulk_insert_mappings(Question, batch)
+            db.flush()  # 刷新但不提交
 
-    count = len(question_mappings)
-    db.add(AuditLog(
-        actor_id=user_id,
-        action="import_questions",
-        target_type="question",
-        detail=f"批量导入 {count} 道题目，题库ID={bank_id or '无'}"
-    ))
-    db.commit()
-    custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
-    banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
-    return request.app.state.templates.TemplateResponse(
-        "teacher/import.html",
-        {
-            "request": request,
-            "error": None,
-            "success": f"成功导入 {count} 道题目！",
-            "question_types": QUESTION_TYPES,
-            "custom_fields": custom_fields,
-            "banks": banks,
-            "csrf_token": request.session.get("csrf_token", ""),
-        },
-    )
+        count = len(question_mappings)
+        db.add(AuditLog(
+            actor_id=user_id,
+            action="import_questions",
+            target_type="question",
+            detail=f"批量导入 {count} 道题目，题库ID={bank_id or '无'}"
+        ))
+        db.commit()
+
+        custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+        banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/import.html",
+            {
+                "request": request,
+                "error": None,
+                "success": f"成功导入 {count} 道题目！",
+                "question_types": QUESTION_TYPES,
+                "custom_fields": custom_fields,
+                "banks": banks,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
+    except Exception as e:
+        db.rollback()
+        custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
+        banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
+        return request.app.state.templates.TemplateResponse(
+            "teacher/import.html",
+            {
+                "request": request,
+                "error": f"批量导入失败：{str(e)}",
+                "success": None,
+                "question_types": QUESTION_TYPES,
+                "custom_fields": custom_fields,
+                "banks": banks,
+                "csrf_token": request.session.get("csrf_token", ""),
+            },
+        )
 
 
 def _build_question_from_dict(item: dict, user_id: int, bank_id: int = None) -> Question:
@@ -806,9 +840,11 @@ def _build_question_dict(item: dict, user_id: int, bank_id: int = None) -> dict:
         "option_d": builtin_data.get("option_d", ""),
         "answer": builtin_data.get("answer", ""),
         "explanation": builtin_data.get("explanation", ""),
+        "image_url": builtin_data.get("image_url", ""),
         "extra_data": json.dumps(extra_data, ensure_ascii=False) if extra_data else "{}",
         "bank_id": bank_id,
         "created_by": user_id,
+        "created_at": datetime.utcnow(),
     }
 
 

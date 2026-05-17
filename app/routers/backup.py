@@ -1,4 +1,5 @@
 import os
+import hmac
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, Request, HTTPException, Header
@@ -42,7 +43,8 @@ async def trigger_backup(
     if not BACKUP_SECRET:
         raise HTTPException(status_code=500, detail="BACKUP_SECRET 未配置")
 
-    if x_backup_secret != BACKUP_SECRET:
+    # 使用 hmac.compare_digest 防止时序攻击
+    if not x_backup_secret or not hmac.compare_digest(x_backup_secret, BACKUP_SECRET):
         raise HTTPException(status_code=401, detail="无效的备份密钥")
 
     # 判断触发来源
