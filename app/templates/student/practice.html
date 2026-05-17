@@ -3,7 +3,10 @@
 {% block title %}刷题中 - 付刷{% endblock %}
 
 {% block content %}
-<h1>刷题 {% if subject %}· {{ subject }}{% endif %}</h1>
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+    <a href="/student/dashboard" class="btn btn-outline">← 返回选择题库</a>
+    <h1 style="margin: 0;">刷题 {% if subject %}· {{ subject }}{% endif %}</h1>
+</div>
 
 <div class="mode-select" style="margin-bottom:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
     <a href="/student/practice?mode=smart{% if subject %}&subject={{ subject }}{% endif %}" class="btn {% if mode == 'smart' %}btn-primary{% else %}btn-outline{% endif %}">智能刷题</a>

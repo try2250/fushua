@@ -68,6 +68,12 @@ class BackupService:
             if not self.backup_script.exists():
                 raise FileNotFoundError(f"备份脚本不存在: {self.backup_script}")
 
+            # 检查必要的工具是否可用
+            self._check_required_tools()
+
+            # 确保备份目录存在
+            self.backup_dir.mkdir(parents=True, exist_ok=True)
+
             # 执行备份脚本
             result = subprocess.run(
                 ["bash", str(self.backup_script)],
@@ -151,6 +157,36 @@ class BackupService:
                             return part.split("/")[-1]
                         return part
         return None
+
+    def _check_required_tools(self):
+        """检查备份所需的工具是否可用"""
+        # 检查 bash
+        try:
+            subprocess.run(["bash", "--version"], capture_output=True, check=True, timeout=5)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            raise RuntimeError("bash 不可用，无法执行备份脚本")
+
+        # 检查数据库类型
+        database_url = os.getenv("DATABASE_URL", "")
+
+        if "postgresql" in database_url:
+            # 检查 pg_dump
+            try:
+                subprocess.run(["pg_dump", "--version"], capture_output=True, check=True, timeout=5)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                raise RuntimeError("pg_dump 不可用，无法备份 PostgreSQL 数据库。请联系管理员安装 postgresql-client")
+
+            # 检查 gzip
+            try:
+                subprocess.run(["gzip", "--version"], capture_output=True, check=True, timeout=5)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                raise RuntimeError("gzip 不可用，无法压缩备份文件")
+        else:
+            # 检查 sqlite3
+            try:
+                subprocess.run(["sqlite3", "--version"], capture_output=True, check=True, timeout=5)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                raise RuntimeError("sqlite3 不可用，无法备份 SQLite 数据库")
 
     def validate_backup(self, backup_id: int) -> Dict[str, Any]:
         """
