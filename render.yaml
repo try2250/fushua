@@ -20,6 +20,20 @@ services:
         value: "2"
       - key: PYTHON_VERSION
         value: "3.12.6"
+      - key: BACKUP_SECRET
+        generateValue: true
+
+  - type: cron
+    name: fushua-backup
+    runtime: docker
+    schedule: "0 2 * * *"
+    dockerCommand: >
+      curl -X POST https://fushua.onrender.com/admin/backup/trigger
+      -H "X-Backup-Secret: $BACKUP_SECRET"
+      -H "Content-Type: application/json"
+    envVars:
+      - key: BACKUP_SECRET
+        sync: false
 
 databases:
   - name: fushua-db
