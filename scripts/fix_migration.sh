@@ -1,3 +1,18 @@
+#!/bin/bash
+# 修复数据库迁移问题
+
+set -e
+
+PROJECT_DIR="/var/www/fushua"
+cd $PROJECT_DIR
+
+echo "修复 Alembic 配置..."
+
+# 1. 安装 python-dotenv（如果还没安装）
+sudo -u fushua $PROJECT_DIR/venv/bin/pip install python-dotenv
+
+# 2. 修改 alembic/env.py 以加载 .env 文件
+cat > $PROJECT_DIR/alembic/env.py <<'EOF'
 import os
 import sys
 from logging.config import fileConfig
@@ -61,3 +76,15 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+EOF
+
+chown fushua:fushua $PROJECT_DIR/alembic/env.py
+
+# 3. 删除可能存在的 SQLite 数据库文件
+rm -f $PROJECT_DIR/fushua.db
+
+# 4. 重新运行迁移
+echo "重新运行数据库迁移..."
+sudo -u fushua $PROJECT_DIR/venv/bin/alembic upgrade head
+
+echo "✓ 数据库迁移修复完成"
