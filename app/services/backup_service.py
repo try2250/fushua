@@ -106,7 +106,17 @@ class BackupService:
 
     def _extract_backup_path(self, output: str) -> Optional[str]:
         """从脚本输出中提取备份文件路径"""
-        # 查找包含 "fushua_" 的行
+        # 首先查找 BACKUP_FILE_PATH= 格式
+        for line in output.split("\n"):
+            if "BACKUP_FILE_PATH=" in line:
+                # 提取路径
+                path = line.split("BACKUP_FILE_PATH=", 1)[1].strip()
+                # 提取文件名（去掉目录部分）
+                if "/" in path:
+                    return path.split("/")[-1]
+                return path
+
+        # 兼容旧格式：查找包含 "fushua_" 的行
         for line in output.split("\n"):
             if "fushua_" in line and ("backups/" in line or self.backup_dir.name in line):
                 # 提取文件名
