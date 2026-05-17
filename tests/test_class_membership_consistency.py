@@ -1,6 +1,7 @@
 import pytest
-from app.models import ClassGroup, ClassMember, User
+from app.models import ClassGroup, ClassMember, User, ClassJoinRequest
 from tests.conftest import create_test_user, register_and_login, login_as, get_csrf_token
+import io
 
 
 def create_test_class(db, name="测试班级", created_by=1):

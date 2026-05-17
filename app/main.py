@@ -12,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
-from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor
+from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor, backup
 from app.models import User, Notification
 
 if not os.environ.get("DATABASE_URL", "").startswith("postgresql"):
@@ -293,3 +293,4 @@ app.include_router(assignment.router)
 app.include_router(classgroup.router)
 app.include_router(admin.router)
 app.include_router(extractor.router)
+app.include_router(backup.router)

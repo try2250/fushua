@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:subagent-driven-development)",
+      "Skill(superpowers:subagent-driven-development:*)",
+      "Bash(pytest tests/test_teacher_cross_class.py::test_teacher_stats_page_only_shows_own_class_students -v)",
+      "Bash(pytest tests/test_teacher_cross_class.py::test_admin_sees_all_students_in_stats_page -v)",
+      "Bash(pytest tests/test_teacher_cross_class.py::test_teacher_stats_page_only_shows_own_class_students tests/test_teacher_cross_class.py::test_admin_sees_all_students_in_stats_page -v)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: restrict teacher stats page to only show own class students *)",
+      "Bash(pytest tests/test_teacher_cross_class.py::test_teacher_only_sees_own_class_guest_students -v)",
+      "Bash(git commit -m 'test: add failing tests for guest students permission issue *)",
+      "Bash(pytest tests/test_teacher_cross_class.py::test_teacher_only_sees_own_class_guest_students tests/test_teacher_cross_class.py::test_admin_sees_all_guest_students tests/test_teacher_cross_class.py::test_teacher_sees_no_guests_when_no_pending_requests -v)",
+      "Bash(pytest tests/test_bulk_import_consistency.py -v)",
+      "Bash(tail -20 /c/Users/WINDOW~1/AppData/Local/Temp/claude/c--Users-Windows-10-Desktop-trae---/972682de-8cc1-45ad-9f4b-fa2aa1a458d8/tasks/bz7lva6i3.output)",
+      "Read(//c/Users/WINDOW~1/AppData/Local/Temp/claude/c--Users-Windows-10-Desktop-trae---/972682de-8cc1-45ad-9f4b-fa2aa1a458d8/tasks/**)",
+      "Skill(superpowers:dispatching-parallel-agents)",
+      "Skill(superpowers:dispatching-parallel-agents:*)",
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:brainstorming:*)",
+      "Bash(python -m pytest tests/test_n_plus_one_fixes.py -v -s)",
+      "Bash(python -m pytest tests/test_n_plus_one_fixes.py::test_student_mistakes_n_plus_one_fix -v -s)",
+      "Bash(python -m pytest tests/test_n_plus_one_fixes.py::test_teacher_stats_n_plus_one_fix -v -s)",
+      "Bash(python -m pytest tests/test_n_plus_one_fixes.py -v)",
+      "Bash(python -m pytest tests/ -k \"mistake\" -v)",
+      "Bash(python -m pytest tests/ -k \"stats\" -v)",
+      "Bash(python -m pytest tests/test_performance_comparison.py -v -s)",
+      "Bash(python -m pytest tests/test_additional_n_plus_one_fixes.py -v -s)",
+      "Bash(python -m pytest tests/test_additional_n_plus_one_fixes.py::test_teacher_report_export_n_plus_one_fix -v -s)",
+      "Bash(python -m pytest tests/test_n_plus_one_fixes.py tests/test_additional_n_plus_one_fixes.py -v)",
+      "Bash(python -m pytest tests/test_n_plus_one_fixes.py tests/test_additional_n_plus_one_fixes.py -v -s)",
+      "Bash(findstr \"查询数量\")",
+      "Bash(git commit -m 'docs: add backup automation design specification *)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:writing-plans:*)",
+      "Bash(git commit -m 'docs: add backup automation implementation plan *)",
+      "Bash(alembic upgrade *)",
+      "Bash(python -m alembic upgrade head)",
+      "Bash(python -m alembic current)"
+    ]
+  }
+}

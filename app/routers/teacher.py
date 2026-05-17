@@ -1208,12 +1208,34 @@ def export_stats_pdf(request: Request, db: Annotated[Session, Depends(get_db)]):
             students = db.query(User).filter(User.id.in_(student_ids), User.role == "student").all() if student_ids else []
         else:
             students = []
+
+    # 批量查询所有学生的统计数据，避免 N+1 查询
     student_stats = []
-    for s in students:
-        s_total = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(question_ids)).count() if question_ids else 0
-        s_correct = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(question_ids), Record.is_correct == True).count() if question_ids else 0
-        if s_total > 0:
-            student_stats.append({"username": s.username, "display_name": s.display_name, "total": s_total, "correct": s_correct, "accuracy": round(s_correct / s_total * 100, 1)})
+    if students and question_ids:
+        student_id_list = [s.id for s in students]
+        # 一次性查询所有学生的记录统计
+        stats_query = (
+            db.query(
+                Record.user_id,
+                sa_func.count(Record.id).label("total"),
+                sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct")
+            )
+            .filter(Record.user_id.in_(student_id_list), Record.question_id.in_(question_ids))
+            .group_by(Record.user_id)
+            .all()
+        )
+        stats_map = {row.user_id: (row.total, row.correct or 0) for row in stats_query}
+
+        for s in students:
+            if s.id in stats_map:
+                s_total, s_correct = stats_map[s.id]
+                student_stats.append({
+                    "username": s.username,
+                    "display_name": s.display_name,
+                    "total": s_total,
+                    "correct": s_correct,
+                    "accuracy": round(s_correct / s_total * 100, 1)
+                })
     student_stats.sort(key=lambda x: x["accuracy"])
 
     from app.utils.report import generate_teacher_report
@@ -1550,6 +1572,9 @@ async def approve_student(student_id: int, request: Request, db: Annotated[Sessi
         return RedirectResponse(url="/teacher/students", status_code=303)
     cls = db.query(ClassGroup).filter(ClassGroup.id == class_id_value, ClassGroup.created_by == user_id).first()
     if cls:
+        if student.class_id and student.class_id != cls.id:
+            return RedirectResponse(url="/teacher/students?error=student_in_other_class", status_code=303)
+
         existing = db.query(ClassMember).filter(ClassMember.class_id == cls.id, ClassMember.user_id == student.id).first()
         if not existing:
             db.add(ClassMember(class_id=cls.id, user_id=student.id))
@@ -1579,6 +1604,10 @@ async def approve_join_request(request_id: int, request: Request, db: Annotated[
     student = db.query(User).filter(User.id == join_req.user_id).first()
     if not student:
         return RedirectResponse(url="/teacher/students", status_code=303)
+
+    if student.class_id and student.class_id != cls.id:
+        return RedirectResponse(url="/teacher/students?error=student_in_other_class", status_code=303)
+
     existing_member = db.query(ClassMember).filter(ClassMember.class_id == cls.id, ClassMember.user_id == student.id).first()
     if not existing_member:
         db.add(ClassMember(class_id=cls.id, user_id=student.id))
@@ -1697,7 +1726,9 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
         )
 
     created_count = 0
+    updated_count = 0
     skipped_count = 0
+    skipped_details = []
 
     try:
         reader = csv.DictReader(io.StringIO(csv_text))
@@ -1709,6 +1740,14 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
 
             existing = db.query(User).filter(User.username == username).first()
             if existing:
+                if existing.class_id and existing.class_id != cls.id:
+                    skipped_count += 1
+                    skipped_details.append({
+                        "username": username,
+                        "reason": f"已在其他班级（class_id={existing.class_id}）"
+                    })
+                    continue
+
                 member = db.query(ClassMember).filter(
                     ClassMember.class_id == cls.id,
                     ClassMember.user_id == existing.id,
@@ -1719,7 +1758,7 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
                 if existing.is_guest:
                     existing.is_guest = False
                     existing.guest_expires_at = None
-                skipped_count += 1
+                updated_count += 1
             else:
                 new_user = User(
                     username=username,
@@ -1743,6 +1782,7 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
                 "error": "导入失败，请检查文件格式是否正确",
                 "success": None,
                 "created_count": 0,
+                "updated_count": 0,
                 "skipped_count": 0,
                 "csrf_token": request.session.get("csrf_token", ""),
             },
@@ -1754,9 +1794,11 @@ async def import_students(class_id: int, request: Request, db: Annotated[Session
             "request": request,
             "class_info": cls,
             "error": None,
-            "success": f"导入完成：新建 {created_count} 人，跳过（已存在） {skipped_count} 人",
+            "success": f"导入完成：新建 {created_count} 人，更新 {updated_count} 人，跳过 {skipped_count} 人",
             "created_count": created_count,
+            "updated_count": updated_count,
             "skipped_count": skipped_count,
+            "skipped_details": skipped_details,
             "csrf_token": request.session.get("csrf_token", ""),
         },
     )
@@ -1951,6 +1993,22 @@ def export_assignment_excel(assignment_id: int, request: Request, db: Annotated[
 
     students = db.query(User).filter(User.id.in_(student_ids), User.role == "student").all() if student_ids else []
 
+    # 批量查询所有学生的作业统计，避免 N+1 查询
+    stats_map = {}
+    if students and qid_list:
+        student_id_list = [s.id for s in students]
+        stats_query = (
+            db.query(
+                Record.user_id,
+                sa_func.count(Record.id).label("total"),
+                sa_func.sum(sa_func.cast(Record.is_correct, Integer)).label("correct")
+            )
+            .filter(Record.user_id.in_(student_id_list), Record.question_id.in_(qid_list))
+            .group_by(Record.user_id)
+            .all()
+        )
+        stats_map = {row.user_id: (row.total, row.correct or 0) for row in stats_query}
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "作业完成情况"
@@ -1959,9 +2017,8 @@ def export_assignment_excel(assignment_id: int, request: Request, db: Annotated[
     for s in students:
         status = "已完成" if s.id in completed_user_ids else "未完成"
         accuracy = 0.0
-        if s.id in completed_user_ids and qid_list:
-            total = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(qid_list)).count()
-            correct = db.query(Record).filter(Record.user_id == s.id, Record.question_id.in_(qid_list), Record.is_correct == True).count()
+        if s.id in completed_user_ids and s.id in stats_map:
+            total, correct = stats_map[s.id]
             accuracy = round(correct / total * 100, 1) if total > 0 else 0.0
         ws.append([s.display_name or s.username, s.username, status, f"{accuracy}%"])
 

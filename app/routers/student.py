@@ -2,7 +2,7 @@ import random
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
@@ -404,6 +404,7 @@ def mistake_book(
     user_id = require_non_guest(request, db)
     wrong_records = (
         db.query(Record)
+        .options(joinedload(Record.question))
         .filter(Record.user_id == user_id, Record.is_correct == False)
         .order_by(Record.created_at.desc())
         .all()
@@ -441,7 +442,7 @@ def mistake_book(
 
     all_wrong_unique = []
     seen2 = set()
-    for r in db.query(Record).filter(Record.user_id == user_id, Record.is_correct == False).order_by(Record.created_at.desc()).all():
+    for r in db.query(Record).options(joinedload(Record.question)).filter(Record.user_id == user_id, Record.is_correct == False).order_by(Record.created_at.desc()).all():
         if r.question_id not in seen2:
             seen2.add(r.question_id)
             all_wrong_unique.append(r)
@@ -860,11 +861,11 @@ async def remove_favorite(question_id: int, request: Request, db: Session = Depe
 def favorites_page(request: Request, db: Session = Depends(get_db)):
     user_id = require_non_guest(request, db)
     favs = db.query(Favorite).filter(Favorite.user_id == user_id).order_by(Favorite.created_at.desc()).all()
-    questions = []
-    for f in favs:
-        q = db.query(Question).filter(Question.id == f.question_id).first()
-        if q:
-            questions.append(q)
+    question_ids = [f.question_id for f in favs]
+    questions = db.query(Question).filter(Question.id.in_(question_ids)).all() if question_ids else []
+    # 保持收藏顺序
+    question_map = {q.id: q for q in questions}
+    questions = [question_map[qid] for qid in question_ids if qid in question_map]
     return request.app.state.templates.TemplateResponse(
         "student/favorites.html",
         {"request": request, "questions": questions, "question_types": QUESTION_TYPES},

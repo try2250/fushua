@@ -19,6 +19,7 @@ if [ -n "${DATABASE_URL:-}" ] && echo "${DATABASE_URL}" | grep -q "postgresql"; 
     echo "[备份] 导出 PostgreSQL → ${BACKUP_FILE}"
     PGPASSWORD="${PGPASSWORD}" pg_dump -h "${PGHOST}" -p "${PGPORT:-5432}" -U "${PGUSER}" "${PGDB}" | gzip > "${BACKUP_FILE}"
     echo "[备份] 完成！文件大小: $(du -h "${BACKUP_FILE}" | cut -f1)"
+    echo "[备份] 文件路径: ${BACKUP_FILE}"
 else
     DB_FILE="${DB_FILE:-./fushua.db}"
     if [ ! -f "${DB_FILE}" ]; then
@@ -29,6 +30,7 @@ else
     echo "[备份] 复制 SQLite → ${BACKUP_FILE}"
     sqlite3 "${DB_FILE}" ".backup '${BACKUP_FILE}'"
     echo "[备份] 完成！文件大小: $(du -h "${BACKUP_FILE}" | cut -f1)"
+    echo "[备份] 文件路径: ${BACKUP_FILE}"
 fi
 
 KEEP_DAYS="${KEEP_DAYS:-30}"

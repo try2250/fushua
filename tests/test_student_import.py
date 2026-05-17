@@ -52,7 +52,7 @@ class TestStudentImport:
         )
         assert response.status_code == 200
         assert "新建 1 人" in response.text
-        assert "跳过（已存在） 1 人" in response.text
+        assert "更新 1 人" in response.text
         members = db_session.query(ClassMember).filter(ClassMember.class_id == cls.id).all()
         assert len(members) == 2
         refreshed = db_session.query(User).filter(User.username == "existstu").first()

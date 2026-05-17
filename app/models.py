@@ -327,3 +327,19 @@ class AccountRecoveryRequest(Base):
     reviewed_at = Column(DateTime, nullable=True)
     new_password_hash = Column(String(128), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class BackupLog(Base):
+    __tablename__ = "backup_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+    status = Column(String(20), nullable=False, index=True)
+    file_path = Column(String(255), nullable=True)
+    file_size = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+    triggered_by = Column(String(50), default="cron")
+    duration_seconds = Column(Integer, nullable=True)
+
+    def __repr__(self):
+        return f"<BackupLog(id={self.id}, status={self.status}, created_at={self.created_at})>"

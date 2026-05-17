@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% block title %}数据备份 - 付刷{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1.5rem;">
+    <h1 style="margin-bottom:0;">💾 数据备份</h1>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total_backups }}</div>
+        <div class="stat-label">总备份数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.success_count }}</div>
+        <div class="stat-label">成功备份</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.failed_count }}</div>
+        <div class="stat-label">失败备份</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ "%.1f"|format(stats.success_rate * 100) }}%</div>
+        <div class="stat-label">成功率</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total_size_mb }} MB</div>
+        <div class="stat-label">总大小</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>操作</h2>
+    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <button onclick="triggerBackup()" class="btn btn-primary">手动触发备份</button>
+        <button onclick="cleanupBackups()" class="btn btn-outline">清理旧备份（30天前）</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>备份历史</h2>
+    {% if backups %}
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>时间</th>
+                    <th>状态</th>
+                    <th>触发方式</th>
+                    <th>文件大小</th>
+                    <th>耗时</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for backup in backups %}
+                <tr>
+                    <td>{{ backup.id }}</td>
+                    <td>{{ backup.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>
+                        {% if backup.status == 'success' %}
+                        <span style="color:green;">✓ 成功</span>
+                        {% elif backup.status == 'failed' %}
+                        <span style="color:red;">✗ 失败</span>
+                        {% else %}
+                        <span style="color:orange;">⏳ 运行中</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if backup.triggered_by == 'cron' %}
+                        🕐 自动
+                        {% elif backup.triggered_by == 'admin' %}
+                        👤 管理员
+                        {% else %}
+                        📝 手动
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if backup.file_size %}
+                        {{ "%.2f"|format(backup.file_size / (1024 * 1024)) }} MB
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if backup.duration_seconds %}
+                        {{ backup.duration_seconds }}s
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if backup.status == 'success' %}
+                        <button onclick="downloadBackup({{ backup.id }})" class="btn btn-sm">下载</button>
+                        <button onclick="validateBackup({{ backup.id }})" class="btn btn-sm btn-outline">验证</button>
+                        <button onclick="deleteBackup({{ backup.id }})" class="btn btn-sm btn-danger">删除</button>
+                        {% elif backup.status == 'failed' %}
+                        <button onclick="showError({{ backup.id }}, '{{ backup.error_message|replace("'", "\\'") }}')" class="btn btn-sm btn-outline">查看错误</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#666;">暂无备份记录</p>
+    {% endif %}
+</div>
+
+<style>
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2196F3;
+    margin-bottom: 0.3rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.card h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th,
+table td {
+    padding: 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+table th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+
+.btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: #2196F3;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1976D2;
+}
+
+.btn-outline {
+    background: white;
+    color: #2196F3;
+    border: 1px solid #2196F3;
+}
+
+.btn-outline:hover {
+    background: #E3F2FD;
+}
+
+.btn-danger {
+    background: #f44336;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #d32f2f;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    margin-right: 0.3rem;
+}
+</style>
+
+<script>
+const BACKUP_SECRET = '{{ request.app.state.backup_secret if request.app.state.backup_secret else "" }}';
+
+async function triggerBackup() {
+    if (!confirm('确定要手动触发备份吗？')) return;
+
+    const secret = prompt('请输入备份密钥（BACKUP_SECRET）：');
+    if (!secret) return;
+
+    try {
+        const response = await fetch('/admin/backup/trigger', {
+            method: 'POST',
+            headers: {
+                'X-Backup-Secret': secret
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('备份已触发！备份 ID: ' + data.backup_id);
+            location.reload();
+        } else {
+            alert('备份失败: ' + (data.detail || '未知错误'));
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    }
+}
+
+function downloadBackup(backupId) {
+    window.location.href = '/admin/backup/download/' + backupId;
+}
+
+async function validateBackup(backupId) {
+    try {
+        const response = await fetch('/admin/backup/validate/' + backupId, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'valid') {
+            alert('✓ 备份文件验证通过\n\n' +
+                  '文件存在: ' + (data.checks.file_exists ? '是' : '否') + '\n' +
+                  '大小正常: ' + (data.checks.file_size_ok ? '是' : '否') + '\n' +
+                  '完整性检查: ' + (data.checks.integrity_check ? '通过' : '失败'));
+        } else {
+            alert('✗ 备份文件验证失败\n\n' + data.message);
+        }
+    } catch (error) {
+        alert('验证失败: ' + error.message);
+    }
+}
+
+async function deleteBackup(backupId) {
+    if (!confirm('确定要删除此备份吗？此操作不可恢复！')) return;
+
+    try {
+        const response = await fetch('/admin/backup/delete/' + backupId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                _csrf_token: '{{ csrf_token }}'
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('备份已删除');
+            location.reload();
+        } else {
+            alert('删除失败: ' + (data.detail || '未知错误'));
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    }
+}
+
+async function cleanupBackups() {
+    if (!confirm('确定要清理 30 天前的旧备份吗？')) return;
+
+    try {
+        const response = await fetch('/admin/backup/cleanup?keep_days=30', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                _csrf_token: '{{ csrf_token }}'
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('清理完成\n\n' +
+                  '删除数量: ' + data.deleted_count + '\n' +
+                  '释放空间: ' + data.deleted_size_mb + ' MB');
+            location.reload();
+        } else {
+            alert('清理失败: ' + (data.detail || '未知错误'));
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    }
+}
+
+function showError(backupId, errorMessage) {
+    alert('备份 #' + backupId + ' 错误信息:\n\n' + errorMessage);
+}
+</script>
+{% endblock %}
