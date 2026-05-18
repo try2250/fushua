@@ -1,0 +1,85 @@
+<!--pages/tabbar/mistakes/mistakes.wxml-->
+<view class="mistakes-container">
+  <!-- 头部操作栏 -->
+  <view class="header-bar">
+    <view class="header-info">
+      <text class="info-text">共 {{mistakes.length}} 道错题</text>
+    </view>
+    <view class="header-actions">
+      <text class="action-btn" bindtap="handleOpenFilter">🔍 筛选</text>
+    </view>
+  </view>
+
+  <!-- 错题列表 -->
+  <view class="mistakes-list">
+    <view
+      class="mistake-card"
+      wx:for="{{mistakes}}"
+      wx:key="id"
+    >
+      <!-- 题目信息 -->
+      <view class="mistake-header">
+        <view class="question-tags">
+          <text class="tag tag-type">{{item.question.q_type}}</text>
+          <text class="tag tag-subject">{{item.question.subject}}</text>
+          <text class="tag tag-difficulty difficulty-{{item.question.difficulty}}">
+            {{item.question.difficulty === 1 ? '简单' : item.question.difficulty === 2 ? '中等' : '困难'}}
+          </text>
+        </view>
+        <view class="mistake-count">
+          <text class="count-text">错 {{item.mistake_count}} 次</text>
+        </view>
+      </view>
+
+      <!-- 题目内容 -->
+      <view class="question-content" bindtap="handleViewQuestion" data-question="{{item.question}}">
+        <text class="question-text">{{item.question.content}}</text>
+      </view>
+
+      <!-- 答案信息 -->
+      <view class="answer-info">
+        <view class="answer-item">
+          <text class="answer-label">你的答案：</text>
+          <text class="answer-value wrong">{{item.user_answer}}</text>
+        </view>
+        <view class="answer-item">
+          <text class="answer-label">正确答案：</text>
+          <text class="answer-value correct">{{item.question.correct_answer}}</text>
+        </view>
+      </view>
+
+      <!-- 底部信息 -->
+      <view class="mistake-footer">
+        <text class="time-text">{{item.last_practice}}</text>
+        <view class="footer-actions">
+          <button
+            class="btn-action btn-practice"
+            bindtap="handlePracticeAgain"
+            data-id="{{item.id}}"
+          >
+            重新练习
+          </button>
+          <button
+            class="btn-action btn-remove"
+            bindtap="handleRemoveMistake"
+            data-id="{{item.id}}"
+          >
+            移出
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-container" wx:if="{{!loading && mistakes.length === 0}}">
+    <text class="empty-icon">✨</text>
+    <text class="empty-text">暂无错题</text>
+    <text class="empty-desc">继续加油，保持全对！</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

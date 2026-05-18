@@ -1,0 +1,191 @@
+/* pages/tabbar/assignments/assignments.wxss */
+.assignments-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* 标签栏 */
+.tabs-bar {
+  display: flex;
+  background-color: #ffffff;
+  padding: 0 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 30rpx 0;
+  position: relative;
+}
+
+.tab-label {
+  font-size: 28rpx;
+  color: #666666;
+}
+
+.tab-item.active .tab-label {
+  color: #1890ff;
+  font-weight: bold;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60rpx;
+  height: 4rpx;
+  background-color: #1890ff;
+  border-radius: 2rpx;
+}
+
+/* 作业列表 */
+.assignments-list {
+  padding: 20rpx 30rpx;
+}
+
+.assignment-card {
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20rpx;
+}
+
+.assignment-title {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333333;
+  margin-right: 20rpx;
+}
+
+.assignment-status {
+  font-size: 24rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background-color: #fff7e6;
+  color: #faad14;
+}
+
+.status-completed {
+  background-color: #f6ffed;
+  color: #52c41a;
+}
+
+/* 作业信息 */
+.assignment-info {
+  display: flex;
+  gap: 40rpx;
+  margin-bottom: 20rpx;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.info-icon {
+  font-size: 28rpx;
+}
+
+.info-text {
+  font-size: 26rpx;
+  color: #666666;
+}
+
+.text-danger {
+  color: #ff4d4f;
+}
+
+/* 进度条 */
+.progress-section {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 12rpx;
+  background-color: #f0f0f0;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1890ff 0%, #36cfc9 100%);
+  border-radius: 6rpx;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 24rpx;
+  color: #999999;
+  white-space: nowrap;
+}
+
+/* 完成信息 */
+.completion-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.completion-text {
+  font-size: 26rpx;
+  color: #52c41a;
+}
+
+.score-text {
+  font-size: 26rpx;
+  color: #1890ff;
+  font-weight: bold;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 30rpx;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 20rpx;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 30rpx;
+  font-size: 28rpx;
+  color: #999999;
+}

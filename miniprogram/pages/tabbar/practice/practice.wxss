@@ -1,0 +1,278 @@
+/* pages/tabbar/practice/practice.wxss */
+.practice-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 40rpx;
+}
+
+/* 统计头部 */
+.stats-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40rpx 30rpx;
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20rpx;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 题目卡片 */
+.question-card {
+  background-color: #ffffff;
+  margin: 0 30rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 30rpx;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.question-info {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.question-number {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: bold;
+}
+
+.question-type {
+  font-size: 24rpx;
+  color: #1890ff;
+  padding: 4rpx 12rpx;
+  background-color: #e6f7ff;
+  border-radius: 4rpx;
+}
+
+.question-difficulty {
+  font-size: 24rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+.difficulty-1 {
+  color: #52c41a;
+  background-color: #f6ffed;
+}
+
+.difficulty-2 {
+  color: #faad14;
+  background-color: #fffbe6;
+}
+
+.difficulty-3 {
+  color: #ff4d4f;
+  background-color: #fff1f0;
+}
+
+.question-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.action-btn {
+  font-size: 40rpx;
+  padding: 8rpx;
+}
+
+/* 题目内容 */
+.question-content {
+  margin-bottom: 32rpx;
+}
+
+.question-text {
+  font-size: 32rpx;
+  color: #333333;
+  line-height: 1.6;
+}
+
+/* 选项列表 */
+.options-list {
+  margin-bottom: 32rpx;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+}
+
+.option-item.selected {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.option-item.correct {
+  background-color: #f6ffed;
+  border-color: #52c41a;
+}
+
+.option-item.wrong {
+  background-color: #fff1f0;
+  border-color: #ff4d4f;
+}
+
+.option-label {
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 50%;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #666666;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.option-item.selected .option-label {
+  background-color: #1890ff;
+  color: #ffffff;
+}
+
+.option-item.correct .option-label {
+  background-color: #52c41a;
+  color: #ffffff;
+}
+
+.option-item.wrong .option-label {
+  background-color: #ff4d4f;
+  color: #ffffff;
+}
+
+.option-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333333;
+  line-height: 1.5;
+}
+
+/* 结果提示 */
+.result-tip {
+  padding: 24rpx;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.correct-tip {
+  background-color: #f6ffed;
+  border: 1rpx solid #b7eb8f;
+}
+
+.wrong-tip {
+  background-color: #fff1f0;
+  border: 1rpx solid #ffccc7;
+}
+
+.result-icon {
+  font-size: 40rpx;
+  font-weight: bold;
+}
+
+.correct-tip .result-icon {
+  color: #52c41a;
+}
+
+.wrong-tip .result-icon {
+  color: #ff4d4f;
+}
+
+.result-text {
+  font-size: 28rpx;
+  font-weight: bold;
+}
+
+.correct-tip .result-text {
+  color: #52c41a;
+}
+
+.wrong-tip .result-text {
+  color: #ff4d4f;
+}
+
+.correct-answer {
+  font-size: 24rpx;
+  color: #666666;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  gap: 20rpx;
+}
+
+.btn-primary,
+.btn-secondary {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 8rpx;
+  font-size: 32rpx;
+  text-align: center;
+  border: none;
+}
+
+.btn-primary {
+  background-color: #1890ff;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #f5f5f5;
+  color: #333333;
+}
+
+.btn-primary::after,
+.btn-secondary::after {
+  border: none;
+}
+
+/* 加载和空状态 */
+.loading-container,
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 30rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+  margin-bottom: 40rpx;
+}

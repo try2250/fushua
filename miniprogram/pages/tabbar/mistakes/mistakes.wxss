@@ -1,0 +1,248 @@
+/* pages/tabbar/mistakes/mistakes.wxss */
+.mistakes-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 40rpx;
+}
+
+/* 头部操作栏 */
+.header-bar {
+  background-color: #ffffff;
+  padding: 30rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+}
+
+.info-text {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: bold;
+}
+
+.header-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.action-btn {
+  font-size: 26rpx;
+  color: #1890ff;
+  padding: 8rpx 16rpx;
+  background-color: #e6f7ff;
+  border-radius: 8rpx;
+}
+
+/* 错题列表 */
+.mistakes-list {
+  padding: 0 30rpx;
+}
+
+.mistake-card {
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 题目头部 */
+.mistake-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.question-tags {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+.tag-type {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.tag-subject {
+  background-color: #f0f5ff;
+  color: #597ef7;
+}
+
+.tag-difficulty {
+  font-weight: 500;
+}
+
+.difficulty-1 {
+  background-color: #f6ffed;
+  color: #52c41a;
+}
+
+.difficulty-2 {
+  background-color: #fffbe6;
+  color: #faad14;
+}
+
+.difficulty-3 {
+  background-color: #fff1f0;
+  color: #ff4d4f;
+}
+
+.mistake-count {
+  flex-shrink: 0;
+}
+
+.count-text {
+  font-size: 24rpx;
+  color: #ff4d4f;
+  background-color: #fff1f0;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+/* 题目内容 */
+.question-content {
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  background-color: #fafafa;
+  border-radius: 8rpx;
+}
+
+.question-text {
+  font-size: 28rpx;
+  color: #333333;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* 答案信息 */
+.answer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  background-color: #fafafa;
+  border-radius: 8rpx;
+}
+
+.answer-item {
+  display: flex;
+  align-items: center;
+}
+
+.answer-label {
+  font-size: 26rpx;
+  color: #666666;
+  margin-right: 12rpx;
+}
+
+.answer-value {
+  font-size: 26rpx;
+  font-weight: bold;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+.answer-value.wrong {
+  color: #ff4d4f;
+  background-color: #fff1f0;
+}
+
+.answer-value.correct {
+  color: #52c41a;
+  background-color: #f6ffed;
+}
+
+/* 底部信息 */
+.mistake-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.time-text {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.btn-action {
+  padding: 8rpx 20rpx;
+  font-size: 24rpx;
+  border-radius: 8rpx;
+  border: none;
+  line-height: 1.5;
+}
+
+.btn-action::after {
+  border: none;
+}
+
+.btn-practice {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.btn-remove {
+  background-color: #fff1f0;
+  color: #ff4d4f;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 30rpx;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 20rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  color: #333333;
+  font-weight: bold;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  font-size: 26rpx;
+  color: #999999;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 30rpx;
+  font-size: 28rpx;
+  color: #999999;
+}

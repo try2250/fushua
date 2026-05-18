@@ -1,0 +1,73 @@
+<!--pages/tabbar/assignments/assignments.wxml-->
+<view class="assignments-container">
+  <!-- 标签栏 -->
+  <view class="tabs-bar">
+    <view
+      class="tab-item {{currentTab === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      bindtap="handleTabChange"
+      data-tab="{{item.key}}"
+    >
+      <text class="tab-label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <!-- 作业列表 -->
+  <view class="assignments-list">
+    <view
+      class="assignment-card"
+      wx:for="{{assignments}}"
+      wx:key="id"
+      bindtap="handleViewAssignment"
+      data-id="{{item.id}}"
+    >
+      <!-- 作业头部 -->
+      <view class="assignment-header">
+        <view class="assignment-title">{{item.title}}</view>
+        <view class="assignment-status {{item.status === 'completed' ? 'status-completed' : 'status-pending'}}">
+          {{item.status === 'completed' ? '已完成' : '待完成'}}
+        </view>
+      </view>
+
+      <!-- 作业信息 -->
+      <view class="assignment-info">
+        <view class="info-item">
+          <text class="info-icon">📚</text>
+          <text class="info-text">{{item.total_questions}}道题</text>
+        </view>
+        <view class="info-item">
+          <text class="info-icon">⏰</text>
+          <text class="info-text {{item.deadline_formatted === '已截止' ? 'text-danger' : ''}}">
+            {{item.deadline_formatted}}
+          </text>
+        </view>
+      </view>
+
+      <!-- 进度条 -->
+      <view class="progress-section" wx:if="{{item.status !== 'completed'}}">
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{item.progress}}%"></view>
+        </view>
+        <text class="progress-text">{{item.completed_questions}}/{{item.total_questions}}</text>
+      </view>
+
+      <!-- 完成信息 -->
+      <view class="completion-info" wx:if="{{item.status === 'completed'}}">
+        <text class="completion-text">✓ 已完成</text>
+        <text class="score-text" wx:if="{{item.score !== null}}">得分：{{item.score}}分</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-container" wx:if="{{!loading && assignments.length === 0}}">
+    <text class="empty-icon">📝</text>
+    <text class="empty-text">暂无作业</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

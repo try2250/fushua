@@ -1,0 +1,122 @@
+<!--pages/tabbar/practice/practice.wxml-->
+<view class="practice-container">
+  <!-- 今日统计 -->
+  <view class="stats-header">
+    <view class="stat-item">
+      <text class="stat-value">{{todayStats.completed}}</text>
+      <text class="stat-label">今日已刷</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{todayStats.correct}}</text>
+      <text class="stat-label">答对题数</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-value">{{todayStats.total > 0 ? ((todayStats.correct / todayStats.total * 100).toFixed(0)) : 0}}%</text>
+      <text class="stat-label">正确率</text>
+    </view>
+  </view>
+
+  <!-- 题目卡片 -->
+  <view class="question-card" wx:if="{{currentQuestion}}">
+    <!-- 题目头部 -->
+    <view class="question-header">
+      <view class="question-info">
+        <text class="question-number">第 {{currentIndex + 1}}/{{totalQuestions}} 题</text>
+        <text class="question-type">{{currentQuestion.q_type}}</text>
+        <text class="question-difficulty difficulty-{{currentQuestion.difficulty}}">
+          {{currentQuestion.difficulty === 1 ? '简单' : currentQuestion.difficulty === 2 ? '中等' : '困难'}}
+        </text>
+      </view>
+      <view class="question-actions">
+        <text class="action-btn" bindtap="handleCollectQuestion">⭐</text>
+        <text class="action-btn" bindtap="handleOpenFilter">🔍</text>
+      </view>
+    </view>
+
+    <!-- 题目内容 -->
+    <view class="question-content">
+      <text class="question-text">{{currentQuestion.content}}</text>
+    </view>
+
+    <!-- 选项列表 -->
+    <view class="options-list">
+      <view
+        class="option-item {{userAnswer === 'A' ? 'selected' : ''}} {{showResult && currentQuestion.correct_answer === 'A' ? 'correct' : ''}} {{showResult && userAnswer === 'A' && !isCorrect ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="A"
+      >
+        <view class="option-label">A</view>
+        <text class="option-text">{{currentQuestion.option_a}}</text>
+      </view>
+      <view
+        class="option-item {{userAnswer === 'B' ? 'selected' : ''}} {{showResult && currentQuestion.correct_answer === 'B' ? 'correct' : ''}} {{showResult && userAnswer === 'B' && !isCorrect ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="B"
+      >
+        <view class="option-label">B</view>
+        <text class="option-text">{{currentQuestion.option_b}}</text>
+      </view>
+      <view
+        class="option-item {{userAnswer === 'C' ? 'selected' : ''}} {{showResult && currentQuestion.correct_answer === 'C' ? 'correct' : ''}} {{showResult && userAnswer === 'C' && !isCorrect ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="C"
+        wx:if="{{currentQuestion.option_c}}"
+      >
+        <view class="option-label">C</view>
+        <text class="option-text">{{currentQuestion.option_c}}</text>
+      </view>
+      <view
+        class="option-item {{userAnswer === 'D' ? 'selected' : ''}} {{showResult && currentQuestion.correct_answer === 'D' ? 'correct' : ''}} {{showResult && userAnswer === 'D' && !isCorrect ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="D"
+        wx:if="{{currentQuestion.option_d}}"
+      >
+        <view class="option-label">D</view>
+        <text class="option-text">{{currentQuestion.option_d}}</text>
+      </view>
+    </view>
+
+    <!-- 结果提示 -->
+    <view class="result-tip {{isCorrect ? 'correct-tip' : 'wrong-tip'}}" wx:if="{{showResult}}">
+      <text class="result-icon">{{isCorrect ? '✓' : '✗'}}</text>
+      <text class="result-text">{{isCorrect ? '回答正确！' : '回答错误'}}</text>
+      <text class="correct-answer" wx:if="{{!isCorrect}}">正确答案：{{currentQuestion.correct_answer}}</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-buttons">
+      <button
+        class="btn-secondary"
+        wx:if="{{showResult}}"
+        bindtap="handleViewExplanation"
+      >
+        查看解析
+      </button>
+      <button
+        class="btn-primary"
+        wx:if="{{!showResult}}"
+        bindtap="handleSubmitAnswer"
+      >
+        提交答案
+      </button>
+      <button
+        class="btn-primary"
+        wx:if="{{showResult}}"
+        bindtap="handleNextQuestion"
+      >
+        下一题
+      </button>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-container" wx:if="{{!loading && !currentQuestion}}">
+    <text class="empty-text">暂无题目</text>
+    <button class="btn-primary" bindtap="loadQuestions">重新加载</button>
+  </view>
+</view>

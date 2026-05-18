@@ -1,0 +1,128 @@
+<!--pages/assignment-detail/assignment-detail.wxml-->
+<view class="detail-container">
+  <!-- 作业信息头部 -->
+  <view class="assignment-header" wx:if="{{assignment}}">
+    <view class="header-title">{{assignment.title}}</view>
+    <view class="header-info">
+      <text class="info-text">共{{questions.length}}题</text>
+      <text class="info-divider">|</text>
+      <text class="info-text">截止时间：{{assignment.deadline}}</text>
+    </view>
+    <view class="header-status">
+      <text class="status-badge {{assignment.status === 'completed' ? 'status-completed' : 'status-pending'}}">
+        {{assignment.status === 'completed' ? '已完成' : '进行中'}}
+      </text>
+      <text class="score-text" wx:if="{{assignment.status === 'completed' && assignment.score !== null}}">
+        得分：{{assignment.score}}分
+      </text>
+    </view>
+  </view>
+
+  <!-- 题目导航 -->
+  <view class="question-nav" wx:if="{{questions.length > 0}}">
+    <view class="nav-title">题目列表</view>
+    <scroll-view class="nav-scroll" scroll-x>
+      <view class="nav-items">
+        <view
+          class="nav-item {{currentIndex === index ? 'active' : ''}} {{answers[item.id] ? 'answered' : ''}}"
+          wx:for="{{questions}}"
+          wx:key="id"
+          wx:for-index="index"
+          bindtap="handleNextQuestion"
+          data-index="{{index}}"
+        >
+          {{index + 1}}
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 题目内容 -->
+  <view class="question-card" wx:if="{{currentQuestion}}">
+    <view class="question-header">
+      <text class="question-number">第 {{currentIndex + 1}}/{{questions.length}} 题</text>
+      <text class="question-type">{{currentQuestion.q_type}}</text>
+    </view>
+
+    <view class="question-content">
+      <text class="question-text">{{currentQuestion.content}}</text>
+    </view>
+
+    <!-- 选项列表 -->
+    <view class="options-list">
+      <view
+        class="option-item {{userAnswer === 'A' ? 'selected' : ''}} {{assignment.status === 'completed' && currentQuestion.correct_answer === 'A' ? 'correct' : ''}} {{assignment.status === 'completed' && userAnswer === 'A' && currentQuestion.correct_answer !== 'A' ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="A"
+      >
+        <view class="option-label">A</view>
+        <text class="option-text">{{currentQuestion.option_a}}</text>
+      </view>
+      <view
+        class="option-item {{userAnswer === 'B' ? 'selected' : ''}} {{assignment.status === 'completed' && currentQuestion.correct_answer === 'B' ? 'correct' : ''}} {{assignment.status === 'completed' && userAnswer === 'B' && currentQuestion.correct_answer !== 'B' ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="B"
+      >
+        <view class="option-label">B</view>
+        <text class="option-text">{{currentQuestion.option_b}}</text>
+      </view>
+      <view
+        class="option-item {{userAnswer === 'C' ? 'selected' : ''}} {{assignment.status === 'completed' && currentQuestion.correct_answer === 'C' ? 'correct' : ''}} {{assignment.status === 'completed' && userAnswer === 'C' && currentQuestion.correct_answer !== 'C' ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="C"
+        wx:if="{{currentQuestion.option_c}}"
+      >
+        <view class="option-label">C</view>
+        <text class="option-text">{{currentQuestion.option_c}}</text>
+      </view>
+      <view
+        class="option-item {{userAnswer === 'D' ? 'selected' : ''}} {{assignment.status === 'completed' && currentQuestion.correct_answer === 'D' ? 'correct' : ''}} {{assignment.status === 'completed' && userAnswer === 'D' && currentQuestion.correct_answer !== 'D' ? 'wrong' : ''}}"
+        bindtap="handleSelectAnswer"
+        data-answer="D"
+        wx:if="{{currentQuestion.option_d}}"
+      >
+        <view class="option-label">D</view>
+        <text class="option-text">{{currentQuestion.option_d}}</text>
+      </view>
+    </view>
+
+    <!-- 查看解析按钮 -->
+    <button
+      class="btn-secondary"
+      wx:if="{{assignment.status === 'completed'}}"
+      bindtap="handleViewExplanation"
+    >
+      查看解析
+    </button>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar" wx:if="{{!loading}}">
+    <button
+      class="btn-nav"
+      bindtap="handlePrevQuestion"
+      disabled="{{currentIndex === 0}}"
+    >
+      上一题
+    </button>
+    <button
+      class="btn-nav"
+      bindtap="handleNextQuestion"
+      disabled="{{currentIndex === questions.length - 1}}"
+    >
+      下一题
+    </button>
+    <button
+      class="btn-submit"
+      wx:if="{{assignment.status !== 'completed'}}"
+      bindtap="handleSubmitAssignment"
+    >
+      提交作业
+    </button>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>
