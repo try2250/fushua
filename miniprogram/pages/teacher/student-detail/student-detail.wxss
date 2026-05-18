@@ -1,0 +1,187 @@
+/* pages/teacher/student-detail/student-detail.wxss */
+.detail-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* 学生信息头部 */
+.student-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40rpx 30rpx;
+  display: flex;
+  align-items: center;
+}
+
+.header-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background-color: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 30rpx;
+}
+
+.avatar-text {
+  font-size: 48rpx;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.header-info {
+  flex: 1;
+}
+
+.student-name {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 12rpx;
+}
+
+.student-meta {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 统计卡片 */
+.stats-section {
+  padding: 20rpx 30rpx;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.stat-card {
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.stat-title {
+  font-size: 24rpx;
+  color: #999999;
+  margin-bottom: 12rpx;
+}
+
+.stat-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #1890ff;
+}
+
+.stat-unit {
+  font-size: 24rpx;
+  color: #666666;
+  margin-left: 8rpx;
+}
+
+/* 详细数据区域 */
+.data-section {
+  padding: 0 30rpx 30rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333333;
+  margin-bottom: 20rpx;
+}
+
+.data-card {
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.data-row:last-child {
+  border-bottom: none;
+}
+
+.data-label {
+  font-size: 28rpx;
+  color: #666666;
+}
+
+.data-value {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: bold;
+}
+
+/* 错题列表 */
+.mistakes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.mistake-item {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+}
+
+.mistake-content {
+  font-size: 26rpx;
+  color: #333333;
+  margin-bottom: 12rpx;
+  word-break: break-all;
+}
+
+.mistake-meta {
+  display: flex;
+  gap: 12rpx;
+}
+
+.meta-tag {
+  padding: 4rpx 12rpx;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4rpx;
+  font-size: 22rpx;
+  color: #666666;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 30rpx;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 30rpx;
+  font-size: 28rpx;
+  color: #999999;
+}

@@ -1,0 +1,97 @@
+<!--pages/teacher/student-detail/student-detail.wxml-->
+<view class="detail-container">
+  <!-- 学生信息头部 -->
+  <view class="student-header" wx:if="{{student}}">
+    <view class="header-avatar">
+      <text class="avatar-text">{{student.username ? student.username.substring(0, 1) : '学'}}</text>
+    </view>
+    <view class="header-info">
+      <view class="student-name">{{student.username || '未知学生'}}</view>
+      <view class="student-meta">📱 {{student.phone || '未绑定手机'}}</view>
+    </view>
+  </view>
+
+  <!-- 统计卡片 -->
+  <view class="stats-section" wx:if="{{stats}}">
+    <view class="stats-grid">
+      <view class="stat-card">
+        <view class="stat-title">总刷题数</view>
+        <view class="stat-value">
+          {{stats.total_practice || 0}}
+          <text class="stat-unit">题</text>
+        </view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-title">正确率</view>
+        <view class="stat-value">
+          {{getAccuracyRate()}}
+          <text class="stat-unit">%</text>
+        </view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-title">完成作业</view>
+        <view class="stat-value">
+          {{stats.completed_assignments || 0}}
+          <text class="stat-unit">次</text>
+        </view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-title">错题数</view>
+        <view class="stat-value">
+          {{stats.mistake_count || 0}}
+          <text class="stat-unit">题</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 详细数据 -->
+  <view class="data-section" wx:if="{{stats}}">
+    <view class="section-title">学习数据</view>
+    <view class="data-card">
+      <view class="data-row">
+        <text class="data-label">今日刷题</text>
+        <text class="data-value">{{stats.today_practice || 0}} 题</text>
+      </view>
+      <view class="data-row">
+        <text class="data-label">本周刷题</text>
+        <text class="data-value">{{stats.week_practice || 0}} 题</text>
+      </view>
+      <view class="data-row">
+        <text class="data-label">连续刷题天数</text>
+        <text class="data-value">{{stats.continuous_days || 0}} 天</text>
+      </view>
+      <view class="data-row">
+        <text class="data-label">待完成作业</text>
+        <text class="data-value">{{stats.pending_assignments || 0}} 个</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 错题列表 -->
+  <view class="data-section">
+    <view class="section-title">最近错题</view>
+    <view class="data-card">
+      <view class="mistakes-list" wx:if="{{mistakes.length > 0}}">
+        <view class="mistake-item" wx:for="{{mistakes}}" wx:key="id">
+          <view class="mistake-content">{{item.question_content}}</view>
+          <view class="mistake-meta">
+            <text class="meta-tag">{{item.question_type === 'single' ? '单选题' : '多选题'}}</text>
+            <text class="meta-tag">错误 {{item.error_count || 1}} 次</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-container" wx:if="{{!loading && mistakes.length === 0}}">
+        <text class="empty-icon">✅</text>
+        <text class="empty-text">暂无错题</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

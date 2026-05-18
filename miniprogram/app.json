@@ -13,7 +13,9 @@
     "pages/teacher/class-detail/class-detail",
     "pages/teacher/assignments/assignments",
     "pages/teacher/create-assignment/create-assignment",
-    "pages/teacher/assignment-detail/assignment-detail"
+    "pages/teacher/assignment-detail/assignment-detail",
+    "pages/teacher/students/students",
+    "pages/teacher/student-detail/student-detail"
   ],
   "window": {
     "backgroundTextStyle": "light",
