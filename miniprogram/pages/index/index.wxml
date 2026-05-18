@@ -1,0 +1,18 @@
+<!-- pages/index/index.wxml -->
+<view class="container index-container">
+  <view class="logo-section">
+    <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+    <text class="app-name">付刷</text>
+    <text class="app-slogan">让学习更高效</text>
+  </view>
+
+  <view class="welcome-section" wx:if="{{!isLoggedIn}}">
+    <text class="welcome-text">欢迎使用付刷小程序</text>
+    <button class="btn-primary" bindtap="goToLogin">立即登录</button>
+  </view>
+
+  <view class="user-section" wx:if="{{isLoggedIn}}">
+    <text class="welcome-text">欢迎回来，{{userInfo.nickname || userInfo.username}}</text>
+    <text class="user-role">{{userInfo.role === 'student' ? '学生' : '教师'}}</text>
+  </view>
+</view>

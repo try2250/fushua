@@ -1,0 +1,58 @@
+// config.js - 小程序配置文件
+
+// API 配置
+const API_CONFIG = {
+  // 开发环境 API 地址
+  development: {
+    baseUrl: 'http://localhost:8000/api/v1',
+    timeout: 10000
+  },
+
+  // 生产环境 API 地址
+  production: {
+    baseUrl: 'https://your-api-domain.com/api/v1',
+    timeout: 10000
+  }
+};
+
+// 当前环境（development | production）
+const ENV = 'development';
+
+// 导出当前环境配置
+const config = API_CONFIG[ENV];
+
+// 微信小程序配置
+const WECHAT_CONFIG = {
+  appId: 'your-appid-here'
+};
+
+// 其他配置
+const APP_CONFIG = {
+  // 验证码倒计时（秒）
+  smsCountdown: 60,
+
+  // 每页显示数量
+  pageSize: 20,
+
+  // 图片上传大小限制（MB）
+  maxImageSize: 5,
+
+  // 主题色
+  primaryColor: '#1890ff',
+
+  // 成功色
+  successColor: '#52c41a',
+
+  // 错误色
+  errorColor: '#ff4d4f',
+
+  // 警告色
+  warningColor: '#faad14'
+};
+
+module.exports = {
+  ...config,
+  ENV,
+  WECHAT_CONFIG,
+  APP_CONFIG
+};
