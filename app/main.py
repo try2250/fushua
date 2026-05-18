@@ -3,17 +3,19 @@ import secrets
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
 import logging
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
 from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor, backup
 from app.models import User, Notification
+from app.core.config import settings
 
 if not os.environ.get("DATABASE_URL", "").startswith("postgresql"):
     Base.metadata.create_all(bind=engine)
@@ -59,11 +61,12 @@ _init_db.close()
 _is_production = os.environ.get("ENVIRONMENT", "development") == "production"
 
 app = FastAPI(
-    title="付刷",
-    version="3.0.0",
-    docs_url=None if _is_production else "/docs",
-    redoc_url=None if _is_production else "/redoc",
-    openapi_url=None if _is_production else "/openapi.json",
+    title="付刷 API",
+    description="付刷项目 RESTful API 文档",
+    version="4.0.0",
+    docs_url=None if _is_production else "/api/docs",
+    redoc_url=None if _is_production else "/api/redoc",
+    openapi_url=None if _is_production else "/api/openapi.json",
 )
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
@@ -73,6 +76,15 @@ if not SECRET_KEY:
     warnings.warn("使用开发模式密钥，生产环境请设置 SECRET_KEY 环境变量！")
 
 HTTPS_ONLY = os.environ.get("HTTPS_ONLY", "false").lower() == "true"
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class CSRFSessionMiddleware(BaseHTTPMiddleware):
@@ -131,7 +143,7 @@ def health_check(request: Request):
         overall = "degraded"
 
     import os
-    checks["version"] = "3.0.0"
+    checks["version"] = "4.0.0"
     checks["environment"] = os.environ.get("ENVIRONMENT", "development")
 
     return {"status": overall, "checks": checks}
@@ -243,6 +255,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if exc.status_code == 303:
         location = exc.headers.get("Location", "/") if exc.headers else "/"
         return RedirectResponse(url=location, status_code=303)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": exc.status_code * 100, "message": exc.detail, "data": None},
+        )
     error_map = {
         400: ("请求错误", "您的请求无法被处理，请检查输入后重试"),
         403: ("访问被拒绝", "您没有权限执行此操作"),
@@ -268,6 +285,17 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith("/api/"):
+        errors = []
+        for error in exc.errors():
+            errors.append({
+                "field": ".".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"]
+            })
+        return JSONResponse(
+            status_code=422,
+            content={"code": 10001, "message": "参数验证失败", "data": {"errors": errors}},
+        )
     return request.app.state.templates.TemplateResponse(
         "error.html",
         {"request": request, "error_code": 400, "error_title": "请求错误", "error_message": "提交的数据格式不正确"},
@@ -278,6 +306,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled exception")
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=500,
+            content={"code": 10000, "message": "系统错误", "data": None},
+        )
     return request.app.state.templates.TemplateResponse(
         "error.html",
         {"request": request, "error_code": 500, "error_title": "服务器错误", "error_message": "服务器内部发生错误，请稍后重试"},
@@ -295,3 +328,8 @@ app.include_router(classgroup.router)
 app.include_router(admin.router)
 app.include_router(extractor.router)
 app.include_router(backup.router)
+
+from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes
+app.include_router(api_auth.router, prefix="/api/v1")
+app.include_router(api_users.router, prefix="/api/v1")
+app.include_router(api_classes.router, prefix="/api/v1")
