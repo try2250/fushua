@@ -1,0 +1,71 @@
+<!--pages/teacher/classes/classes.wxml-->
+<view class="classes-container">
+  <!-- 头部操作栏 -->
+  <view class="header-bar">
+    <view class="header-info">
+      <text class="info-text">共 {{classes.length}} 个班级</text>
+    </view>
+    <button class="btn-create" bindtap="handleCreateClass">
+      <text class="btn-icon">+</text>
+      <text>创建班级</text>
+    </button>
+  </view>
+
+  <!-- 班级列表 -->
+  <view class="classes-list">
+    <view
+      class="class-card"
+      wx:for="{{classes}}"
+      wx:key="id"
+      bindtap="handleViewClass"
+      data-id="{{item.id}}"
+    >
+      <!-- 班级图标 -->
+      <view class="class-icon">
+        <text class="icon-text">{{item.name.substring(0, 2)}}</text>
+      </view>
+
+      <!-- 班级信息 -->
+      <view class="class-info">
+        <view class="class-name">{{item.name}}</view>
+        <view class="class-meta">
+          <text class="meta-item">👥 {{item.member_count}} 人</text>
+          <text class="meta-divider">|</text>
+          <text class="meta-item">📅 {{item.created_at}}</text>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="class-actions" catchtap="stopPropagation">
+        <button
+          class="btn-action btn-edit"
+          catchtap="handleEditClass"
+          data-id="{{item.id}}"
+          data-name="{{item.name}}"
+        >
+          编辑
+        </button>
+        <button
+          class="btn-action btn-delete"
+          catchtap="handleDeleteClass"
+          data-id="{{item.id}}"
+          data-name="{{item.name}}"
+        >
+          删除
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-container" wx:if="{{!loading && classes.length === 0}}">
+    <text class="empty-icon">📚</text>
+    <text class="empty-text">暂无班级</text>
+    <text class="empty-desc">点击右上角创建第一个班级</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

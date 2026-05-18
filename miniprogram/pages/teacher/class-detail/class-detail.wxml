@@ -1,0 +1,96 @@
+<!--pages/teacher/class-detail/class-detail.wxml-->
+<view class="detail-container">
+  <!-- 班级信息头部 -->
+  <view class="class-header" wx:if="{{classInfo}}">
+    <view class="header-content">
+      <view class="class-name">{{classInfo.name}}</view>
+      <view class="class-meta">
+        <text class="meta-item">👥 {{classInfo.member_count}} 人</text>
+        <text class="meta-divider">|</text>
+        <text class="meta-item">📅 {{classInfo.created_at}}</text>
+      </view>
+    </view>
+    <button class="btn-invite" bindtap="handleShareInvite">
+      <text>📋 邀请码</text>
+    </button>
+  </view>
+
+  <!-- 标签栏 -->
+  <view class="tabs-bar">
+    <view
+      class="tab-item {{currentTab === 'members' ? 'active' : ''}}"
+      bindtap="handleTabChange"
+      data-tab="members"
+    >
+      <text class="tab-label">班级成员</text>
+    </view>
+    <view
+      class="tab-item {{currentTab === 'stats' ? 'active' : ''}}"
+      bindtap="handleTabChange"
+      data-tab="stats"
+    >
+      <text class="tab-label">学习统计</text>
+    </view>
+  </view>
+
+  <!-- 成员列表 -->
+  <view class="members-list" wx:if="{{currentTab === 'members'}}">
+    <view
+      class="member-card"
+      wx:for="{{members}}"
+      wx:key="id"
+    >
+      <!-- 学生头像 -->
+      <view class="member-avatar">
+        <text class="avatar-text">{{item.username ? item.username.substring(0, 1) : '学'}}</text>
+      </view>
+
+      <!-- 学生信息 -->
+      <view class="member-info">
+        <view class="member-name">{{item.username}}</view>
+        <view class="member-meta">
+          <text class="meta-text">📱 {{item.phone}}</text>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="member-actions">
+        <button
+          class="btn-action btn-view"
+          bindtap="handleViewStudent"
+          data-id="{{item.id}}"
+        >
+          查看
+        </button>
+        <button
+          class="btn-action btn-remove"
+          bindtap="handleRemoveStudent"
+          data-id="{{item.id}}"
+          data-name="{{item.username}}"
+        >
+          移除
+        </button>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-container" wx:if="{{members.length === 0}}">
+      <text class="empty-icon">👥</text>
+      <text class="empty-text">暂无成员</text>
+      <text class="empty-desc">分享邀请码让学生加入班级</text>
+    </view>
+  </view>
+
+  <!-- 统计信息 -->
+  <view class="stats-content" wx:if="{{currentTab === 'stats'}}">
+    <view class="empty-container">
+      <text class="empty-icon">📊</text>
+      <text class="empty-text">统计功能开发中</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

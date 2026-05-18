@@ -1,0 +1,27 @@
+<!--pages/teacher/create-class/create-class.wxml-->
+<view class="create-container">
+  <!-- 表单区域 -->
+  <view class="form-section">
+    <view class="form-item">
+      <text class="label">
+        <text class="required">*</text>
+        班级名称
+      </text>
+      <input
+        class="input"
+        type="text"
+        placeholder="请输入班级名称"
+        placeholder-class="placeholder"
+        value="{{className}}"
+        bindinput="handleInputName"
+        maxlength="50"
+      />
+      <text class="tip-text">例如：高一（1）班、初三数学提高班</text>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <button class="btn-submit" bindtap="handleSubmit">
+    {{isEdit ? '保存' : '创建班级'}}
+  </button>
+</view>
