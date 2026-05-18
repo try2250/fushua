@@ -56,17 +56,25 @@
 
 ---
 
-#### 3. 数据备份自动化（路线图 Step 2.1）
-**现状：** 备份脚本已存在，但未自动化
+#### 3. ~~数据备份自动化（路线图 Step 2.1）~~ ✅ 已完成
+**状态：** 功能已实现，测试已通过
 
-**任务：**
-- [ ] 创建 cron job 配置文档（每日凌晨2点备份）
-- [ ] 添加管理员手动备份入口（`/admin/backup/trigger`）
-- [ ] 添加备份状态查看页面（最近备份时间、文件大小）
-- [ ] 编写恢复演练文档
-- [ ] 可选：配置异地备份（S3/云存储）
+**完成内容：**
+- ✅ 备份服务实现（`app/services/backup_service.py`）
+- ✅ 备份路由和 API 端点（`app/routers/backup.py`）
+- ✅ 管理员备份管理界面（`/admin/backup`）
+- ✅ 备份触发端点（`/admin/backup/trigger`）- 支持 Cron Job 和手动触发
+- ✅ 备份验证、下载、删除功能
+- ✅ 备份统计和历史记录
+- ✅ 数据库迁移（`backup_logs` 表）
+- ✅ 完整的测试覆盖（5 个测试用例全部通过）
+- ✅ 设计文档（`docs/backup-automation-design.md`）
+- ✅ 恢复指南（`docs/backup-recovery-guide.md`）
+- ✅ 故障排除文档（`docs/backup-troubleshooting.md`）
 
-**预计时间：** 4-5小时
+**测试结果：** 5 个备份测试全部通过
+
+**待配置：** Render Cron Job（需要在 Render Dashboard 配置 `BACKUP_SECRET` 环境变量）
 
 ---
 

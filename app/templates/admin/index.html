@@ -45,6 +45,7 @@
     <h2>系统维护</h2>
     <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
         <a href="/admin/classes" class="btn btn-outline">班级管理</a>
+        <a href="/admin/backup" class="btn btn-outline">数据备份</a>
         <a href="/admin/audit-log" class="btn btn-outline">审计日志</a>
         <form action="/admin/cleanup-guests" method="POST" style="display:inline;">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
