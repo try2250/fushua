@@ -7,7 +7,13 @@
     "pages/tabbar/assignments/assignments",
     "pages/tabbar/mistakes/mistakes",
     "pages/tabbar/profile/profile",
-    "pages/assignment-detail/assignment-detail"
+    "pages/assignment-detail/assignment-detail",
+    "pages/teacher/classes/classes",
+    "pages/teacher/create-class/create-class",
+    "pages/teacher/class-detail/class-detail",
+    "pages/teacher/assignments/assignments",
+    "pages/teacher/create-assignment/create-assignment",
+    "pages/teacher/assignment-detail/assignment-detail"
   ],
   "window": {
     "backgroundTextStyle": "light",

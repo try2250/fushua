@@ -1,0 +1,204 @@
+/* pages/teacher/create-assignment/create-assignment.wxss */
+.create-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 120rpx;
+}
+
+/* 表单区域 */
+.form-section {
+  background-color: #ffffff;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.form-item {
+  margin-bottom: 30rpx;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: bold;
+  margin-bottom: 16rpx;
+}
+
+.form-input {
+  width: 100%;
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.picker-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+}
+
+.picker-text {
+  font-size: 28rpx;
+  color: #333333;
+}
+
+.picker-arrow {
+  font-size: 20rpx;
+  color: #999999;
+}
+
+.datetime-picker {
+  display: flex;
+  gap: 20rpx;
+}
+
+.datetime-picker picker {
+  flex: 1;
+}
+
+/* 题目选择区域 */
+.questions-section {
+  background-color: #ffffff;
+  padding: 30rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: bold;
+}
+
+.section-count {
+  font-size: 24rpx;
+  color: #1890ff;
+}
+
+.questions-list {
+  max-height: 800rpx;
+  overflow-y: auto;
+}
+
+.question-item {
+  display: flex;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+}
+
+.question-item.selected {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+}
+
+.question-checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #d9d9d9;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+  background-color: #ffffff;
+}
+
+.question-item.selected .question-checkbox {
+  background-color: #1890ff;
+  border-color: #1890ff;
+}
+
+.checkbox-icon {
+  font-size: 24rpx;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.question-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.question-text {
+  font-size: 26rpx;
+  color: #333333;
+  margin-bottom: 12rpx;
+  word-break: break-all;
+}
+
+.question-meta {
+  display: flex;
+  gap: 12rpx;
+}
+
+.meta-tag {
+  padding: 4rpx 12rpx;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4rpx;
+  font-size: 22rpx;
+  color: #666666;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 30rpx;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+/* 提交按钮 */
+.submit-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 30rpx;
+  background-color: #ffffff;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  border: none;
+  line-height: 1.5;
+}
+
+.btn-submit::after {
+  border: none;
+}

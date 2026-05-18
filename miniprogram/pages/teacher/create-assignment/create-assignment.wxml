@@ -1,0 +1,102 @@
+<!--pages/teacher/create-assignment/create-assignment.wxml-->
+<view class="create-container">
+  <view class="form-section">
+    <!-- 作业标题 -->
+    <view class="form-item">
+      <view class="form-label">作业标题</view>
+      <input
+        class="form-input"
+        placeholder="请输入作业标题"
+        value="{{formData.title}}"
+        bindinput="handleTitleInput"
+      />
+    </view>
+
+    <!-- 选择班级 -->
+    <view class="form-item">
+      <view class="form-label">选择班级</view>
+      <picker
+        mode="selector"
+        range="{{classes}}"
+        range-key="name"
+        value="{{classIndex}}"
+        bindchange="handleClassChange"
+      >
+        <view class="picker-display">
+          <text class="picker-text">
+            {{classes[classIndex] ? classes[classIndex].name : '请选择班级'}}
+          </text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 截止时间 -->
+    <view class="form-item">
+      <view class="form-label">截止时间</view>
+      <view class="datetime-picker">
+        <picker
+          mode="date"
+          value="{{dateValue}}"
+          start="{{dateValue}}"
+          bindchange="handleDateChange"
+        >
+          <view class="picker-display">
+            <text class="picker-text">{{dateValue || '选择日期'}}</text>
+          </view>
+        </picker>
+        <picker
+          mode="time"
+          value="{{timeValue}}"
+          bindchange="handleTimeChange"
+        >
+          <view class="picker-display">
+            <text class="picker-text">{{timeValue || '选择时间'}}</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选择题目 -->
+  <view class="questions-section">
+    <view class="section-header">
+      <text class="section-title">选择题目</text>
+      <text class="section-count">已选 {{selectedQuestions.length}} 题</text>
+    </view>
+
+    <view class="questions-list">
+      <view
+        class="question-item {{isQuestionSelected(item.id) ? 'selected' : ''}}"
+        wx:for="{{questions}}"
+        wx:key="id"
+        bindtap="handleQuestionToggle"
+        data-id="{{item.id}}"
+      >
+        <view class="question-checkbox">
+          <text class="checkbox-icon" wx:if="{{isQuestionSelected(item.id)}}">✓</text>
+        </view>
+        <view class="question-content">
+          <view class="question-text">{{item.content}}</view>
+          <view class="question-meta">
+            <text class="meta-tag">{{item.type === 'single' ? '单选题' : '多选题'}}</text>
+            <text class="meta-tag">{{item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难'}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-container" wx:if="{{questions.length === 0}}">
+        <text class="empty-icon">📝</text>
+        <text class="empty-text">暂无题目</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-section">
+    <button class="btn-submit" bindtap="handleSubmit">
+      创建作业
+    </button>
+  </view>
+</view>

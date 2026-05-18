@@ -1,0 +1,88 @@
+<!--pages/teacher/assignments/assignments.wxml-->
+<view class="assignments-container">
+  <!-- 顶部操作栏 -->
+  <view class="header-bar">
+    <view class="filter-section">
+      <picker
+        mode="selector"
+        range="{{['全部班级'].concat(classes.map(c => c.name))}}"
+        value="{{selectedClassId ? classes.findIndex(c => c.id === selectedClassId) + 1 : 0}}"
+        bindchange="handleClassChange"
+      >
+        <view class="picker-display">
+          <text class="picker-text">
+            {{selectedClassId ? classes.find(c => c.id === selectedClassId).name : '全部班级'}}
+          </text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+
+    <button class="btn-create" bindtap="goToCreateAssignment">
+      <text>+ 创建作业</text>
+    </button>
+  </view>
+
+  <!-- 作业列表 -->
+  <view class="assignments-list">
+    <view
+      class="assignment-card"
+      wx:for="{{assignments}}"
+      wx:key="id"
+      bindtap="goToAssignmentDetail"
+      data-id="{{item.id}}"
+    >
+      <!-- 作业标题和状态 -->
+      <view class="card-header">
+        <view class="assignment-title">{{item.title}}</view>
+        <view class="status-badge {{getStatusClass(item)}}">
+          {{getStatusText(item)}}
+        </view>
+      </view>
+
+      <!-- 作业信息 -->
+      <view class="card-info">
+        <view class="info-row">
+          <text class="info-label">📚 班级：</text>
+          <text class="info-value">{{item.class_name || '未指定'}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">📝 题目数：</text>
+          <text class="info-value">{{item.question_count || 0}} 题</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">⏰ 截止时间：</text>
+          <text class="info-value">{{formatDate(item.deadline)}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">✅ 完成情况：</text>
+          <text class="info-value">{{item.submitted_count || 0}}/{{item.total_students || 0}}</text>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="card-actions">
+        <button
+          class="btn-action btn-delete"
+          catchtap="handleDeleteAssignment"
+          data-id="{{item.id}}"
+          data-title="{{item.title}}"
+        >
+          删除
+        </button>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-container" wx:if="{{!loading && assignments.length === 0}}">
+      <text class="empty-icon">📝</text>
+      <text class="empty-text">暂无作业</text>
+      <text class="empty-desc">点击右上角创建第一个作业</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>
