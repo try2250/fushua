@@ -329,7 +329,8 @@ app.include_router(admin.router)
 app.include_router(extractor.router)
 app.include_router(backup.router)
 
-from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes
+from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_users.router, prefix="/api/v1")
 app.include_router(api_classes.router, prefix="/api/v1")
+app.include_router(api_questions.router, prefix="/api/v1")
