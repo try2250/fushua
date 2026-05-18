@@ -38,6 +38,12 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     is_disabled = Column(Boolean, default=False)
     force_password_change = Column(Boolean, default=False)
+    phone = Column(String(20), unique=True, nullable=True, index=True)
+    openid = Column(String(100), unique=True, nullable=True, index=True)
+    is_phone_verified = Column(Boolean, default=False)
+    avatar_url = Column(String(500), nullable=True)
+    nickname = Column(String(100), nullable=True)
+    wechat_unionid = Column(String(100), nullable=True)
 
     records = relationship("Record", back_populates="user")
 
@@ -180,6 +186,8 @@ class ClassGroup(Base):
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, server_default=func.now())
 
+    creator = relationship("User", foreign_keys=[created_by])
+
 
 class ClassMember(Base):
     __tablename__ = "class_members"
@@ -310,6 +318,9 @@ class ClassJoinRequest(Base):
     reviewed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
+    user = relationship("User", foreign_keys=[user_id])
+    class_group = relationship("ClassGroup", foreign_keys=[class_id])
+
     __table_args__ = (
         UniqueConstraint("user_id", "class_id", name="uq_join_request_user_class"),
     )
@@ -343,3 +354,19 @@ class BackupLog(Base):
 
     def __repr__(self):
         return f"<BackupLog(id={self.id}, status={self.status}, created_at={self.created_at})>"
+
+
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    phone = Column(String(20), nullable=False)
+    code = Column(String(6), nullable=False)
+    purpose = Column(String(20), nullable=False)
+    is_used = Column(Boolean, default=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index('idx_verification_codes_phone_expires', 'phone', 'expires_at'),
+    )

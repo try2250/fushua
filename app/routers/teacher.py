@@ -6,7 +6,7 @@ import uuid
 import urllib.parse
 from fastapi import APIRouter, Depends, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 from io import BytesIO
@@ -1586,21 +1586,24 @@ def student_management(request: Request, db: Annotated[Session, Depends(get_db)]
 
     pending_join_requests = (
         db.query(ClassJoinRequest)
+        .options(
+            joinedload(ClassJoinRequest.user),
+            joinedload(ClassJoinRequest.class_group)
+        )
         .filter(ClassJoinRequest.class_id.in_(class_ids), ClassJoinRequest.status == "pending")
+        .order_by(ClassJoinRequest.created_at.desc())
         .all()
     ) if class_ids else []
     join_request_data = []
     for jr in pending_join_requests:
-        jr_user = db.query(User).filter(User.id == jr.user_id).first()
-        jr_class = db.query(ClassGroup).filter(ClassGroup.id == jr.class_id).first()
-        if jr_user and jr_class:
+        if jr.user and jr.class_group:
             join_request_data.append({
                 "id": jr.id,
-                "user_id": jr_user.id,
-                "username": jr_user.username,
-                "display_name": jr.display_name or jr_user.display_name,
-                "class_name": jr_class.name,
-                "class_id": jr_class.id,
+                "user_id": jr.user.id,
+                "username": jr.user.username,
+                "display_name": jr.display_name or jr.user.display_name,
+                "class_name": jr.class_group.name,
+                "class_id": jr.class_group.id,
                 "created_at": jr.created_at,
             })
 

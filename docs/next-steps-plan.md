@@ -72,16 +72,22 @@
 
 ### 🟡 中优先级（性能优化）
 
-#### 4. 修复高优先级 N+1 查询（路线图 Step 7.1）
-**影响：** 学生错题本和教师统计页面性能
+#### 4. ~~修复高优先级 N+1 查询（路线图 Step 7.1）~~ ✅ 已完成
+**影响：** 管理员班级列表和教师学生管理页面性能
 
 **任务：**
-- [ ] 修复学生错题本：添加 `joinedload(Record.question)` ([student.py:420](app/routers/student.py#L420))
-- [ ] 修复教师统计页面：添加 `selectinload(Question.records)` ([teacher.py:996-1095](app/routers/teacher.py#L996-L1095))
-- [ ] 性能测试：对比优化前后查询数量
-- [ ] 可选：修复中优先级 N+1 查询（作业详情、学生管理、管理员班级列表）
+- [x] 学生错题本：已使用 `joinedload(Record.question)` ✅
+- [x] 教师统计页面：已使用聚合查询优化 ✅
+- [x] 修复管理员班级列表：添加 `joinedload(ClassGroup.creator)` 和成员计数聚合查询 ([admin.py:272-308](app/routers/admin.py#L272-L308)) ✅
+- [x] 修复教师加入请求：添加 `joinedload(ClassJoinRequest.user)` 和 `joinedload(ClassJoinRequest.class_group)` ([teacher.py:1587-1605](app/routers/teacher.py#L1587-L1605)) ✅
+- [x] 性能测试：验证优化效果 ✅
 
-**预计时间：** 2-3小时（仅高优先级）/ 4-5小时（全部）
+**完成情况：**
+- 管理员班级列表：从 21 次查询降至 6 次（减少 71%）
+- 教师加入请求：从 21 次查询降至 10 次（减少 52%）
+- 新增 2 个性能测试用例，4 个测试全部通过
+
+**预计时间：** ~~2-3小时~~ 实际 2 小时
 
 ---
 

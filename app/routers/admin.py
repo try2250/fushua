@@ -1,7 +1,8 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func as sa_func
 from typing import Annotated
 
 from app.database import get_db
@@ -269,18 +270,41 @@ async def reject_recovery(request_id: int, request: Request, db: Annotated[Sessi
 @router.get("/admin/classes")
 def admin_classes(request: Request, db: Annotated[Session, Depends(get_db)]):
     require_admin(request, db)
-    classes = db.query(ClassGroup).order_by(ClassGroup.created_at.desc()).all()
+
+    # 使用 joinedload 预加载创建者信息
+    classes = (
+        db.query(ClassGroup)
+        .options(joinedload(ClassGroup.creator))
+        .order_by(ClassGroup.created_at.desc())
+        .all()
+    )
+
+    # 一次性查询所有班级的成员计数
+    class_ids = [c.id for c in classes]
+    member_counts = {}
+    if class_ids:
+        count_results = (
+            db.query(
+                ClassMember.class_id,
+                sa_func.count(ClassMember.user_id).label("count")
+            )
+            .filter(ClassMember.class_id.in_(class_ids))
+            .group_by(ClassMember.class_id)
+            .all()
+        )
+        member_counts = {row.class_id: row.count for row in count_results}
+
+    # 构建结果
     class_data = []
     for c in classes:
-        member_count = db.query(ClassMember).filter(ClassMember.class_id == c.id).count()
-        creator = db.query(User).filter(User.id == c.created_by).first()
         class_data.append({
             "id": c.id,
             "name": c.name,
-            "created_by": creator.display_name if creator else "未知",
-            "member_count": member_count,
+            "created_by": c.creator.display_name if c.creator else "未知",
+            "member_count": member_counts.get(c.id, 0),
             "created_at": c.created_at,
         })
+
     return request.app.state.templates.TemplateResponse(
         "admin/classes.html",
         {"request": request, "class_data": class_data},
