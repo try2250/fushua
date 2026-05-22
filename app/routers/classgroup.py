@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import ClassGroup, ClassMember, User, Record, Question, QUESTION_TYPES, AuditLog
 from app.auth import require_teacher
 from app.security import validate_csrf_async, sanitize_input
+from app.routers.permissions import teacher_owns_class
 
 router = APIRouter()
 
@@ -44,7 +45,9 @@ async def create_class(request: Request, db: Annotated[Session, Depends(get_db)]
 @router.get("/classes/{class_id}")
 def class_detail(class_id: int, request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_teacher(request, db)
-    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id, ClassGroup.created_by == user_id).first()
+    if not teacher_owns_class(db, user_id, class_id):
+        raise HTTPException(status_code=404, detail="班级不存在")
+    cls = db.query(ClassGroup).filter(ClassGroup.id == class_id).first()
     if not cls:
         raise HTTPException(status_code=404, detail="班级不存在")
     member_data = (

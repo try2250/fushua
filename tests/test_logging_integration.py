@@ -265,3 +265,74 @@ def test_login_failure_logs_warning(client, caplog):
     warning_logs = [r for r in caplog.records if r.levelname == "WARNING" and ("login" in r.message.lower() or "failed" in r.message.lower())]
     assert len(warning_logs) > 0
 
+
+def test_permission_denied_logs_warning(client, db_session, caplog):
+    """测试权限拒绝记录警告日志"""
+    from app.models import User, ClassGroup
+
+    # 创建两个教师和两个班级
+    teacher1 = User(username="teacher1", password_hash=User.hash_password("Test123!@#"), role="teacher", display_name="Teacher 1")
+    teacher2 = User(username="teacher2", password_hash=User.hash_password("Test123!@#"), role="teacher", display_name="Teacher 2")
+    db_session.add_all([teacher1, teacher2])
+    db_session.commit()
+
+    class1 = ClassGroup(name="Class 1", created_by=teacher1.id)
+    class2 = ClassGroup(name="Class 2", created_by=teacher2.id)
+    db_session.add_all([class1, class2])
+    db_session.commit()
+
+    # 教师1登录
+    csrf = get_csrf_token(client)
+    client.post("/login", data={"username": "teacher1", "password": "Test123!@#", "_csrf_token": csrf})
+
+    with caplog.at_level("WARNING"):
+        # 尝试访问教师2的班级
+        response = client.get(f"/classes/{class2.id}")
+
+    # 验证权限拒绝日志
+    permission_logs = [r for r in caplog.records
+                       if r.levelname == "WARNING"
+                       and "permission" in r.message.lower()
+                       and "denied" in r.message.lower()]
+    assert len(permission_logs) > 0
+
+
+def test_question_permission_denied_logs_warning(db_session, caplog):
+    """测试题目权限拒绝记录警告日志"""
+    from app.models import User, Question
+    from app.routers.permissions import teacher_owns_question
+
+    # 创建两个教师
+    teacher1 = User(username="teacher1", password_hash=User.hash_password("Test123!@#"), role="teacher", display_name="Teacher 1")
+    teacher2 = User(username="teacher2", password_hash=User.hash_password("Test123!@#"), role="teacher", display_name="Teacher 2")
+    db_session.add_all([teacher1, teacher2])
+    db_session.commit()
+
+    # 教师2创建题目
+    question = Question(
+        subject="数学",
+        content="Test question",
+        option_a="A",
+        option_b="B",
+        option_c="C",
+        option_d="D",
+        answer="A",
+        difficulty=1,
+        created_by=teacher2.id
+    )
+    db_session.add(question)
+    db_session.commit()
+
+    with caplog.at_level("WARNING"):
+        # 教师1尝试访问教师2的题目
+        result = teacher_owns_question(db_session, teacher1.id, question.id)
+
+    assert result == False
+    # 验证权限拒绝日志
+    permission_logs = [r for r in caplog.records
+                       if r.levelname == "WARNING"
+                       and "permission" in r.message.lower()
+                       and "denied" in r.message.lower()
+                       and "question" in r.message.lower()]
+    assert len(permission_logs) > 0
+
