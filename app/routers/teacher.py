@@ -20,6 +20,7 @@ from app.auth import require_teacher, require_admin_role, get_current_user
 from app.routers.permissions import is_admin, teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int, paginate
+from app.utils.logger import log_info, log_error
 
 router = APIRouter(prefix="/teacher")
 
@@ -517,7 +518,26 @@ async def import_questions(
                     "csrf_token": request.session.get("csrf_token", ""),
                 },
             )
+
+        # 记录导入成功
+        log_info(
+            "Question import successful",
+            request=request,
+            bank_id=bank_id,
+            total_count=count,
+            success_count=count,
+            filename=filename
+        )
     except Exception as e:
+        # 记录导入失败
+        log_error(
+            "Question import failed",
+            request=request,
+            bank_id=bank_id,
+            filename=filename,
+            error=str(e),
+            exc_info=True
+        )
         custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
         return request.app.state.templates.TemplateResponse(
             "teacher/import.html",
@@ -754,6 +774,16 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
         ))
         db.commit()
 
+        # 记录导入成功
+        log_info(
+            "Question import successful",
+            request=request,
+            bank_id=bank_id,
+            total_count=count,
+            success_count=count,
+            filename=pending.get("filename", "unknown")
+        )
+
         custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
         banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
         return request.app.state.templates.TemplateResponse(
@@ -770,6 +800,15 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
         )
     except Exception as e:
         db.rollback()
+        # 记录导入失败
+        log_error(
+            "Question import failed",
+            request=request,
+            bank_id=bank_id,
+            filename=pending.get("filename", "unknown") if pending else "unknown",
+            error=str(e),
+            exc_info=True
+        )
         custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
         banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
         return request.app.state.templates.TemplateResponse(

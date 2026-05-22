@@ -336,3 +336,46 @@ def test_question_permission_denied_logs_warning(db_session, caplog):
                        and "question" in r.message.lower()]
     assert len(permission_logs) > 0
 
+
+def test_question_import_logs_operation(client, db_session, caplog):
+    """测试题目导入记录日志"""
+    from app.models import User, QuestionBank
+
+    # 创建教师和题库
+    teacher = User(username="teacher", password_hash=User.hash_password("Test123!@#"), role="teacher", display_name="Teacher")
+    db_session.add(teacher)
+    db_session.commit()
+
+    bank = QuestionBank(name="Test Bank", subject="数学", created_by=teacher.id)
+    db_session.add(bank)
+    db_session.commit()
+
+    # 教师登录
+    csrf = get_csrf_token(client)
+    client.post("/login", data={"username": "teacher", "password": "Test123!@#", "_csrf_token": csrf})
+
+    # 准备CSV数据
+    csv_content = "subject,content,answer\n数学,测试题,A"
+
+    # 创建CSV文件对象
+    from io import BytesIO
+    csv_file = BytesIO(csv_content.encode('utf-8'))
+
+    with caplog.at_level("INFO"):
+        csrf = get_csrf_token(client)
+        response = client.post(
+            "/teacher/questions/import",
+            data={"bank_id": str(bank.id), "_csrf_token": csrf},
+            files={"file": ("test.csv", csv_file, "text/csv")}
+        )
+
+    # 验证导入成功
+    assert response.status_code == 200
+
+    # 验证导入日志 - 应该包含 "Question import successful" 或类似消息
+    import_logs = [r for r in caplog.records
+                   if r.levelname == "INFO"
+                   and ("question import" in r.message.lower() or "successful" in r.message.lower())
+                   and "import" in r.message.lower()]
+    assert len(import_logs) > 0, f"No import logs found. All logs: {[r.message for r in caplog.records]}"
+
