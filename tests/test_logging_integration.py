@@ -372,10 +372,18 @@ def test_question_import_logs_operation(client, db_session, caplog):
     # 验证导入成功
     assert response.status_code == 200
 
-    # 验证导入日志 - 应该包含 "Question import successful" 或类似消息
+    # 验证导入日志 - 应该包含 "Question import successful" 和必要的结构化参数
     import_logs = [r for r in caplog.records
                    if r.levelname == "INFO"
-                   and ("question import" in r.message.lower() or "successful" in r.message.lower())
-                   and "import" in r.message.lower()]
+                   and "question import" in r.message.lower()
+                   and "successful" in r.message.lower()]
     assert len(import_logs) > 0, f"No import logs found. All logs: {[r.message for r in caplog.records]}"
+
+    # 验证日志包含必要的结构化字段（这些会被格式化到消息中）
+    log_message = import_logs[0].message
+    assert "bank_id" in log_message, f"bank_id not found in log: {log_message}"
+    assert "total_count" in log_message, f"total_count not found in log: {log_message}"
+    assert "success_count" in log_message, f"success_count not found in log: {log_message}"
+    assert "failed_count" in log_message, f"failed_count not found in log: {log_message}"
+    assert "errors" in log_message, f"errors not found in log: {log_message}"
 

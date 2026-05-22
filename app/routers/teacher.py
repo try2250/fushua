@@ -502,9 +502,9 @@ async def import_questions(
 
     try:
         if filename.endswith(".json"):
-            count = _import_json(content_bytes, user_id, db, bank_id=bank_id)
+            success_count, failed_count, errors = _import_json(content_bytes, user_id, db, bank_id=bank_id)
         elif filename.endswith(".csv"):
-            count = _import_csv(content_bytes, user_id, db, bank_id=bank_id)
+            success_count, failed_count, errors = _import_csv(content_bytes, user_id, db, bank_id=bank_id)
         else:
             custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
             return request.app.state.templates.TemplateResponse(
@@ -519,22 +519,30 @@ async def import_questions(
                 },
             )
 
+        total_count = success_count + failed_count
+
         # 记录导入成功
         log_info(
             "Question import successful",
             request=request,
             bank_id=bank_id,
-            total_count=count,
-            success_count=count,
-            filename=filename
+            total_count=total_count,
+            success_count=success_count,
+            failed_count=failed_count,
+            filename=filename,
+            errors=errors[:10] if errors else []
         )
     except Exception as e:
-        # 记录导入失败
+        # 记录导入失败 - 整个导入过程失败（解析错误等）
         log_error(
             "Question import failed",
             request=request,
             bank_id=bank_id,
+            total_count=0,
+            success_count=0,
+            failed_count=0,
             filename=filename,
+            errors=[str(e)],
             error=str(e),
             exc_info=True
         )
@@ -557,7 +565,7 @@ async def import_questions(
         {
             "request": request,
             "error": None,
-            "success": f"成功导入 {count} 道题目！",
+            "success": f"成功导入 {success_count} 道题目！" + (f"（跳过 {failed_count} 条无效记录）" if failed_count > 0 else ""),
             "question_types": QUESTION_TYPES,
             "custom_fields": custom_fields,
             "csrf_token": request.session.get("csrf_token", ""),
@@ -753,10 +761,20 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
     try:
         # 使用 bulk_insert_mappings 进行批量插入（更快）
         question_mappings = []
-        for row in rows:
-            item = {k: v for k, v in row.items() if k != "_row_num"}
-            q_dict = _build_question_dict(item, user_id, bank_id=bank_id)
-            question_mappings.append(q_dict)
+        errors = []
+        success_count = 0
+        failed_count = 0
+
+        for idx, row in enumerate(rows):
+            try:
+                item = {k: v for k, v in row.items() if k != "_row_num"}
+                q_dict = _build_question_dict(item, user_id, bank_id=bank_id)
+                question_mappings.append(q_dict)
+                success_count += 1
+            except Exception as e:
+                failed_count += 1
+                row_num = row.get("_row_num", idx + 1)
+                errors.append(f"Row {row_num}: {str(e)}")
 
         # 批量插入，每次 100 条
         batch_size = 100
@@ -765,24 +783,14 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
             db.bulk_insert_mappings(Question, batch)
             db.flush()  # 刷新但不提交
 
-        count = len(question_mappings)
+        total_count = success_count + failed_count
         db.add(AuditLog(
             actor_id=user_id,
             action="import_questions",
             target_type="question",
-            detail=f"批量导入 {count} 道题目，题库ID={bank_id or '无'}"
+            detail=f"批量导入 {success_count} 道题目，题库ID={bank_id or '无'}"
         ))
         db.commit()
-
-        # 记录导入成功
-        log_info(
-            "Question import successful",
-            request=request,
-            bank_id=bank_id,
-            total_count=count,
-            success_count=count,
-            filename=pending.get("filename", "unknown")
-        )
 
         custom_fields = db.query(FieldConfig).filter(FieldConfig.visible == True).order_by(FieldConfig.sort_order).all()
         banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).order_by(QuestionBank.name).all()
@@ -791,7 +799,7 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
             {
                 "request": request,
                 "error": None,
-                "success": f"成功导入 {count} 道题目！",
+                "success": f"成功导入 {success_count} 道题目！" + (f"（跳过 {failed_count} 条无效记录）" if failed_count > 0 else ""),
                 "question_types": QUESTION_TYPES,
                 "custom_fields": custom_fields,
                 "banks": banks,
@@ -800,12 +808,16 @@ async def import_confirm(request: Request, db: Annotated[Session, Depends(get_db
         )
     except Exception as e:
         db.rollback()
-        # 记录导入失败
+        # 记录导入失败 - 整个批量导入过程失败
         log_error(
             "Question import failed",
             request=request,
             bank_id=bank_id,
+            total_count=len(rows) if rows else 0,
+            success_count=0,
+            failed_count=len(rows) if rows else 0,
             filename=pending.get("filename", "unknown") if pending else "unknown",
+            errors=[str(e)],
             error=str(e),
             exc_info=True
         )
@@ -887,38 +899,74 @@ def _build_question_dict(item: dict, user_id: int, bank_id: int = None) -> dict:
     }
 
 
-def _import_json(content_bytes: bytes, user_id: int, db: Session, bank_id: int = None) -> int:
+def _import_json(content_bytes: bytes, user_id: int, db: Session, bank_id: int = None) -> tuple[int, int, list[str]]:
+    """Import questions from JSON, returning (success_count, failed_count, error_messages)"""
     data = json.loads(content_bytes.decode("utf-8"))
     if not isinstance(data, list):
         data = [data]
-    count = 0
+    success_count = 0
+    failed_count = 0
+    errors = []
     batch_size = 50
     for i, item in enumerate(data):
-        q = _build_question_from_dict(item, user_id, bank_id=bank_id)
-        if q.subject and q.content and q.answer:
-            db.add(q)
-            count += 1
-        if count > 0 and count % batch_size == 0:
-            db.commit()
+        try:
+            q = _build_question_from_dict(item, user_id, bank_id=bank_id)
+            if q.subject and q.content and q.answer:
+                db.add(q)
+                success_count += 1
+            else:
+                failed_count += 1
+                missing = []
+                if not q.subject:
+                    missing.append("subject")
+                if not q.content:
+                    missing.append("content")
+                if not q.answer:
+                    missing.append("answer")
+                errors.append(f"Row {i+1}: Missing required fields: {', '.join(missing)}")
+            if success_count > 0 and success_count % batch_size == 0:
+                db.commit()
+        except Exception as e:
+            failed_count += 1
+            errors.append(f"Row {i+1}: {str(e)}")
     db.commit()
-    return count
+    return success_count, failed_count, errors
 
 
-def _import_csv(content_bytes: bytes, user_id: int, db: Session, bank_id: int = None) -> int:
+def _import_csv(content_bytes: bytes, user_id: int, db: Session, bank_id: int = None) -> tuple[int, int, list[str]]:
+    """Import questions from CSV, returning (success_count, failed_count, error_messages)"""
     text = content_bytes.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
-    count = 0
+    success_count = 0
+    failed_count = 0
+    errors = []
     batch_size = 50
+    row_num = 0
     for row in reader:
-        item = {k: v.strip() for k, v in row.items() if v is not None}
-        q = _build_question_from_dict(item, user_id, bank_id=bank_id)
-        if q.subject and q.content and q.answer:
-            db.add(q)
-            count += 1
-        if count > 0 and count % batch_size == 0:
-            db.commit()
+        row_num += 1
+        try:
+            item = {k: v.strip() for k, v in row.items() if v is not None}
+            q = _build_question_from_dict(item, user_id, bank_id=bank_id)
+            if q.subject and q.content and q.answer:
+                db.add(q)
+                success_count += 1
+            else:
+                failed_count += 1
+                missing = []
+                if not q.subject:
+                    missing.append("subject")
+                if not q.content:
+                    missing.append("content")
+                if not q.answer:
+                    missing.append("answer")
+                errors.append(f"Row {row_num}: Missing required fields: {', '.join(missing)}")
+            if success_count > 0 and success_count % batch_size == 0:
+                db.commit()
+        except Exception as e:
+            failed_count += 1
+            errors.append(f"Row {row_num}: {str(e)}")
     db.commit()
-    return count
+    return success_count, failed_count, errors
 
 
 @router.get("/questions/export/{fmt}")
