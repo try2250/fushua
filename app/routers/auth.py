@@ -8,6 +8,7 @@ from app.models import User, ClassGroup, Notification, AccountRecoveryRequest
 from app.auth import require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, validate_password_strength, check_login_rate_limit, record_login_attempt, sanitize_input, check_rate_limit, record_rate_limit_attempt, REGISTER_MAX_ATTEMPTS, REGISTER_LOCKOUT_SECONDS, RECOVER_MAX_ATTEMPTS, RECOVER_LOCKOUT_SECONDS
 from app.utils.validation import parse_int
+from app.utils.logger import log_info, log_warning
 
 router = APIRouter()
 
@@ -190,9 +191,17 @@ async def login(
 ):
     await validate_csrf_async(request)
     check_login_rate_limit(username, db)
+    client_ip = request.client.host if request.client else "unknown"
     user = db.query(User).filter(User.username == username).first()
     if not user or not User.verify_password(user.password_hash, password):
         record_login_attempt(username, db)
+        log_warning(
+            "Login failed",
+            request=request,
+            username=username,
+            reason="invalid_credentials",
+            ip_address=client_ip
+        )
         return request.app.state.templates.TemplateResponse(
             "login.html", {"request": request, "error": "用户名或密码错误", "csrf_token": request.session.get("csrf_token", "")}
         )
@@ -201,6 +210,14 @@ async def login(
             "login.html", {"request": request, "error": "账号已被禁用，请联系管理员", "csrf_token": request.session.get("csrf_token", "")}
         )
     request.session["user_id"] = user.id
+    log_info(
+        "Login successful",
+        request=request,
+        username=username,
+        user_id=user.id,
+        role=user.role,
+        ip_address=client_ip
+    )
     if user.force_password_change:
         return RedirectResponse(url="/settings?force_change=1", status_code=303)
     if user.is_guest and user.guest_expires_at:

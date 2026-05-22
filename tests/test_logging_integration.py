@@ -5,6 +5,7 @@ from app.main import app, generic_exception_handler
 from app.utils.error_monitor import error_monitor
 from unittest.mock import MagicMock, Mock, PropertyMock
 import asyncio
+from tests.conftest import get_csrf_token
 
 
 def test_global_exception_handler_logs_500_errors(caplog):
@@ -219,4 +220,48 @@ def test_global_exception_handler_no_sensitive_data_leak():
     assert response_data["message"] == "系统错误"
     assert response_data["code"] == 10000
     assert response_data["data"] is None
+
+
+def test_login_success_logs_operation(client, db_session, caplog):
+    """测试登录成功记录日志"""
+    from app.models import User
+
+    # 创建测试用户
+    user = User(
+        username="testuser",
+        password_hash=User.hash_password("Test123!@#"),
+        role="student",
+        display_name="Test User"
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    csrf = get_csrf_token(client)
+    with caplog.at_level("INFO"):
+        response = client.post("/login", data={
+            "username": "testuser",
+            "password": "Test123!@#",
+            "_csrf_token": csrf
+        })
+
+    assert response.status_code == 303  # 重定向
+
+    # 验证日志
+    login_logs = [r for r in caplog.records if "login_success" in r.message or "Login successful" in r.message]
+    assert len(login_logs) > 0
+
+
+def test_login_failure_logs_warning(client, caplog):
+    """测试登录失败记录警告日志"""
+    csrf = get_csrf_token(client)
+    with caplog.at_level("WARNING"):
+        response = client.post("/login", data={
+            "username": "nonexistent",
+            "password": "wrongpass",
+            "_csrf_token": csrf
+        })
+
+    # 验证警告日志
+    warning_logs = [r for r in caplog.records if r.levelname == "WARNING" and ("login" in r.message.lower() or "failed" in r.message.lower())]
+    assert len(warning_logs) > 0
 
