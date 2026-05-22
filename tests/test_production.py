@@ -1,7 +1,16 @@
 import os
 import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from tests.conftest import create_test_user, create_test_question, get_csrf_token, login_as, register_and_login
+from app.main import app
 from app.models import Favorite
+from app.utils.error_monitor import error_monitor
+
+
+@app.get("/__test_observability_http_500")
+def observability_http_500():
+    raise HTTPException(status_code=500, detail="observability test error")
 
 
 def test_health_check(client):
@@ -9,6 +18,28 @@ def test_health_check(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
+
+
+def test_request_tracking_adds_request_id_header(client):
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.headers.get("X-Request-ID")
+
+
+def test_http_500_errors_are_recorded_with_request_context():
+    error_monitor.clear()
+    local_client = TestClient(app, follow_redirects=False, raise_server_exceptions=False)
+
+    resp = local_client.get("/__test_observability_http_500")
+
+    assert resp.status_code == 500
+    assert resp.headers.get("X-Request-ID")
+    recent_errors = error_monitor.get_recent_errors()
+    assert len(recent_errors) == 1
+    assert recent_errors[0].request_id == resp.headers["X-Request-ID"]
+    assert recent_errors[0].path == "/__test_observability_http_500"
+    assert recent_errors[0].status_code == 500
+    assert recent_errors[0].error_message == "observability test error"
 
 
 def test_security_headers(client):

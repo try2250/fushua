@@ -10,6 +10,7 @@ from app.models import User, ClassGroup, Question, ClassMember, AuditLog, Accoun
 from app.auth import get_current_user, require_admin_role
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int
+from app.utils.error_monitor import error_monitor
 
 router = APIRouter()
 
@@ -31,6 +32,11 @@ def admin_index(request: Request, db: Annotated[Session, Depends(get_db)]):
     teacher_count = db.query(User).filter(User.role == "teacher").count()
     guest_count = db.query(User).filter(User.is_guest == True).count()
     admin_count = db.query(User).filter(User.role == "admin").count()
+
+    # 获取最近的错误
+    recent_errors = error_monitor.get_recent_errors(limit=10)
+    error_count = error_monitor.get_error_count()
+
     return request.app.state.templates.TemplateResponse(
         "admin/index.html",
         {
@@ -41,6 +47,8 @@ def admin_index(request: Request, db: Annotated[Session, Depends(get_db)]):
             "teacher_count": teacher_count,
             "guest_count": guest_count,
             "admin_count": admin_count,
+            "recent_errors": recent_errors,
+            "error_count": error_count,
             "csrf_token": request.session.get("csrf_token", ""),
         },
     )

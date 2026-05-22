@@ -16,6 +16,9 @@ from app.database import engine, Base, SessionLocal, get_db
 from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor, backup
 from app.models import User, Notification
 from app.core.config import settings
+from app.middleware import RequestTrackingMiddleware
+from app.utils.logger import log_error, log_warning, log_info
+from app.utils.error_monitor import error_monitor
 
 if not os.environ.get("DATABASE_URL", "").startswith("postgresql"):
     Base.metadata.create_all(bind=engine)
@@ -85,6 +88,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RequestTrackingMiddleware)
 
 
 class CSRFSessionMiddleware(BaseHTTPMiddleware):
@@ -255,6 +260,26 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if exc.status_code == 303:
         location = exc.headers.get("Location", "/") if exc.headers else "/"
         return RedirectResponse(url=location, status_code=303)
+
+    # 记录 4xx 和 5xx 错误
+    if exc.status_code >= 400:
+        request_id = getattr(request.state, "request_id", "unknown")
+        user_id = getattr(request.state, "user_id", None)
+
+        if exc.status_code >= 500:
+            log_error(f"HTTP {exc.status_code}: {exc.detail}", request)
+            error_monitor.add_error(
+                request_id=request_id,
+                user_id=user_id,
+                path=request.url.path,
+                method=request.method,
+                error_type="HTTPException",
+                error_message=str(exc.detail),
+                status_code=exc.status_code
+            )
+        elif exc.status_code in [403, 404]:
+            log_warning(f"HTTP {exc.status_code}: {exc.detail}", request)
+
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=exc.status_code,
@@ -285,6 +310,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = getattr(request.state, "request_id", "unknown")
+    user_id = getattr(request.state, "user_id", None)
+
+    log_warning(f"参数验证失败: {exc.errors()}", request)
+
     if request.url.path.startswith("/api/"):
         errors = []
         for error in exc.errors():
@@ -305,7 +335,21 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled exception")
+    request_id = getattr(request.state, "request_id", "unknown")
+    user_id = getattr(request.state, "user_id", None)
+
+    log_error(f"未处理的异常: {type(exc).__name__}: {str(exc)}", request, exc_info=True)
+
+    error_monitor.add_error(
+        request_id=request_id,
+        user_id=user_id,
+        path=request.url.path,
+        method=request.method,
+        error_type=type(exc).__name__,
+        error_message=str(exc),
+        status_code=500
+    )
+
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=500,

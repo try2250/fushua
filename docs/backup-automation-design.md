@@ -618,7 +618,6 @@ cp fushua.db.backup fushua.db
 
 6. **文档**
    - `docs/backup-recovery-guide.md`
-   - `docs/superpowers/specs/2026-05-17-backup-automation-design.md`
 
 ### 修改文件
 
