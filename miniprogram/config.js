@@ -23,7 +23,7 @@ const config = API_CONFIG[ENV];
 
 // 微信小程序配置
 const WECHAT_CONFIG = {
-  appId: 'your-appid-here'
+  appId: 'wx86db4c7584917750'
 };
 
 // 其他配置
