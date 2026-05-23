@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func as sa_func, or_
 from typing import Annotated
+import csv
+import io
 
 from app.database import get_db
 from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig, Favorite, QuestionBank, Record, StudyPlan, MasteryRecord, Notification, Announcement
@@ -928,6 +930,276 @@ async def admin_announcement_delete(
     db.commit()
 
     return RedirectResponse(url="/admin/announcements", status_code=302)
+
+
+# ==================== 数据导出功能 ====================
+
+@router.get("/admin/data-export")
+def admin_data_export_page(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """数据导出页面"""
+    admin_id = is_admin(request, db)
+
+    # 统计数据量
+    stats = {
+        "total_users": db.query(User).count(),
+        "total_classes": db.query(ClassGroup).count(),
+        "total_questions": db.query(Question).count(),
+        "total_records": db.query(Record).count()
+    }
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/data_export.html",
+        {
+            "request": request,
+            "stats": stats
+        }
+    )
+
+
+@router.get("/admin/export/users")
+def admin_export_users(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """导出用户数据"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+
+    # 获取所有用户
+    users = db.query(User).order_by(User.created_at.desc()).all()
+
+    # 创建CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # 写入表头
+    writer.writerow([
+        "ID", "用户名", "显示名称", "角色", "班级ID",
+        "是否禁用", "注册时间"
+    ])
+
+    # 写入数据
+    for user in users:
+        writer.writerow([
+            user.id,
+            user.username,
+            user.display_name,
+            user.role,
+            user.class_id or "",
+            "是" if user.is_disabled else "否",
+            user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else ""
+        ])
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="export_users",
+        target_type="users",
+        target_id=None,
+        metadata={"count": len(users)}
+    )
+    db.commit()
+
+    # 返回CSV文件
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue().encode('utf-8-sig')]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=users_{datetime.now().strftime('%Y%m%d')}.csv"
+        }
+    )
+
+
+@router.get("/admin/export/classes")
+def admin_export_classes(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """导出班级数据"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+
+    # 获取所有班级
+    classes = db.query(ClassGroup).order_by(ClassGroup.created_at.desc()).all()
+
+    # 创建CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # 写入表头
+    writer.writerow([
+        "ID", "班级名称", "创建者ID", "创建者", "成员数",
+        "创建时间"
+    ])
+
+    # 写入数据
+    for cls in classes:
+        creator = db.query(User).filter(User.id == cls.created_by).first()
+        member_count = db.query(ClassMember).filter(ClassMember.class_id == cls.id).count()
+
+        writer.writerow([
+            cls.id,
+            cls.name,
+            cls.created_by,
+            creator.display_name if creator else "",
+            member_count,
+            cls.created_at.strftime('%Y-%m-%d %H:%M:%S') if cls.created_at else ""
+        ])
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="export_classes",
+        target_type="classes",
+        target_id=None,
+        metadata={"count": len(classes)}
+    )
+    db.commit()
+
+    # 返回CSV文件
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue().encode('utf-8-sig')]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=classes_{datetime.now().strftime('%Y%m%d')}.csv"
+        }
+    )
+
+
+@router.get("/admin/export/questions")
+def admin_export_questions(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """导出题目数据"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+
+    # 获取所有题目
+    questions = db.query(Question).order_by(Question.created_at.desc()).all()
+
+    # 创建CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # 写入表头
+    writer.writerow([
+        "ID", "题目内容", "选项A", "选项B", "选项C", "选项D",
+        "正确答案", "难度", "题库ID", "创建者ID", "创建时间"
+    ])
+
+    # 写入数据
+    for q in questions:
+        writer.writerow([
+            q.id,
+            q.content,
+            q.option_a,
+            q.option_b,
+            q.option_c,
+            q.option_d,
+            q.answer,
+            q.difficulty,
+            q.bank_id or "",
+            q.created_by,
+            q.created_at.strftime('%Y-%m-%d %H:%M:%S') if q.created_at else ""
+        ])
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="export_questions",
+        target_type="questions",
+        target_id=None,
+        metadata={"count": len(questions)}
+    )
+    db.commit()
+
+    # 返回CSV文件
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue().encode('utf-8-sig')]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=questions_{datetime.now().strftime('%Y%m%d')}.csv"
+        }
+    )
+
+
+@router.get("/admin/export/statistics")
+def admin_export_statistics(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """导出统计数据"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+
+    # 获取所有学生的统计数据
+    students = db.query(User).filter(User.role == "student").all()
+
+    # 创建CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # 写入表头
+    writer.writerow([
+        "学生ID", "用户名", "显示名称", "班级ID",
+        "答题总数", "正确数", "正确率", "收藏数"
+    ])
+
+    # 写入数据
+    for student in students:
+        total_records = db.query(Record).filter(Record.user_id == student.id).count()
+        correct_records = db.query(Record).filter(
+            Record.user_id == student.id,
+            Record.is_correct == True
+        ).count()
+        accuracy = round(correct_records / total_records * 100, 1) if total_records > 0 else 0
+        favorites = db.query(Favorite).filter(Favorite.user_id == student.id).count()
+
+        writer.writerow([
+            student.id,
+            student.username,
+            student.display_name,
+            student.class_id or "",
+            total_records,
+            correct_records,
+            accuracy,
+            favorites
+        ])
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="export_statistics",
+        target_type="statistics",
+        target_id=None,
+        metadata={"student_count": len(students)}
+    )
+    db.commit()
+
+    # 返回CSV文件
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue().encode('utf-8-sig')]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=statistics_{datetime.now().strftime('%Y%m%d')}.csv"
+        }
+    )
 
 
 
