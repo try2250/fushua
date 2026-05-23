@@ -1,12 +1,12 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func as sa_func
 from typing import Annotated
 
 from app.database import get_db
-from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig
+from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig, Favorite, QuestionBank, Record
 from app.auth import get_current_user, require_admin_role
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int
@@ -21,6 +21,12 @@ def require_admin(request: Request, db: Session):
     if not user:
         raise HTTPException(status_code=303, headers={"Location": "/login"})
     return user
+
+
+def is_admin(request: Request, db: Session):
+    """检查并返回管理员用户ID"""
+    user_id = require_admin_role(request, db)
+    return user_id
 
 
 @router.get("/admin")
@@ -393,3 +399,65 @@ def audit_log_export(request: Request, db: Annotated[Session, Depends(get_db)], 
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
     )
+
+
+@router.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """管理员查看用户详情"""
+    admin_id = is_admin(request, db)
+
+    # 获取用户信息
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # 获取用户统计数据
+    stats = {}
+
+    if user.role == "student":
+        # 学生统计
+        stats["total_records"] = db.query(Record).filter(Record.user_id == user_id).count()
+        stats["correct_records"] = db.query(Record).filter(
+            Record.user_id == user_id,
+            Record.is_correct == True
+        ).count()
+        stats["accuracy"] = (
+            round(stats["correct_records"] / stats["total_records"] * 100, 1)
+            if stats["total_records"] > 0 else 0
+        )
+        stats["total_favorites"] = db.query(Favorite).filter(Favorite.user_id == user_id).count()
+
+        # 获取班级信息
+        if user.class_id:
+            stats["class"] = db.query(ClassGroup).filter(ClassGroup.id == user.class_id).first()
+        else:
+            stats["class"] = None
+
+    elif user.role == "teacher":
+        # 教师统计
+        stats["total_classes"] = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).count()
+        stats["total_students"] = db.query(ClassMember).join(ClassGroup).filter(
+            ClassGroup.created_by == user_id
+        ).count()
+        stats["total_questions"] = db.query(Question).filter(Question.created_by == user_id).count()
+        stats["total_banks"] = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).count()
+
+    # 获取最近活动
+    recent_records = db.query(Record).filter(
+        Record.user_id == user_id
+    ).order_by(Record.created_at.desc()).limit(10).all()
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/user_detail.html",
+        {
+            "request": request,
+            "user": user,
+            "stats": stats,
+            "recent_records": recent_records
+        }
+    )
+
