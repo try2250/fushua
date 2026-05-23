@@ -6,7 +6,7 @@ from sqlalchemy import func as sa_func, or_
 from typing import Annotated
 
 from app.database import get_db
-from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig, Favorite, QuestionBank, Record, StudyPlan, MasteryRecord, Notification
+from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig, Favorite, QuestionBank, Record, StudyPlan, MasteryRecord, Notification, Announcement
 from app.auth import get_current_user, require_admin_role
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int
@@ -682,5 +682,252 @@ async def admin_batch_cleanup_execute(
         url=f"/admin/batch-cleanup?type={cleanup_type}&success={deleted_count}",
         status_code=302
     )
+
+
+# ==================== 公告管理路由 ====================
+
+@router.get("/admin/announcements", response_class=HTMLResponse)
+def admin_announcements(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """公告管理列表"""
+    admin_id = is_admin(request, db)
+
+    # 获取所有公告，按优先级和创建时间排序
+    announcements = db.query(Announcement).order_by(
+        Announcement.priority.desc(),
+        Announcement.created_at.desc()
+    ).all()
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/announcements.html",
+        {
+            "request": request,
+            "announcements": announcements
+        }
+    )
+
+
+@router.get("/admin/announcements/create", response_class=HTMLResponse)
+def admin_announcement_create_form(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """创建公告表单"""
+    admin_id = is_admin(request, db)
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/announcement_form.html",
+        {
+            "request": request,
+            "announcement": None
+        }
+    )
+
+
+@router.post("/admin/announcements/create")
+async def admin_announcement_create(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(...),
+    type: str = Form("info"),
+    target_role: str = Form("all"),
+    priority: int = Form(0),
+    expires_days: int = Form(None),
+    db: Session = Depends(get_db)
+):
+    """创建公告"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+    await validate_csrf_async(request)
+
+    # 计算过期时间
+    expires_at = None
+    if expires_days and expires_days > 0:
+        expires_at = datetime.now() + timedelta(days=expires_days)
+
+    # 创建公告
+    announcement = Announcement(
+        title=title,
+        content=content,
+        type=type,
+        target_role=target_role,
+        priority=priority,
+        created_by=admin_id,
+        expires_at=expires_at
+    )
+    db.add(announcement)
+    db.commit()
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="create_announcement",
+        target_type="announcement",
+        target_id=announcement.id,
+        metadata={
+            "title": title,
+            "type": type,
+            "target_role": target_role
+        }
+    )
+
+    return RedirectResponse(url="/admin/announcements", status_code=302)
+
+
+@router.get("/admin/announcements/{announcement_id}/edit", response_class=HTMLResponse)
+def admin_announcement_edit_form(
+    request: Request,
+    announcement_id: int,
+    db: Session = Depends(get_db)
+):
+    """编辑公告表单"""
+    admin_id = is_admin(request, db)
+
+    announcement = db.query(Announcement).filter(
+        Announcement.id == announcement_id
+    ).first()
+
+    if not announcement:
+        raise HTTPException(status_code=404, detail="公告不存在")
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/announcement_form.html",
+        {
+            "request": request,
+            "announcement": announcement
+        }
+    )
+
+
+@router.post("/admin/announcements/{announcement_id}/edit")
+async def admin_announcement_edit(
+    request: Request,
+    announcement_id: int,
+    title: str = Form(...),
+    content: str = Form(...),
+    type: str = Form("info"),
+    target_role: str = Form("all"),
+    priority: int = Form(0),
+    expires_days: int = Form(None),
+    db: Session = Depends(get_db)
+):
+    """更新公告"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+    await validate_csrf_async(request)
+
+    announcement = db.query(Announcement).filter(
+        Announcement.id == announcement_id
+    ).first()
+
+    if not announcement:
+        raise HTTPException(status_code=404, detail="公告不存在")
+
+    # 更新字段
+    announcement.title = title
+    announcement.content = content
+    announcement.type = type
+    announcement.target_role = target_role
+    announcement.priority = priority
+
+    # 更新过期时间
+    if expires_days and expires_days > 0:
+        announcement.expires_at = datetime.now() + timedelta(days=expires_days)
+    else:
+        announcement.expires_at = None
+
+    db.commit()
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="update_announcement",
+        target_type="announcement",
+        target_id=announcement_id,
+        metadata={"title": title}
+    )
+
+    return RedirectResponse(url="/admin/announcements", status_code=302)
+
+
+@router.post("/admin/announcements/{announcement_id}/toggle")
+async def admin_announcement_toggle(
+    request: Request,
+    announcement_id: int,
+    db: Session = Depends(get_db)
+):
+    """启用/禁用公告"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+    await validate_csrf_async(request)
+
+    announcement = db.query(Announcement).filter(
+        Announcement.id == announcement_id
+    ).first()
+
+    if not announcement:
+        raise HTTPException(status_code=404, detail="公告不存在")
+
+    # 切换状态
+    announcement.is_active = not announcement.is_active
+    db.commit()
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="toggle_announcement",
+        target_type="announcement",
+        target_id=announcement_id,
+        metadata={
+            "is_active": announcement.is_active,
+            "title": announcement.title
+        }
+    )
+
+    return RedirectResponse(url="/admin/announcements", status_code=302)
+
+
+@router.post("/admin/announcements/{announcement_id}/delete")
+async def admin_announcement_delete(
+    request: Request,
+    announcement_id: int,
+    db: Session = Depends(get_db)
+):
+    """删除公告"""
+    from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+    await validate_csrf_async(request)
+
+    announcement = db.query(Announcement).filter(
+        Announcement.id == announcement_id
+    ).first()
+
+    if not announcement:
+        raise HTTPException(status_code=404, detail="公告不存在")
+
+    # 记录审计日志
+    log_audit(
+        db=db,
+        actor_id=admin_id,
+        action="delete_announcement",
+        target_type="announcement",
+        target_id=announcement_id,
+        metadata={"title": announcement.title}
+    )
+
+    db.delete(announcement)
+    db.commit()
+
+    return RedirectResponse(url="/admin/announcements", status_code=302)
+
 
 

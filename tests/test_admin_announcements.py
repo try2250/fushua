@@ -2,6 +2,7 @@ import pytest
 from datetime import datetime, timedelta
 from app.models import Announcement, User
 from sqlalchemy.orm import Session
+from tests.conftest import login_as
 
 
 def test_create_announcement(db: Session):
@@ -105,3 +106,168 @@ def test_announcement_nullable_expires_at(db: Session):
     db.commit()
 
     assert announcement.expires_at is None
+
+
+def test_admin_can_view_announcements(client, db: Session):
+    """测试管理员可以查看公告列表"""
+    # 创建管理员
+    admin = User(
+        username="admin",
+        password_hash=User.hash_password("Admin123!@#"),
+        role="admin",
+        display_name="Admin"
+    )
+    db.add(admin)
+    db.commit()
+
+    # 创建公告
+    announcement = Announcement(
+        title="测试公告",
+        content="这是测试内容",
+        type="info",
+        created_by=admin.id
+    )
+    db.add(announcement)
+    db.commit()
+
+    # 管理员登录
+    login_as(client, "admin", "Admin123!@#")
+
+    # 访问公告列表
+    response = client.get("/admin/announcements")
+
+    assert response.status_code == 200
+    assert "测试公告" in response.text
+
+
+def test_admin_can_create_announcement(client, db: Session):
+    """测试管理员可以创建公告"""
+    # 创建管理员
+    admin = User(
+        username="admin",
+        password_hash=User.hash_password("Admin123!@#"),
+        role="admin",
+        display_name="Admin"
+    )
+    db.add(admin)
+    db.commit()
+
+    # 管理员登录
+    login_as(client, "admin", "Admin123!@#")
+
+    # 创建公告
+    response = client.post("/admin/announcements/create", data={
+        "title": "新公告",
+        "content": "公告内容",
+        "type": "warning",
+        "target_role": "student",
+        "priority": "1"
+    })
+
+    assert response.status_code == 302  # 重定向
+
+    # 验证公告已创建
+    announcement = db.query(Announcement).filter(
+        Announcement.title == "新公告"
+    ).first()
+    assert announcement is not None
+    assert announcement.type == "warning"
+    assert announcement.target_role == "student"
+
+
+def test_admin_can_toggle_announcement(client, db: Session):
+    """测试管理员可以启用/禁用公告"""
+    # 创建管理员
+    admin = User(
+        username="admin",
+        password_hash=User.hash_password("Admin123!@#"),
+        role="admin",
+        display_name="Admin"
+    )
+    db.add(admin)
+    db.commit()
+
+    # 创建公告
+    announcement = Announcement(
+        title="测试公告",
+        content="内容",
+        created_by=admin.id,
+        is_active=True
+    )
+    db.add(announcement)
+    db.commit()
+
+    # 管理员登录
+    login_as(client, "admin", "Admin123!@#")
+
+    # 禁用公告
+    response = client.post(f"/admin/announcements/{announcement.id}/toggle")
+
+    assert response.status_code == 302
+
+    # 验证公告已禁用
+    db.refresh(announcement)
+    assert announcement.is_active is False
+
+
+def test_student_can_see_active_announcements(client, db: Session):
+    """测试学生可以看到启用的公告"""
+    # 创建管理员和学生
+    admin = User(
+        username="admin",
+        password_hash=User.hash_password("Admin123!@#"),
+        role="admin",
+        display_name="Admin"
+    )
+    student = User(
+        username="student1",
+        password_hash=User.hash_password("Test123!@#"),
+        role="student",
+        display_name="Student"
+    )
+    db.add_all([admin, student])
+    db.commit()
+
+    # 创建公告
+    announcement1 = Announcement(
+        title="学生公告",
+        content="这是给学生的公告",
+        target_role="student",
+        is_active=True,
+        created_by=admin.id
+    )
+    announcement2 = Announcement(
+        title="全体公告",
+        content="这是给所有人的公告",
+        target_role="all",
+        is_active=True,
+        created_by=admin.id
+    )
+    announcement3 = Announcement(
+        title="教师公告",
+        content="这是给教师的公告",
+        target_role="teacher",
+        is_active=True,
+        created_by=admin.id
+    )
+    announcement4 = Announcement(
+        title="禁用公告",
+        content="这条公告已禁用",
+        target_role="student",
+        is_active=False,
+        created_by=admin.id
+    )
+    db.add_all([announcement1, announcement2, announcement3, announcement4])
+    db.commit()
+
+    # 学生登录
+    login_as(client, "student1", "Test123!@#")
+
+    # 访问学生首页
+    response = client.get("/student/dashboard")
+
+    assert response.status_code == 200
+    assert "学生公告" in response.text
+    assert "全体公告" in response.text
+    assert "教师公告" not in response.text  # 不应看到教师公告
+    assert "禁用公告" not in response.text  # 不应看到禁用公告

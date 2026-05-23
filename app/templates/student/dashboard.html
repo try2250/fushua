@@ -3,6 +3,18 @@
 {% block content %}
 <h1>今日学习</h1>
 
+{% if announcements %}
+<div class="announcements mb-4">
+    {% for announcement in announcements %}
+    <div class="alert alert-{{ announcement.type }} alert-dismissible fade show" role="alert">
+        <strong>{{ announcement.title }}</strong>
+        <p class="mb-0">{{ announcement.content }}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <div class="stats-row stats-row-4">
     <div class="stat-card">
         <div class="stat-number">{{ pending_assignments|length }}</div>

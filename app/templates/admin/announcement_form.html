@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{% if announcement %}编辑公告{% else %}创建公告{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if announcement %}编辑公告{% else %}创建公告{% endif %}</h2>
+
+    <form method="post" action="{% if announcement %}/admin/announcements/{{ announcement.id }}/edit{% else %}/admin/announcements/create{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+
+        <div class="mb-3">
+            <label for="title" class="form-label">标题 *</label>
+            <input type="text" class="form-control" id="title" name="title"
+                   value="{% if announcement %}{{ announcement.title }}{% endif %}"
+                   required maxlength="200">
+        </div>
+
+        <div class="mb-3">
+            <label for="content" class="form-label">内容 *</label>
+            <textarea class="form-control" id="content" name="content" rows="5" required>{% if announcement %}{{ announcement.content }}{% endif %}</textarea>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="type" class="form-label">类型</label>
+                <select class="form-select" id="type" name="type">
+                    <option value="info" {% if announcement and announcement.type == "info" %}selected{% endif %}>信息</option>
+                    <option value="warning" {% if announcement and announcement.type == "warning" %}selected{% endif %}>警告</option>
+                    <option value="success" {% if announcement and announcement.type == "success" %}selected{% endif %}>成功</option>
+                    <option value="error" {% if announcement and announcement.type == "error" %}selected{% endif %}>错误</option>
+                </select>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label for="target_role" class="form-label">目标角色</label>
+                <select class="form-select" id="target_role" name="target_role">
+                    <option value="all" {% if announcement and announcement.target_role == "all" %}selected{% endif %}>全部</option>
+                    <option value="student" {% if announcement and announcement.target_role == "student" %}selected{% endif %}>学生</option>
+                    <option value="teacher" {% if announcement and announcement.target_role == "teacher" %}selected{% endif %}>教师</option>
+                </select>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label for="priority" class="form-label">优先级</label>
+                <input type="number" class="form-control" id="priority" name="priority"
+                       value="{% if announcement %}{{ announcement.priority }}{% else %}0{% endif %}"
+                       min="0" max="100">
+                <small class="form-text text-muted">数字越大优先级越高</small>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="expires_days" class="form-label">有效期（天）</label>
+            <input type="number" class="form-control" id="expires_days" name="expires_days"
+                   min="1" max="365" placeholder="留空表示永久有效">
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">{% if announcement %}更新{% else %}创建{% endif %}</button>
+            <a href="/admin/announcements" class="btn btn-secondary">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

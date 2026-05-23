@@ -5,6 +5,18 @@
 {% block content %}
 <h1>数据统计</h1>
 
+{% if announcements %}
+<div class="announcements mb-4">
+    {% for announcement in announcements %}
+    <div class="alert alert-{{ announcement.type }} alert-dismissible fade show" role="alert">
+        <strong>{{ announcement.title }}</strong>
+        <p class="mb-0">{{ announcement.content }}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <a href="/teacher/stats/export/pdf" class="btn btn-outline" style="margin-bottom:1rem;">导出PDF报告</a>
 
 <div class="stats-row">

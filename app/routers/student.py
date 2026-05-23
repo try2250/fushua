@@ -7,7 +7,7 @@ from sqlalchemy import func as sa_func, Integer
 from typing import Annotated
 
 from app.database import get_db
-from app.models import User, Question, Record, QUESTION_TYPES, Favorite, StudyPlan, Notification, SUBJECTS as MODEL_SUBJECTS, SEMESTERS, MasteryRecord, Assignment, AssignmentRecord
+from app.models import User, Question, Record, QUESTION_TYPES, Favorite, StudyPlan, Notification, SUBJECTS as MODEL_SUBJECTS, SEMESTERS, MasteryRecord, Assignment, AssignmentRecord, Announcement
 from app.auth import require_login, require_non_guest, get_current_user
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int, paginate
@@ -73,6 +73,23 @@ def dashboard(request: Request, db: Annotated[Session, Depends(get_db)]):
     daily_goal = active_plan.daily_goal if active_plan else 10
     progress = min(round(today_record_count / daily_goal * 100, 1), 100) if daily_goal > 0 else 0
 
+    # 获取公告
+    from sqlalchemy import or_
+    announcements = db.query(Announcement).filter(
+        Announcement.is_active == True,
+        or_(
+            Announcement.target_role == "all",
+            Announcement.target_role == "student"
+        ),
+        or_(
+            Announcement.expires_at == None,
+            Announcement.expires_at > datetime.now()
+        )
+    ).order_by(
+        Announcement.priority.desc(),
+        Announcement.created_at.desc()
+    ).limit(5).all()
+
     return request.app.state.templates.TemplateResponse(
         "student/dashboard.html",
         {
@@ -83,6 +100,7 @@ def dashboard(request: Request, db: Annotated[Session, Depends(get_db)]):
             "today_record_count": today_record_count,
             "daily_goal": daily_goal,
             "progress": progress,
+            "announcements": announcements,
         },
     )
 

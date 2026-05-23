@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}公告管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>系统公告管理</h2>
+        <a href="/admin/announcements/create" class="btn btn-primary">创建公告</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>标题</th>
+                    <th>类型</th>
+                    <th>目标角色</th>
+                    <th>优先级</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>过期时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for announcement in announcements %}
+                <tr>
+                    <td>{{ announcement.title }}</td>
+                    <td>
+                        {% if announcement.type == "info" %}
+                            <span class="badge bg-info">信息</span>
+                        {% elif announcement.type == "warning" %}
+                            <span class="badge bg-warning">警告</span>
+                        {% elif announcement.type == "success" %}
+                            <span class="badge bg-success">成功</span>
+                        {% elif announcement.type == "error" %}
+                            <span class="badge bg-danger">错误</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if announcement.target_role == "all" %}
+                            全部
+                        {% elif announcement.target_role == "student" %}
+                            学生
+                        {% elif announcement.target_role == "teacher" %}
+                            教师
+                        {% endif %}
+                    </td>
+                    <td>{{ announcement.priority }}</td>
+                    <td>
+                        {% if announcement.is_active %}
+                            <span class="badge bg-success">启用</span>
+                        {% else %}
+                            <span class="badge bg-secondary">禁用</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ announcement.created_at.strftime('%Y-%m-%d') if announcement.created_at else '未知' }}</td>
+                    <td>
+                        {% if announcement.expires_at %}
+                            {{ announcement.expires_at.strftime('%Y-%m-%d') }}
+                        {% else %}
+                            永久
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/admin/announcements/{{ announcement.id }}/edit" class="btn btn-sm btn-outline-primary">编辑</a>
+
+                        <form method="post" action="/admin/announcements/{{ announcement.id }}/toggle" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+                            {% if announcement.is_active %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">禁用</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-sm btn-outline-success">启用</button>
+                            {% endif %}
+                        </form>
+
+                        <form method="post" action="/admin/announcements/{{ announcement.id }}/delete" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除这条公告吗？')">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not announcements %}
+    <div class="alert alert-info">
+        暂无公告，<a href="/admin/announcements/create">创建第一条公告</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

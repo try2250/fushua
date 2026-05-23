@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import openpyxl
 
 from app.database import get_db
-from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES, AuditLog
+from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES, AuditLog, Announcement
 from app.auth import require_teacher, require_admin_role, get_current_user
 from app.routers.permissions import is_admin, teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
@@ -1241,6 +1241,23 @@ def teacher_stats(request: Request, db: Annotated[Session, Depends(get_db)]):
     ]
     student_stats.sort(key=lambda x: x["accuracy"])
 
+    # 获取公告
+    from sqlalchemy import or_
+    announcements = db.query(Announcement).filter(
+        Announcement.is_active == True,
+        or_(
+            Announcement.target_role == "all",
+            Announcement.target_role == "teacher"
+        ),
+        or_(
+            Announcement.expires_at == None,
+            Announcement.expires_at > datetime.now()
+        )
+    ).order_by(
+        Announcement.priority.desc(),
+        Announcement.created_at.desc()
+    ).limit(5).all()
+
     return request.app.state.templates.TemplateResponse(
         "teacher/stats.html",
         {
@@ -1251,6 +1268,7 @@ def teacher_stats(request: Request, db: Annotated[Session, Depends(get_db)]):
             "per_question": per_question,
             "student_stats": student_stats,
             "question_types": QUESTION_TYPES,
+            "announcements": announcements,
         },
     )
 
