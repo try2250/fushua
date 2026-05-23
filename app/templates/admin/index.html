@@ -91,6 +91,9 @@
         <a href="/admin/classes" class="btn btn-outline">班级管理</a>
         <a href="/admin/backup" class="btn btn-outline">数据备份</a>
         <a href="/admin/audit-log" class="btn btn-outline">审计日志</a>
+        <a href="/admin/batch-cleanup" class="btn btn-outline">批量清理</a>
+        <a href="/admin/announcements" class="btn btn-outline">公告管理</a>
+        <a href="/admin/data-export" class="btn btn-outline">数据导出</a>
         <form action="/admin/cleanup-guests" method="POST" style="display:inline;">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-outline" onclick="return confirm('确定清理所有过期游客？')">清理过期游客</button>
