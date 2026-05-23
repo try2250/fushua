@@ -370,3 +370,27 @@ class VerificationCode(Base):
     __table_args__ = (
         Index('idx_verification_codes_phone_expires', 'phone', 'expires_at'),
     )
+
+
+class Announcement(Base):
+    """系统公告模型"""
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    type = Column(String(20), default="info")  # info, warning, success, error
+    target_role = Column(String(20), default="all")  # all, student, teacher, admin
+    is_active = Column(Boolean, default=True)
+    priority = Column(Integer, default=0)  # 数字越大优先级越高
+    created_by = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, server_default=func.now())
+    expires_at = Column(DateTime, nullable=True)
+
+    # 关系
+    creator = relationship("User", foreign_keys=[created_by])
+
+    # 索引：优化公告查询性能
+    __table_args__ = (
+        Index('idx_announcements_active_role_expires', 'is_active', 'target_role', 'expires_at'),
+    )

@@ -69,6 +69,16 @@ def db_session():
         db.close()
 
 
+@pytest.fixture
+def db():
+    """Alias for db_session to match specification naming"""
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def create_test_user(db, username="testuser", role="student", password="abc12345"):
     user = User(
         username=username,
