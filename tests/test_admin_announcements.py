@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime, timedelta
 from app.models import Announcement, User
 from sqlalchemy.orm import Session
-from tests.conftest import login_as
+from tests.conftest import login_as, get_csrf_token
 
 
 def test_create_announcement(db: Session):
@@ -155,13 +155,17 @@ def test_admin_can_create_announcement(client, db: Session):
     # 管理员登录
     login_as(client, "admin", "Admin123!@#")
 
+    # 获取CSRF token
+    csrf = get_csrf_token(client)
+
     # 创建公告
     response = client.post("/admin/announcements/create", data={
         "title": "新公告",
         "content": "公告内容",
         "type": "warning",
         "target_role": "student",
-        "priority": "1"
+        "priority": "1",
+        "_csrf_token": csrf
     })
 
     assert response.status_code == 302  # 重定向
@@ -200,8 +204,13 @@ def test_admin_can_toggle_announcement(client, db: Session):
     # 管理员登录
     login_as(client, "admin", "Admin123!@#")
 
+    # 获取CSRF token
+    csrf = get_csrf_token(client)
+
     # 禁用公告
-    response = client.post(f"/admin/announcements/{announcement.id}/toggle")
+    response = client.post(f"/admin/announcements/{announcement.id}/toggle", data={
+        "_csrf_token": csrf
+    })
 
     assert response.status_code == 302
 
