@@ -6,7 +6,7 @@ from sqlalchemy import func as sa_func
 from typing import Annotated
 
 from app.database import get_db
-from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig, Favorite, QuestionBank, Record
+from app.models import User, ClassGroup, Question, ClassMember, AuditLog, AccountRecoveryRequest, SiteConfig, Favorite, QuestionBank, Record, StudyPlan, MasteryRecord, Notification
 from app.auth import get_current_user, require_admin_role
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int
@@ -460,4 +460,73 @@ def admin_user_detail(
             "recent_records": recent_records
         }
     )
+
+
+@router.post("/admin/users/{user_id}/delete")
+def admin_delete_user(
+    request: Request,
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """管理员删除用户"""
+    # from app.utils.audit import log_audit
+
+    admin_id = is_admin(request, db)
+
+    # 获取用户
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # 不能删除自己
+    if user_id == admin_id:
+        raise HTTPException(status_code=400, detail="不能删除自己")
+
+    # 检查教师是否有创建的资源
+    if user.role == "teacher":
+        has_classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).count() > 0
+        has_questions = db.query(Question).filter(Question.created_by == user_id).count() > 0
+        has_banks = db.query(QuestionBank).filter(QuestionBank.created_by == user_id).count() > 0
+
+        if has_classes or has_questions or has_banks:
+            raise HTTPException(
+                status_code=400,
+                detail="该教师创建了班级、题目或题库，无法删除。请先转移或删除这些资源。"
+            )
+
+    # 删除学生的相关数据
+    if user.role == "student":
+        # 删除答题记录
+        db.query(Record).filter(Record.user_id == user_id).delete()
+
+        # 删除收藏
+        db.query(Favorite).filter(Favorite.user_id == user_id).delete()
+
+        # 删除学习计划
+        db.query(StudyPlan).filter(StudyPlan.user_id == user_id).delete()
+
+        # 删除掌握记录
+        db.query(MasteryRecord).filter(MasteryRecord.user_id == user_id).delete()
+
+        # 从班级中移除
+        db.query(ClassMember).filter(ClassMember.user_id == user_id).delete()
+
+        # 删除通知
+        db.query(Notification).filter(Notification.user_id == user_id).delete()
+
+    # 记录审计日志
+    db.add(AuditLog(
+        actor_id=admin_id,
+        action="delete_user",
+        target_type="user",
+        target_id=user_id,
+        detail=f"删除用户 {user.username} ({user.role})"
+    ))
+
+    # 删除用户
+    db.delete(user)
+    db.commit()
+
+    return RedirectResponse(url="/admin/users", status_code=302)
+
 
