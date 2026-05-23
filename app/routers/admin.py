@@ -1,8 +1,8 @@
-from datetime import datetime
-from fastapi import APIRouter, Depends, Request, HTTPException
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func as sa_func
+from sqlalchemy import func as sa_func, or_
 from typing import Annotated
 
 from app.database import get_db
@@ -528,5 +528,159 @@ def admin_delete_user(
     db.commit()
 
     return RedirectResponse(url="/admin/users", status_code=302)
+
+
+@router.get("/admin/batch-cleanup", response_class=HTMLResponse)
+def admin_batch_cleanup_page(
+    request: Request,
+    type: str = None,
+    db: Session = Depends(get_db)
+):
+    """批量清理页面"""
+    admin_id = is_admin(request, db)
+
+    preview_data = []
+    cleanup_type = type
+
+    if cleanup_type == "test_accounts":
+        # 查找测试账号（用户名包含test、demo等）
+        test_users = db.query(User).filter(
+            or_(
+                User.username.like("%test%"),
+                User.username.like("%demo%"),
+                User.display_name.like("%测试%"),
+                User.display_name.like("%test%")
+            )
+        ).all()
+        preview_data = test_users
+
+    elif cleanup_type == "expired_guests":
+        # 查找30天前创建的访客
+        cutoff_date = datetime.now() - timedelta(days=30)
+        expired_guests = db.query(User).filter(
+            User.role == "guest",
+            User.created_at < cutoff_date
+        ).all()
+        preview_data = expired_guests
+
+    elif cleanup_type == "invalid_data":
+        # 查找无效数据
+        # 1. 学生但没有班级
+        orphan_students = db.query(User).filter(
+            User.role == "student",
+            User.class_id == None
+        ).all()
+
+        # 2. class_members 中的用户不存在
+        invalid_members = db.query(ClassMember).outerjoin(User).filter(
+            User.id == None
+        ).all()
+
+        preview_data = {
+            "orphan_students": orphan_students,
+            "invalid_members": invalid_members
+        }
+
+    return request.app.state.templates.TemplateResponse(
+        "admin/batch_cleanup.html",
+        {
+            "request": request,
+            "cleanup_type": cleanup_type,
+            "preview_data": preview_data
+        }
+    )
+
+
+@router.post("/admin/batch-cleanup")
+async def admin_batch_cleanup_execute(
+    request: Request,
+    cleanup_type: str = Form(...),
+    confirm: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """执行批量清理"""
+    await validate_csrf_async(request)
+    admin_id = is_admin(request, db)
+
+    if confirm != "yes":
+        raise HTTPException(status_code=400, detail="未确认操作")
+
+    deleted_count = 0
+
+    if cleanup_type == "test_accounts":
+        # 删除测试账号
+        test_users = db.query(User).filter(
+            or_(
+                User.username.like("%test%"),
+                User.username.like("%demo%"),
+                User.display_name.like("%测试%"),
+                User.display_name.like("%test%")
+            )
+        ).all()
+
+        for user in test_users:
+            # 删除相关数据
+            if user.role == "student":
+                db.query(Record).filter(Record.user_id == user.id).delete()
+                db.query(Favorite).filter(Favorite.user_id == user.id).delete()
+                db.query(StudyPlan).filter(StudyPlan.user_id == user.id).delete()
+                db.query(ClassMember).filter(ClassMember.user_id == user.id).delete()
+
+            db.delete(user)
+            deleted_count += 1
+
+    elif cleanup_type == "expired_guests":
+        # 删除过期访客
+        cutoff_date = datetime.now() - timedelta(days=30)
+        expired_guests = db.query(User).filter(
+            User.role == "guest",
+            User.created_at < cutoff_date
+        ).all()
+
+        for guest in expired_guests:
+            db.query(Record).filter(Record.user_id == guest.id).delete()
+            db.query(Favorite).filter(Favorite.user_id == guest.id).delete()
+            db.delete(guest)
+            deleted_count += 1
+
+    elif cleanup_type == "invalid_data":
+        # 清理无效数据
+        # 1. 删除孤立学生
+        orphan_students = db.query(User).filter(
+            User.role == "student",
+            User.class_id == None
+        ).all()
+
+        for student in orphan_students:
+            db.query(Record).filter(Record.user_id == student.id).delete()
+            db.query(Favorite).filter(Favorite.user_id == student.id).delete()
+            db.query(StudyPlan).filter(StudyPlan.user_id == student.id).delete()
+            db.delete(student)
+            deleted_count += 1
+
+        # 2. 删除无效的班级成员记录
+        invalid_members = db.query(ClassMember).outerjoin(User).filter(
+            User.id == None
+        ).all()
+
+        for member in invalid_members:
+            db.delete(member)
+            deleted_count += 1
+
+    # 记录审计日志
+    db.add(AuditLog(
+        actor_id=admin_id,
+        action="batch_cleanup",
+        target_type="users",
+        target_id=None,
+        detail=f"批量清理：{cleanup_type}，删除数量：{deleted_count}"
+    ))
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/admin/batch-cleanup?type={cleanup_type}&success={deleted_count}",
+        status_code=302
+    )
 
 
