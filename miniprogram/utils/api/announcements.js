@@ -1,6 +1,6 @@
 // api/announcements.js - 公告相关API
 
-const { baseUrl, timeout } = require('../config');
+const config = require('../../config');
 const app = getApp();
 
 /**
@@ -17,13 +17,13 @@ function getAnnouncements() {
     }
 
     wx.request({
-      url: `${baseUrl}/announcements`,
+      url: `${config.baseUrl}/announcements`,
       method: 'GET',
       header: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      timeout,
+      timeout: config.timeout,
       success: (res) => {
         if (res.statusCode === 200) {
           resolve(res.data);

@@ -694,6 +694,7 @@ def admin_announcements(
     db: Session = Depends(get_db)
 ):
     """公告管理列表"""
+    admin_id = is_admin(request, db)  # 添加权限检查
     admin_id = is_admin(request, db)
 
     # 获取所有公告，按优先级和创建时间排序
