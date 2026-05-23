@@ -10,13 +10,13 @@ const API_CONFIG = {
 
   // 生产环境 API 地址
   production: {
-    baseUrl: 'https://your-api-domain.com/api/v1',
+    baseUrl: 'https://fushua.onrender.com/api/v1',
     timeout: 10000
   }
 };
 
 // 当前环境（development | production）
-const ENV = 'development';
+const ENV = 'production';
 
 // 导出当前环境配置
 const config = API_CONFIG[ENV];

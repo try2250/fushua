@@ -1,0 +1,60 @@
+/* components/announcement/announcement.wxss */
+.announcement-container {
+  margin: 20rpx;
+}
+
+.announcement-item {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  border-left: 6rpx solid #1890ff;
+}
+
+.announcement-item.info {
+  border-left-color: #1890ff;
+}
+
+.announcement-item.warning {
+  border-left-color: #faad14;
+}
+
+.announcement-item.success {
+  border-left-color: #52c41a;
+}
+
+.announcement-item.error {
+  border-left-color: #ff4d4f;
+}
+
+.announcement-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.announcement-icon {
+  font-size: 36rpx;
+  margin-right: 16rpx;
+}
+
+.announcement-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.announcement-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+}
+
+.announcement-time {
+  font-size: 24rpx;
+  color: #999;
+  text-align: right;
+}

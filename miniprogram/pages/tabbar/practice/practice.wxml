@@ -1,5 +1,8 @@
 <!--pages/tabbar/practice/practice.wxml-->
 <view class="practice-container">
+  <!-- 公告 -->
+  <announcement autoLoad="{{true}}"></announcement>
+
   <!-- 今日统计 -->
   <view class="stats-header">
     <view class="stat-item">

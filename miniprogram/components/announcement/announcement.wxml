@@ -1,0 +1,18 @@
+<!-- components/announcement/announcement.wxml -->
+<view class="announcement-container" wx:if="{{announcements.length > 0}}">
+  <view class="announcement-item {{announcement.type}}" wx:for="{{announcements}}" wx:key="id" wx:for-item="announcement">
+    <view class="announcement-header">
+      <view class="announcement-icon">
+        <text wx:if="{{announcement.type === 'info'}}">ℹ️</text>
+        <text wx:if="{{announcement.type === 'warning'}}">⚠️</text>
+        <text wx:if="{{announcement.type === 'success'}}">✅</text>
+        <text wx:if="{{announcement.type === 'error'}}">❌</text>
+      </view>
+      <view class="announcement-title">{{announcement.title}}</view>
+    </view>
+    <view class="announcement-content">{{announcement.content}}</view>
+    <view class="announcement-time" wx:if="{{announcement.created_at}}">
+      {{announcement.created_at}}
+    </view>
+  </view>
+</view>
