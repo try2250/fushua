@@ -32,27 +32,19 @@
     "list": [
       {
         "pagePath": "pages/tabbar/practice/practice",
-        "text": "刷题",
-        "iconPath": "images/practice.png",
-        "selectedIconPath": "images/practice-active.png"
+        "text": "刷题"
       },
       {
         "pagePath": "pages/tabbar/assignments/assignments",
-        "text": "作业",
-        "iconPath": "images/assignment.png",
-        "selectedIconPath": "images/assignment-active.png"
+        "text": "作业"
       },
       {
         "pagePath": "pages/tabbar/mistakes/mistakes",
-        "text": "错题本",
-        "iconPath": "images/mistake.png",
-        "selectedIconPath": "images/mistake-active.png"
+        "text": "错题本"
       },
       {
         "pagePath": "pages/tabbar/profile/profile",
-        "text": "我的",
-        "iconPath": "images/profile.png",
-        "selectedIconPath": "images/profile-active.png"
+        "text": "我的"
       }
     ]
   },

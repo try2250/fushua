@@ -52,8 +52,8 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "2.19.4",
-  "appid": "your-appid-here",
+  "libVersion": "3.15.2",
+  "appid": "wx86db4c7584917750",
   "projectname": "fushua-miniprogram",
   "isGameTourist": false,
   "condition": {
