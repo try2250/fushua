@@ -42,7 +42,7 @@
     >
       <!-- 学生头像 -->
       <view class="member-avatar">
-        <text class="avatar-text">{{item.username ? item.username.substring(0, 1) : '学'}}</text>
+        <text class="avatar-text">{{item.avatarText}}</text>
       </view>
 
       <!-- 学生信息 -->

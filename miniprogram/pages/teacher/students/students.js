@@ -7,6 +7,7 @@ Page({
     classes: [],
     selectedClassId: null,
     classIndex: 0,
+    selectedClassName: '请选择班级',
     loading: false
   },
 
@@ -23,15 +24,17 @@ Page({
   async loadClasses() {
     try {
       const res = await request.get('/api/v1/classes');
-      const classes = res.data || [];
+      const classes = res || [];
 
       this.setData({
-        classes
+        classes,
+        selectedClassName: this.getClassName(classes, this.data.classIndex)
       });
 
       if (classes.length > 0) {
         this.setData({
-          selectedClassId: classes[0].id
+          selectedClassId: classes[0].id,
+          selectedClassName: classes[0].name || '请选择班级'
         });
         this.loadStudents();
       }
@@ -46,22 +49,24 @@ Page({
     this.setData({ loading: true });
     try {
       const res = await request.get(`/api/v1/classes/${this.data.selectedClassId}`);
-      const classInfo = res.data;
+      const classInfo = res || {};
 
       // 获取每个学生的统计数据
-      const students = classInfo.students || [];
+      const students = classInfo.students || classInfo.members || [];
       const studentsWithStats = await Promise.all(
         students.map(async (student) => {
           try {
             const statsRes = await request.get(`/api/v1/users/${student.id}/stats`);
             return {
               ...student,
-              stats: statsRes.data || {}
+              avatarText: this.getAvatarText(student),
+              stats: statsRes || {}
             };
           } catch (error) {
             console.error(`加载学生 ${student.id} 统计失败:`, error);
             return {
               ...student,
+              avatarText: this.getAvatarText(student),
               stats: {}
             };
           }
@@ -83,12 +88,14 @@ Page({
   },
 
   handleClassChange(e) {
-    const index = parseInt(e.detail.value);
-    const classId = this.data.classes[index]?.id || null;
+    const index = parseInt(e.detail.value, 10) || 0;
+    const selectedClass = this.data.classes[index] || null;
+    const classId = selectedClass ? selectedClass.id : null;
 
     this.setData({
       classIndex: index,
-      selectedClassId: classId
+      selectedClassId: classId,
+      selectedClassName: selectedClass ? selectedClass.name : '请选择班级'
     });
 
     this.loadStudents();
@@ -99,5 +106,15 @@ Page({
     wx.navigateTo({
       url: `/pages/teacher/student-detail/student-detail?id=${id}`
     });
+  },
+
+  getClassName(classes, index) {
+    const selectedClass = classes[index];
+    return selectedClass ? selectedClass.name : '请选择班级';
+  },
+
+  getAvatarText(student) {
+    const username = student && student.username ? student.username : '';
+    return username ? username.slice(0, 1) : '学';
   }
 });

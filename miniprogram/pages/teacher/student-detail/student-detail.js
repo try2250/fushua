@@ -5,7 +5,9 @@ Page({
   data: {
     studentId: null,
     student: null,
+    avatarText: '学',
     stats: null,
+    accuracyRate: 0,
     mistakes: [],
     loading: false
   },
@@ -35,7 +37,8 @@ Page({
     try {
       const res = await request.get(`/api/v1/users/${this.data.studentId}`);
       this.setData({
-        student: res.data
+        student: res,
+        avatarText: this.getAvatarText(res)
       });
     } catch (error) {
       console.error('加载学生信息失败:', error);
@@ -50,7 +53,8 @@ Page({
     try {
       const res = await request.get(`/api/v1/users/${this.data.studentId}/stats`);
       this.setData({
-        stats: res.data
+        stats: res,
+        accuracyRate: this.calculateAccuracyRate(res)
       });
     } catch (error) {
       console.error('加载学生统计失败:', error);
@@ -62,7 +66,7 @@ Page({
     try {
       const res = await request.get(`/api/v1/users/${this.data.studentId}/mistakes`);
       this.setData({
-        mistakes: res.data || [],
+        mistakes: res || [],
         loading: false
       });
     } catch (error) {
@@ -76,5 +80,18 @@ Page({
     const { total_practice, correct_count } = this.data.stats;
     if (total_practice === 0) return 0;
     return Math.round((correct_count / total_practice) * 100);
+  },
+
+  getAvatarText(student) {
+    const username = student && student.username ? student.username : '';
+    return username ? username.slice(0, 1) : '学';
+  },
+
+  calculateAccuracyRate(stats) {
+    if (!stats) return 0;
+    const totalPractice = stats.total_practice || 0;
+    const correctCount = stats.correct_count || 0;
+    if (totalPractice === 0) return 0;
+    return Math.round((correctCount / totalPractice) * 100);
   }
 });

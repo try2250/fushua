@@ -14,7 +14,7 @@
       <text class="stat-label">答对题数</text>
     </view>
     <view class="stat-item">
-      <text class="stat-value">{{todayStats.total > 0 ? (todayStats.correct / todayStats.total * 100).toFixed(0) : 0}}%</text>
+      <text class="stat-value">{{todayCorrectRate}}%</text>
       <text class="stat-label">正确率</text>
     </view>
   </view>

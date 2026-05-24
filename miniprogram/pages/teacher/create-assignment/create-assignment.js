@@ -12,6 +12,7 @@ Page({
       deadline: ''
     },
     classIndex: 0,
+    selectedClassName: '请选择班级',
     dateValue: '',
     timeValue: ''
   },
@@ -42,8 +43,10 @@ Page({
   async loadClasses() {
     try {
       const res = await request.get('/api/v1/classes');
+      const classes = res || [];
       this.setData({
-        classes: res.data || []
+        classes,
+        selectedClassName: this.getClassName(classes, this.data.classIndex)
       });
     } catch (error) {
       console.error('加载班级列表失败:', error);
@@ -54,7 +57,7 @@ Page({
     try {
       const res = await request.get('/api/v1/questions');
       this.setData({
-        questions: res.data || []
+        questions: (res || []).map(item => this.decorateQuestion(item))
       });
     } catch (error) {
       console.error('加载题目列表失败:', error);
@@ -68,11 +71,13 @@ Page({
   },
 
   handleClassChange(e) {
-    const index = parseInt(e.detail.value);
-    const classId = this.data.classes[index]?.id || null;
+    const index = parseInt(e.detail.value, 10) || 0;
+    const selectedClass = this.data.classes[index] || null;
+    const classId = selectedClass ? selectedClass.id : null;
     this.setData({
       classIndex: index,
-      'formData.class_id': classId
+      'formData.class_id': classId,
+      selectedClassName: selectedClass ? selectedClass.name : '请选择班级'
     });
   },
 
@@ -100,12 +105,40 @@ Page({
     }
 
     this.setData({
-      selectedQuestions
+      selectedQuestions,
+      questions: this.data.questions.map(item => ({
+        ...item,
+        selected: selectedQuestions.includes(item.id)
+      }))
     });
   },
 
   isQuestionSelected(questionId) {
     return this.data.selectedQuestions.includes(questionId);
+  },
+
+  getClassName(classes, index) {
+    const selectedClass = classes[index];
+    return selectedClass ? selectedClass.name : '请选择班级';
+  },
+
+  decorateQuestion(question) {
+    const qType = question.type || question.q_type;
+    const difficulty = question.difficulty;
+    let difficultyText = '困难';
+
+    if (difficulty === 'easy' || difficulty === 1) {
+      difficultyText = '简单';
+    } else if (difficulty === 'medium' || difficulty === 2) {
+      difficultyText = '中等';
+    }
+
+    return {
+      ...question,
+      selected: this.data.selectedQuestions.includes(question.id),
+      typeText: qType === 'single' || qType === 'choice' ? '单选题' : '多选题',
+      difficultyText
+    };
   },
 
   async handleSubmit() {

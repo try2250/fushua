@@ -34,15 +34,14 @@ Page({
       if (subject) params.subject = subject;
       if (chapter) params.chapter = chapter;
 
-      const res = await request({
-        url: '/api/v1/practice-records/mistakes',
+      const res = await request('/api/v1/practice-records/mistakes', {
         method: 'GET',
         data: params
       });
 
-      if (res.success && res.data) {
+      if (res) {
         this.setData({
-          mistakes: res.data.map(item => ({
+          mistakes: res.map(item => ({
             ...item,
             // 计算错误次数
             mistake_count: item.mistake_count || 1,
@@ -123,8 +122,7 @@ Page({
       success: async (res) => {
         if (res.confirm) {
           try {
-            await request({
-              url: `/api/v1/practice-records/${id}/remove-mistake`,
+            await request(`/api/v1/practice-records/${id}/remove-mistake`, {
               method: 'POST'
             });
 

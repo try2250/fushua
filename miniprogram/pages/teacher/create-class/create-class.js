@@ -50,8 +50,7 @@ Page({
     try {
       if (isEdit) {
         // 更新班级
-        await request({
-          url: `/api/v1/classes/${classId}`,
+        await request(`/api/v1/classes/${classId}`, {
           method: 'PUT',
           data: {
             name: className.trim()
@@ -64,8 +63,7 @@ Page({
         });
       } else {
         // 创建班级
-        await request({
-          url: '/api/v1/classes',
+        await request('/api/v1/classes', {
           method: 'POST',
           data: {
             name: className.trim()

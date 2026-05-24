@@ -5,6 +5,9 @@ Page({
   data: {
     assignments: [],
     classes: [],
+    classOptions: ['全部班级'],
+    selectedClassIndex: 0,
+    selectedClassName: '全部班级',
     selectedClassId: null,
     loading: false
   },
@@ -23,8 +26,11 @@ Page({
   async loadClasses() {
     try {
       const res = await request.get('/api/v1/classes');
+      const classes = res || [];
       this.setData({
-        classes: res.data || []
+        classes,
+        classOptions: this.buildClassOptions(classes),
+        selectedClassName: this.getSelectedClassName(classes, this.data.selectedClassIndex)
       });
     } catch (error) {
       console.error('加载班级列表失败:', error);
@@ -39,9 +45,9 @@ Page({
         params.class_id = this.data.selectedClassId;
       }
 
-      const res = await request.get('/api/v1/assignments', { params });
+      const res = await request.get('/api/v1/assignments', params);
       this.setData({
-        assignments: res.data || [],
+        assignments: (res || []).map(this.decorateAssignment),
         loading: false
       });
     } catch (error) {
@@ -55,9 +61,14 @@ Page({
   },
 
   handleClassChange(e) {
-    const classId = e.detail.value === 'all' ? null : parseInt(e.detail.value);
+    const selectedClassIndex = parseInt(e.detail.value, 10) || 0;
+    const selectedClass = selectedClassIndex > 0 ? this.data.classes[selectedClassIndex - 1] : null;
+    const classId = selectedClass ? selectedClass.id : null;
+
     this.setData({
-      selectedClassId: classId
+      selectedClassIndex,
+      selectedClassId: classId,
+      selectedClassName: selectedClass ? selectedClass.name : '全部班级'
     });
     this.loadAssignments();
   },
@@ -109,6 +120,38 @@ Page({
     const hour = date.getHours();
     const minute = date.getMinutes();
     return `${month}月${day}日 ${hour}:${minute.toString().padStart(2, '0')}`;
+  },
+
+  buildClassOptions(classes) {
+    return ['全部班级'].concat(classes.map(item => item.name || '未命名班级'));
+  },
+
+  getSelectedClassName(classes, index) {
+    if (!index) return '全部班级';
+    const selectedClass = classes[index - 1];
+    return selectedClass ? selectedClass.name : '全部班级';
+  },
+
+  decorateAssignment(assignment) {
+    const now = new Date();
+    const deadline = new Date(assignment.deadline);
+    const isEnded = now > deadline;
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const hour = date.getHours();
+      const minute = date.getMinutes();
+      return `${month}月${day}日 ${hour}:${minute.toString().padStart(2, '0')}`;
+    };
+
+    return {
+      ...assignment,
+      statusText: isEnded ? '已截止' : '进行中',
+      statusClass: isEnded ? 'status-ended' : 'status-active',
+      deadlineFormatted: formatDate(assignment.deadline)
+    };
   },
 
   getStatusText(assignment) {

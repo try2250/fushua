@@ -3,7 +3,7 @@
   <!-- 学生信息头部 -->
   <view class="student-header" wx:if="{{student}}">
     <view class="header-avatar">
-      <text class="avatar-text">{{student.username ? student.username.substring(0, 1) : '学'}}</text>
+      <text class="avatar-text">{{avatarText}}</text>
     </view>
     <view class="header-info">
       <view class="student-name">{{student.username || '未知学生'}}</view>
@@ -24,7 +24,7 @@
       <view class="stat-card">
         <view class="stat-title">正确率</view>
         <view class="stat-value">
-          {{getAccuracyRate()}}
+          {{accuracyRate}}
           <text class="stat-unit">%</text>
         </view>
       </view>

@@ -50,15 +50,14 @@ Page({
         params.status = 'completed';
       }
 
-      const res = await request({
-        url: '/api/v1/assignments',
+      const res = await request('/api/v1/assignments', {
         method: 'GET',
         data: params
       });
 
-      if (res.success && res.data) {
+      if (res) {
         this.setData({
-          assignments: res.data.map(item => ({
+          assignments: res.map(item => ({
             ...item,
             // 格式化日期
             deadline_formatted: this.formatDate(item.deadline),

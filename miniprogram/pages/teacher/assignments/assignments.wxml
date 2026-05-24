@@ -5,13 +5,13 @@
     <view class="filter-section">
       <picker
         mode="selector"
-        range="{{['全部班级'].concat(classes.map(c => c.name))}}"
-        value="{{selectedClassId ? classes.findIndex(c => c.id === selectedClassId) + 1 : 0}}"
+        range="{{classOptions}}"
+        value="{{selectedClassIndex}}"
         bindchange="handleClassChange"
       >
         <view class="picker-display">
           <text class="picker-text">
-            {{selectedClassId ? classes.find(c => c.id === selectedClassId).name : '全部班级'}}
+            {{selectedClassName}}
           </text>
           <text class="picker-arrow">▼</text>
         </view>
@@ -35,8 +35,8 @@
       <!-- 作业标题和状态 -->
       <view class="card-header">
         <view class="assignment-title">{{item.title}}</view>
-        <view class="status-badge {{getStatusClass(item)}}">
-          {{getStatusText(item)}}
+        <view class="status-badge {{item.statusClass}}">
+          {{item.statusText}}
         </view>
       </view>
 
@@ -52,7 +52,7 @@
         </view>
         <view class="info-row">
           <text class="info-label">⏰ 截止时间：</text>
-          <text class="info-value">{{formatDate(item.deadline)}}</text>
+          <text class="info-value">{{item.deadlineFormatted}}</text>
         </view>
         <view class="info-row">
           <text class="info-label">✅ 完成情况：</text>

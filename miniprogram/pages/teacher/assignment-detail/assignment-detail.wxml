@@ -11,7 +11,7 @@
         <text>📝 题目数：{{assignment.question_count || 0}} 题</text>
       </view>
       <view class="info-item">
-        <text>⏰ 截止时间：{{formatDate(assignment.deadline)}}</text>
+        <text>⏰ 截止时间：{{assignment.deadlineFormatted}}</text>
       </view>
     </view>
   </view>
@@ -20,15 +20,15 @@
   <view class="stats-section">
     <view class="stats-card">
       <view class="stat-item">
-        <view class="stat-value">{{getSubmittedCount()}}/{{getTotalStudents()}}</view>
+        <view class="stat-value">{{submittedCount}}/{{totalStudents}}</view>
         <view class="stat-label">完成人数</view>
       </view>
       <view class="stat-item">
-        <view class="stat-value">{{getCompletionRate()}}%</view>
+        <view class="stat-value">{{completionRate}}%</view>
         <view class="stat-label">完成率</view>
       </view>
       <view class="stat-item">
-        <view class="stat-value">{{getAverageScore()}}</view>
+        <view class="stat-value">{{averageScore}}</view>
         <view class="stat-label">平均分</view>
       </view>
     </view>
@@ -48,7 +48,7 @@
       <view class="record-header">
         <view class="student-info">
           <view class="student-avatar">
-            <text class="avatar-text">{{item.student_name ? item.student_name.substring(0, 1) : '学'}}</text>
+            <text class="avatar-text">{{item.avatarText}}</text>
           </view>
           <text class="student-name">{{item.student_name || '未知学生'}}</text>
         </view>
@@ -60,7 +60,7 @@
       <view class="record-info" wx:if="{{item.submitted_at}}">
         <view class="info-row">
           <text class="info-label">提交时间：</text>
-          <text class="info-value">{{formatDate(item.submitted_at)}}</text>
+          <text class="info-value">{{item.submittedAtFormatted}}</text>
         </view>
         <view class="info-row" wx:if="{{item.score !== null}}">
           <text class="info-label">得分：</text>

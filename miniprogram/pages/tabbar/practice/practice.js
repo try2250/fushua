@@ -25,7 +25,8 @@ Page({
       completed: 0,
       correct: 0,
       total: 0
-    }
+    },
+    todayCorrectRate: 0
   },
 
   onLoad() {
@@ -38,23 +39,32 @@ Page({
    */
   async loadTodayStats() {
     try {
-      const res = await request({
-        url: '/api/v1/practice-records/today-stats',
+      const res = await request('/api/v1/practice-records/today-stats', {
         method: 'GET'
       });
 
-      if (res.success && res.data) {
-        this.setData({
-          todayStats: {
-            completed: res.data.completed || 0,
-            correct: res.data.correct || 0,
-            total: res.data.total || 0
-          }
-        });
+      if (res) {
+        this.setTodayStats(res);
       }
     } catch (error) {
       console.error('加载今日统计失败:', error);
     }
+  },
+
+  setTodayStats(stats) {
+    const completed = stats.completed || 0;
+    const correct = stats.correct || 0;
+    const total = stats.total || 0;
+    const todayCorrectRate = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    this.setData({
+      todayStats: {
+        completed,
+        correct,
+        total
+      },
+      todayCorrectRate
+    });
   },
 
   /**
@@ -75,18 +85,17 @@ Page({
       if (semester) params.semester = semester;
       if (chapter) params.chapter = chapter;
 
-      const res = await request({
-        url: '/api/v1/questions/random',
+      const res = await request('/api/v1/questions/random', {
         method: 'GET',
         data: params
       });
 
-      if (res.success && res.data && res.data.length > 0) {
+      if (res && res.length > 0) {
         this.setData({
-          questions: res.data,
-          totalQuestions: res.data.length,
+          questions: res,
+          totalQuestions: res.length,
           currentIndex: 0,
-          currentQuestion: res.data[0],
+          currentQuestion: res[0],
           userAnswer: null,
           showResult: false
         });
@@ -139,8 +148,7 @@ Page({
 
     // 提交答题记录
     try {
-      await request({
-        url: '/api/v1/practice-records',
+      await request('/api/v1/practice-records', {
         method: 'POST',
         data: {
           question_id: currentQuestion.id,
@@ -152,12 +160,10 @@ Page({
 
       // 更新今日统计
       const { todayStats } = this.data;
-      this.setData({
-        todayStats: {
-          completed: todayStats.completed + 1,
-          correct: isCorrect ? todayStats.correct + 1 : todayStats.correct,
-          total: todayStats.total + 1
-        }
+      this.setTodayStats({
+        completed: todayStats.completed + 1,
+        correct: isCorrect ? todayStats.correct + 1 : todayStats.correct,
+        total: todayStats.total + 1
       });
     } catch (error) {
       console.error('提交答题记录失败:', error);

@@ -6,6 +6,10 @@ Page({
     assignmentId: null,
     assignment: null,
     records: [],
+    submittedCount: 0,
+    totalStudents: 0,
+    completionRate: 0,
+    averageScore: 0,
     loading: false
   },
 
@@ -32,7 +36,7 @@ Page({
     try {
       const res = await request.get(`/api/v1/assignments/${this.data.assignmentId}`);
       this.setData({
-        assignment: res.data
+        assignment: this.decorateAssignment(res)
       });
     } catch (error) {
       console.error('加载作业详情失败:', error);
@@ -47,14 +51,51 @@ Page({
     this.setData({ loading: true });
     try {
       const res = await request.get(`/api/v1/assignments/${this.data.assignmentId}/records`);
+      const records = (res || []).map(item => this.decorateRecord(item));
+      const stats = this.calculateStats(records);
+
       this.setData({
-        records: res.data || [],
+        records,
+        ...stats,
         loading: false
       });
     } catch (error) {
       console.error('加载提交记录失败:', error);
       this.setData({ loading: false });
     }
+  },
+
+  decorateAssignment(assignment) {
+    if (!assignment) return null;
+    return {
+      ...assignment,
+      deadlineFormatted: this.formatDate(assignment.deadline)
+    };
+  },
+
+  decorateRecord(record) {
+    const studentName = record.student_name || '';
+    return {
+      ...record,
+      avatarText: studentName ? studentName.slice(0, 1) : '学',
+      submittedAtFormatted: this.formatDate(record.submitted_at)
+    };
+  },
+
+  calculateStats(records) {
+    const totalStudents = records.length;
+    const submittedCount = records.filter(r => r.submitted_at).length;
+    const completionRate = totalStudents === 0 ? 0 : Math.round((submittedCount / totalStudents) * 100);
+    const submittedRecords = records.filter(r => r.submitted_at && r.score !== null);
+    const scoreTotal = submittedRecords.reduce((sum, r) => sum + r.score, 0);
+    const averageScore = submittedRecords.length === 0 ? 0 : Math.round(scoreTotal / submittedRecords.length);
+
+    return {
+      submittedCount,
+      totalStudents,
+      completionRate,
+      averageScore
+    };
   },
 
   formatDate(dateStr) {

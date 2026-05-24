@@ -30,13 +30,12 @@ Page({
     this.setData({ loading: true });
 
     try {
-      const res = await request({
-        url: `/api/v1/assignments/${this.data.assignmentId}`,
+      const res = await request(`/api/v1/assignments/${this.data.assignmentId}`, {
         method: 'GET'
       });
 
-      if (res.success && res.data) {
-        const assignment = res.data;
+      if (res) {
+        const assignment = res;
         const questions = assignment.questions || [];
 
         this.setData({
@@ -67,14 +66,14 @@ Page({
    */
   async loadSubmittedAnswers() {
     try {
-      const res = await request({
-        url: `/api/v1/assignments/${this.data.assignmentId}/submission`,
+      const res = await request(`/api/v1/assignments/${this.data.assignmentId}/submission`, {
         method: 'GET'
       });
 
-      if (res.success && res.data) {
+      if (res) {
         const answers = {};
-        res.data.answers.forEach(item => {
+        const submittedAnswers = res.answers || [];
+        submittedAnswers.forEach(item => {
           answers[item.question_id] = item.user_answer;
         });
         this.setData({ answers });
@@ -186,8 +185,7 @@ Page({
         user_answer: answers[questionId]
       }));
 
-      const res = await request({
-        url: `/api/v1/assignments/${assignmentId}/submit`,
+      const res = await request(`/api/v1/assignments/${assignmentId}/submit`, {
         method: 'POST',
         data: {
           answers: answersList
@@ -196,10 +194,10 @@ Page({
 
       wx.hideLoading();
 
-      if (res.success) {
+      if (res) {
         wx.showModal({
           title: '提交成功',
-          content: `得分：${res.data.score}分`,
+          content: `得分：${res.score || 0}分`,
           showCancel: false,
           success: () => {
             // 重新加载作业详情

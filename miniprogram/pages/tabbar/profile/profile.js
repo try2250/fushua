@@ -5,6 +5,7 @@ const { request } = require('../../../utils/request');
 Page({
   data: {
     userInfo: null,
+    avatarText: '用',
     isStudent: false,
     isTeacher: false,
     stats: {
@@ -46,6 +47,7 @@ Page({
 
       this.setData({
         userInfo,
+        avatarText: this.getAvatarText(userInfo),
         isStudent: auth.isStudent(),
         isTeacher: auth.isTeacher()
       });
@@ -63,23 +65,27 @@ Page({
     }
   },
 
+  getAvatarText(userInfo) {
+    const username = userInfo && userInfo.username ? userInfo.username : '';
+    return username ? username.slice(0, 1) : '用';
+  },
+
   /**
    * 加载学生统计数据
    */
   async loadStudentStats() {
     try {
-      const res = await request({
-        url: '/api/v1/users/me/stats',
+      const res = await request('/api/v1/users/me/stats', {
         method: 'GET'
       });
 
-      if (res.success && res.data) {
+      if (res) {
         this.setData({
           stats: {
-            totalQuestions: res.data.total_questions || 0,
-            correctRate: res.data.correct_rate || 0,
-            totalAssignments: res.data.total_assignments || 0,
-            completedAssignments: res.data.completed_assignments || 0
+            totalQuestions: res.total_questions || 0,
+            correctRate: res.correct_rate || 0,
+            totalAssignments: res.total_assignments || 0,
+            completedAssignments: res.completed_assignments || 0
           }
         });
       }

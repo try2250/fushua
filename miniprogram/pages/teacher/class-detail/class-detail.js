@@ -27,15 +27,15 @@ Page({
     this.setData({ loading: true });
 
     try {
-      const res = await request({
-        url: `/api/v1/classes/${this.data.classId}`,
+      const res = await request(`/api/v1/classes/${this.data.classId}`, {
         method: 'GET'
       });
 
-      if (res.success && res.data) {
+      if (res) {
+        const members = res.members || res.students || [];
         this.setData({
-          classInfo: res.data,
-          members: res.data.members || []
+          classInfo: res,
+          members: members.map(this.decorateMember)
         });
       }
     } catch (error) {
@@ -47,6 +47,14 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
+  },
+
+  decorateMember(member) {
+    const username = member && member.username ? member.username : '';
+    return {
+      ...member,
+      avatarText: username ? username.slice(0, 1) : '学'
+    };
   },
 
   /**
@@ -81,8 +89,7 @@ Page({
       success: async (res) => {
         if (res.confirm) {
           try {
-            await request({
-              url: `/api/v1/classes/${this.data.classId}/members/${id}`,
+            await request(`/api/v1/classes/${this.data.classId}/members/${id}`, {
               method: 'DELETE'
             });
 

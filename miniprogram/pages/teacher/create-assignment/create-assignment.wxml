@@ -24,7 +24,7 @@
       >
         <view class="picker-display">
           <text class="picker-text">
-            {{classes[classIndex] ? classes[classIndex].name : '请选择班级'}}
+            {{selectedClassName}}
           </text>
           <text class="picker-arrow">▼</text>
         </view>
@@ -67,20 +67,20 @@
 
     <view class="questions-list">
       <view
-        class="question-item {{isQuestionSelected(item.id) ? 'selected' : ''}}"
+        class="question-item {{item.selected ? 'selected' : ''}}"
         wx:for="{{questions}}"
         wx:key="id"
         bindtap="handleQuestionToggle"
         data-id="{{item.id}}"
       >
         <view class="question-checkbox">
-          <text class="checkbox-icon" wx:if="{{isQuestionSelected(item.id)}}">✓</text>
+          <text class="checkbox-icon" wx:if="{{item.selected}}">✓</text>
         </view>
         <view class="question-content">
           <view class="question-text">{{item.content}}</view>
           <view class="question-meta">
-            <text class="meta-tag">{{item.type === 'single' ? '单选题' : '多选题'}}</text>
-            <text class="meta-tag">{{item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难'}}</text>
+            <text class="meta-tag">{{item.typeText}}</text>
+            <text class="meta-tag">{{item.difficultyText}}</text>
           </view>
         </view>
       </view>

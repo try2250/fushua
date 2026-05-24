@@ -11,7 +11,7 @@
     >
       <view class="picker-display">
         <text class="picker-text">
-          {{classes[classIndex] ? classes[classIndex].name : '请选择班级'}}
+          {{selectedClassName}}
         </text>
         <text class="picker-arrow">▼</text>
       </view>
@@ -29,7 +29,7 @@
     >
       <view class="card-header">
         <view class="student-avatar">
-          <text class="avatar-text">{{item.username ? item.username.substring(0, 1) : '学'}}</text>
+          <text class="avatar-text">{{item.avatarText}}</text>
         </view>
         <view class="student-info">
           <view class="student-name">{{item.username || '未知学生'}}</view>

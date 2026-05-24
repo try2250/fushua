@@ -37,14 +37,13 @@ Page({
     this.setData({ loading: true });
 
     try {
-      const res = await request({
-        url: '/api/v1/classes',
+      const res = await request('/api/v1/classes', {
         method: 'GET'
       });
 
-      if (res.success && res.data) {
+      if (res) {
         this.setData({
-          classes: res.data
+          classes: res.map(this.decorateClass)
         });
       }
     } catch (error) {
@@ -56,6 +55,14 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
+  },
+
+  decorateClass(item) {
+    const name = item && item.name ? item.name : '';
+    return {
+      ...item,
+      iconText: name ? name.slice(0, 2) : '班级'
+    };
   },
 
   /**
@@ -101,8 +108,7 @@ Page({
       success: async (res) => {
         if (res.confirm) {
           try {
-            await request({
-              url: `/api/v1/classes/${id}`,
+            await request(`/api/v1/classes/${id}`, {
               method: 'DELETE'
             });
 
