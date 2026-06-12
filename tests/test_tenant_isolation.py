@@ -80,3 +80,80 @@ def test_teacher_bearer_resolves_to_own_tenant(teacher_user):
     body = r.json()
     assert body["tenant_id"] == teacher_user.id
     assert body["source"] == "teacher"
+
+
+# ─── Task 3: Student class_id → tenant ───
+
+from app.models import ClassGroup, ClassMember
+
+
+@pytest.fixture
+def teacher_b_with_class(db):
+    teacher = User(
+        username="teacher_b",
+        password_hash=User.hash_password("abc12345"),
+        role="teacher",
+        display_name="B 老师",
+    )
+    db.add(teacher)
+    db.commit()
+    db.refresh(teacher)
+    cls = ClassGroup(name="B 班", created_by=teacher.id)
+    db.add(cls)
+    db.commit()
+    db.refresh(cls)
+    return teacher, cls
+
+
+@pytest.fixture
+def student_in_class_b(db, teacher_b_with_class):
+    _, cls = teacher_b_with_class
+    student = User(
+        username="student_in_b",
+        password_hash=User.hash_password("abc12345"),
+        role="student",
+        display_name="学生 1",
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    member = ClassMember(class_id=cls.id, user_id=student.id)
+    db.add(member)
+    db.commit()
+    return student, cls
+
+
+def test_student_without_class_id_returns_400(student_in_class_b):
+    student, _ = student_in_class_b
+    app = _make_app_with_tenant()
+    client = TestClient(app)
+    token = create_access_token({"user_id": student.id})
+    r = client.get("/probe", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 400
+    assert "class_id" in r.json()["detail"]
+
+
+def test_student_with_valid_class_resolves_to_class_teacher(student_in_class_b):
+    student, cls = student_in_class_b
+    app = _make_app_with_tenant()
+    client = TestClient(app)
+    token = create_access_token({"user_id": student.id})
+    r = client.get(f"/probe?class_id={cls.id}", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["tenant_id"] == cls.created_by
+    assert r.json()["source"] == "student"
+
+
+def test_student_in_wrong_class_returns_403(student_in_class_b, teacher_user):
+    student, _ = student_in_class_b
+    other_cls = ClassGroup(name="A 班", created_by=teacher_user.id)
+    db = TestingSessionLocal()
+    db.add(other_cls)
+    db.commit()
+    db.refresh(other_cls)
+    db.close()
+    app = _make_app_with_tenant()
+    client = TestClient(app)
+    token = create_access_token({"user_id": student.id})
+    r = client.get(f"/probe?class_id={other_cls.id}", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 403

@@ -58,4 +58,28 @@ def get_tenant_context(
     if user.role == "teacher":
         return TenantContext(tenant_id=user.id, user=user, source="teacher")
 
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="租户解析未实现")
+    if user.role == "student":
+        class_id_str = request.query_params.get("class_id")
+        if not class_id_str:
+            raise HTTPException(status_code=400, detail="缺少 class_id 参数")
+        try:
+            class_id = int(class_id_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="class_id 必须是整数")
+
+        from app.models import ClassGroup, ClassMember  # 局部 import 避免循环
+
+        member = db.query(ClassMember).filter(
+            ClassMember.class_id == class_id,
+            ClassMember.user_id == user.id,
+        ).first()
+        if not member:
+            raise HTTPException(status_code=403, detail="非该班级成员")
+
+        cls = db.query(ClassGroup).filter(ClassGroup.id == class_id).first()
+        if not cls:
+            raise HTTPException(status_code=404, detail="班级不存在")
+
+        return TenantContext(tenant_id=cls.created_by, user=user, source="student")
+
+    raise HTTPException(status_code=400, detail=f"未支持的角色: {user.role}")
