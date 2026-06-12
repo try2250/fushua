@@ -226,3 +226,52 @@ def test_question_service_filters_by_tenant(db, teacher_user):
         limit=20, offset=0,
     )
     assert {q.content for q in qs} == {"A1"}
+
+
+# ─── Task 6: API list + detail cross-tenant isolation ───
+
+from app.main import app as main_app
+
+
+def test_api_list_questions_isolated_between_teachers(db, teacher_user):
+    other = User(username="t_other2", password_hash=User.hash_password("x"),
+                 role="teacher", display_name="O2")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    db.add_all([
+        Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="A 的题", answer="A",
+                 created_by=teacher_user.id),
+        Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="O 的题", answer="B",
+                 created_by=other.id),
+    ])
+    db.commit()
+
+    client = TestClient(main_app)
+    token_a = create_access_token({"user_id": teacher_user.id})
+    r = client.get("/api/v1/questions", headers={"Authorization": f"Bearer {token_a}"})
+    assert r.status_code == 200
+    contents = [q["content"] for q in r.json()["data"]]
+    assert "A 的题" in contents
+    assert "O 的题" not in contents
+
+
+def test_api_get_question_detail_cross_tenant_returns_404(db, teacher_user):
+    other = User(username="t_other3", password_hash=User.hash_password("x"),
+                 role="teacher", display_name="O3")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    q = Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="不应被看见", answer="A",
+                 created_by=other.id)
+    db.add(q)
+    db.commit()
+    db.refresh(q)
+
+    client = TestClient(main_app)
+    token_a = create_access_token({"user_id": teacher_user.id})
+    r = client.get(f"/api/v1/questions/{q.id}", headers={"Authorization": f"Bearer {token_a}"})
+    assert r.status_code == 404

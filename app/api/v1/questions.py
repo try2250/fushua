@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.deps import get_current_user
+from app.core.tenant import TenantContext, get_tenant_context
 from app.schemas.question import (
     QuestionCreate, QuestionUpdate, QuestionResponse
 )
@@ -25,10 +26,11 @@ def get_questions(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    tenant: TenantContext = Depends(get_tenant_context),
 ):
-    questions = question_service.get_questions(
-        db, subject, semester, chapter, q_type, difficulty, bank_id, limit, offset
+    questions = question_service.get_questions_for_tenant(
+        db, tenant.tenant_id, subject, semester, chapter, q_type,
+        difficulty, bank_id, limit, offset,
     )
     return ResponseModel(data=[QuestionResponse.model_validate(q) for q in questions])
 
@@ -63,9 +65,9 @@ def get_random_questions(
 def get_question_detail(
     question_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    tenant: TenantContext = Depends(get_tenant_context),
 ):
-    question = question_service.get_question_by_id(db, question_id)
+    question = question_service.get_question_by_id_for_tenant(db, tenant.tenant_id, question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
     return ResponseModel(data=QuestionResponse.model_validate(question))
