@@ -83,3 +83,12 @@ def get_tenant_context(
         return TenantContext(tenant_id=cls.created_by, user=user, source="student")
 
     raise HTTPException(status_code=400, detail=f"未支持的角色: {user.role}")
+
+
+def tenant_filter(query, model_class, tenant: TenantContext):
+    """对 SQLAlchemy Query 应用 tenant 过滤。要求 model 有 created_by 字段。"""
+    if not hasattr(model_class, "created_by"):
+        raise ValueError(
+            f"{model_class.__name__} 没有 created_by 字段，不是租户范围资源"
+        )
+    return query.filter(model_class.created_by == tenant.tenant_id)

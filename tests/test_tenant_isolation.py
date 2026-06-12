@@ -157,3 +157,43 @@ def test_student_in_wrong_class_returns_403(student_in_class_b, teacher_user):
     token = create_access_token({"user_id": student.id})
     r = client.get(f"/probe?class_id={other_cls.id}", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 403
+
+
+# ─── Task 4: tenant_filter query helper ───
+
+from app.models import Question
+from app.core.tenant import tenant_filter
+
+
+def test_tenant_filter_applies_created_by(db, teacher_user):
+    other_teacher = User(
+        username="teacher_x",
+        password_hash=User.hash_password("abc12345"),
+        role="teacher",
+        display_name="X",
+    )
+    db.add(other_teacher)
+    db.commit()
+    db.refresh(other_teacher)
+
+    q1 = Question(subject="数学", semester="七年级上册", chapter="代数",
+                  q_type="choice", content="题 1", answer="A",
+                  created_by=teacher_user.id)
+    q2 = Question(subject="数学", semester="七年级上册", chapter="代数",
+                  q_type="choice", content="题 2", answer="B",
+                  created_by=other_teacher.id)
+    db.add_all([q1, q2])
+    db.commit()
+
+    ctx = TenantContext(tenant_id=teacher_user.id, user=teacher_user, source="teacher")
+    filtered = tenant_filter(db.query(Question), Question, ctx).all()
+    assert len(filtered) == 1
+    assert filtered[0].content == "题 1"
+
+
+def test_tenant_filter_rejects_model_without_created_by():
+    class Fake:
+        __name__ = "Fake"
+    ctx = TenantContext(tenant_id=1, user=None, source="teacher")
+    with pytest.raises(ValueError, match="created_by"):
+        tenant_filter(None, Fake, ctx)
