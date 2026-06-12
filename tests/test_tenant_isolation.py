@@ -275,3 +275,58 @@ def test_api_get_question_detail_cross_tenant_returns_404(db, teacher_user):
     token_a = create_access_token({"user_id": teacher_user.id})
     r = client.get(f"/api/v1/questions/{q.id}", headers={"Authorization": f"Bearer {token_a}"})
     assert r.status_code == 404
+
+
+# ─── Task 7: API write ops (create / update / delete) tenant isolation ───
+
+
+def test_create_question_assigns_tenant_as_created_by(db, teacher_user):
+    client = TestClient(main_app)
+    token = create_access_token({"user_id": teacher_user.id})
+    r = client.post("/api/v1/questions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "subject": "数学", "semester": "七年级上册", "chapter": "代数",
+            "q_type": "choice", "content": "新题", "answer": "A",
+            "difficulty": 1,
+        })
+    assert r.status_code == 200
+    created_id = r.json()["data"]["id"]
+    q = db.query(Question).filter(Question.id == created_id).first()
+    assert q.created_by == teacher_user.id
+
+
+def test_update_cross_tenant_question_returns_404(db, teacher_user):
+    other = User(username="t_upd", password_hash=User.hash_password("x"),
+                 role="teacher", display_name="U")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    q = Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="O 的题", answer="A", created_by=other.id)
+    db.add(q)
+    db.commit()
+    db.refresh(q)
+    client = TestClient(main_app)
+    token = create_access_token({"user_id": teacher_user.id})
+    r = client.put(f"/api/v1/questions/{q.id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"content": "改的"})
+    assert r.status_code == 404
+
+
+def test_delete_cross_tenant_question_returns_404(db, teacher_user):
+    other = User(username="t_del", password_hash=User.hash_password("x"),
+                 role="teacher", display_name="D")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    q = Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="O 的题", answer="A", created_by=other.id)
+    db.add(q)
+    db.commit()
+    db.refresh(q)
+    client = TestClient(main_app)
+    token = create_access_token({"user_id": teacher_user.id})
+    r = client.delete(f"/api/v1/questions/{q.id}", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 404

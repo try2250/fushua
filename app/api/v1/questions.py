@@ -39,12 +39,11 @@ def get_questions(
 def create_question(
     question_data: QuestionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    tenant: TenantContext = Depends(get_tenant_context),
 ):
-    if current_user.role not in ["teacher", "admin"]:
-        raise HTTPException(status_code=403, detail="只有教师和管理员可以创建题目")
-
-    new_question = question_service.create_question(db, question_data, current_user.id)
+    if tenant.source != "teacher":
+        raise HTTPException(status_code=403, detail="只有教师可以创建题目")
+    new_question = question_service.create_question(db, question_data, tenant.tenant_id)
     return ResponseModel(data=QuestionResponse.model_validate(new_question))
 
 
@@ -78,31 +77,23 @@ def update_question(
     question_id: int,
     question_data: QuestionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    tenant: TenantContext = Depends(get_tenant_context),
 ):
-    question = question_service.get_question_by_id(db, question_id)
+    question = question_service.get_question_by_id_for_tenant(db, tenant.tenant_id, question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
-
-    if current_user.role not in ["teacher", "admin"] and question.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="只有创建者、教师或管理员可以修改题目")
-
-    updated_question = question_service.update_question(db, question_id, question_data)
-    return ResponseModel(data=QuestionResponse.model_validate(updated_question))
+    updated = question_service.update_question(db, question_id, question_data)
+    return ResponseModel(data=QuestionResponse.model_validate(updated))
 
 
 @router.delete("/{question_id}", response_model=ResponseModel[dict])
 def delete_question(
     question_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    tenant: TenantContext = Depends(get_tenant_context),
 ):
-    question = question_service.get_question_by_id(db, question_id)
+    question = question_service.get_question_by_id_for_tenant(db, tenant.tenant_id, question_id)
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
-
-    if current_user.role not in ["teacher", "admin"] and question.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="只有创建者、教师或管理员可以删除题目")
-
     question_service.delete_question(db, question_id)
     return ResponseModel(data={"message": "题目已删除"})
