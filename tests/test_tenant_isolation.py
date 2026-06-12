@@ -197,3 +197,32 @@ def test_tenant_filter_rejects_model_without_created_by():
     ctx = TenantContext(tenant_id=1, user=None, source="teacher")
     with pytest.raises(ValueError, match="created_by"):
         tenant_filter(None, Fake, ctx)
+
+
+# ─── Task 5: question_service tenant-aware queries ───
+
+from app.services.question_service import question_service
+
+
+def test_question_service_filters_by_tenant(db, teacher_user):
+    other = User(username="t_other", password_hash=User.hash_password("x"),
+                 role="teacher", display_name="O")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    db.add_all([
+        Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="A1", answer="A",
+                 created_by=teacher_user.id),
+        Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content="O1", answer="B",
+                 created_by=other.id),
+    ])
+    db.commit()
+
+    qs = question_service.get_questions_for_tenant(
+        db, tenant_id=teacher_user.id, subject=None, semester=None,
+        chapter=None, q_type=None, difficulty=None, bank_id=None,
+        limit=20, offset=0,
+    )
+    assert {q.content for q in qs} == {"A1"}

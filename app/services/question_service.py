@@ -99,5 +99,34 @@ class QuestionService:
 
         return random.sample(all_questions, count)
 
+    def get_questions_for_tenant(
+        self, db, tenant_id: int,
+        subject=None, semester=None, chapter=None,
+        q_type=None, difficulty=None, bank_id=None,
+        limit: int = 20, offset: int = 0,
+    ):
+        from app.models import Question
+        query = db.query(Question).filter(Question.created_by == tenant_id)
+        if subject:
+            query = query.filter(Question.subject == subject)
+        if semester:
+            query = query.filter(Question.semester == semester)
+        if chapter:
+            query = query.filter(Question.chapter == chapter)
+        if q_type:
+            query = query.filter(Question.q_type == q_type)
+        if difficulty is not None:
+            query = query.filter(Question.difficulty == difficulty)
+        if bank_id is not None:
+            query = query.filter(Question.bank_id == bank_id)
+        return query.offset(offset).limit(limit).all()
+
+    def get_question_by_id_for_tenant(self, db, tenant_id: int, question_id: int):
+        from app.models import Question
+        return db.query(Question).filter(
+            Question.id == question_id,
+            Question.created_by == tenant_id,
+        ).first()
+
 
 question_service = QuestionService()
