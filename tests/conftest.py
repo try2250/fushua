@@ -175,3 +175,9 @@ def register_and_login(client, username="testuser", role="student", password="ab
         data["join_mode"] = "guest"
     client.post("/register", data=data, follow_redirects=True)
     return login_as(client, username, password)
+
+
+# ─── Multi-tenant fixtures (Plan 1.1) ───
+from tests.fixtures_tenant import (  # noqa: E402, F401
+    teacher_a, teacher_b, teacher_a_token, teacher_b_token, class_b_with_student
+)

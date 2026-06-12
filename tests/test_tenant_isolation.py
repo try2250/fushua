@@ -9,8 +9,19 @@
 - API 端点租户隔离
 """
 import pytest
-from app.core.tenant import TenantContext
+from fastapi import FastAPI, Depends
+from fastapi.testclient import TestClient
 
+from app.core.tenant import TenantContext, get_tenant_context, tenant_filter
+from app.core.security import create_access_token
+from app.database import get_db
+from app.main import app as main_app
+from app.models import User, Question, ClassGroup, ClassMember
+from app.services.question_service import question_service
+from tests.conftest import TestingSessionLocal
+
+
+# ─── Task 1: TenantContext dataclass ───
 
 def test_tenant_context_holds_id_user_source():
     ctx = TenantContext(tenant_id=7, user=None, source="teacher")
@@ -25,32 +36,7 @@ def test_tenant_context_repr_includes_id():
     assert "student" in repr(ctx)
 
 
-# ─── Task 2: Teacher Bearer Token → tenant ───
-
-import pytest
-from fastapi import FastAPI, Depends
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-from tests.conftest import TestingSessionLocal
-from app.models import User
-from app.database import get_db
-from app.core.tenant import TenantContext, get_tenant_context
-from app.core.security import create_access_token
-
-
-@pytest.fixture
-def teacher_user(db):
-    user = User(
-        username="teacher_a",
-        password_hash=User.hash_password("abc12345"),
-        role="teacher",
-        display_name="A 老师",
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
+# ─── Shared helpers for Task 2-3 (tenant probe app) ───
 
 def _make_app_with_tenant():
     app = FastAPI()
@@ -71,60 +57,23 @@ def _yield_session():
         db.close()
 
 
-def test_teacher_bearer_resolves_to_own_tenant(teacher_user):
+# ─── Task 2: Teacher Bearer Token → tenant ───
+
+def test_teacher_bearer_resolves_to_own_tenant(teacher_a):
     app = _make_app_with_tenant()
     client = TestClient(app)
-    token = create_access_token({"user_id": teacher_user.id})
+    token = create_access_token({"user_id": teacher_a.id})
     r = client.get("/probe", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     body = r.json()
-    assert body["tenant_id"] == teacher_user.id
+    assert body["tenant_id"] == teacher_a.id
     assert body["source"] == "teacher"
 
 
 # ─── Task 3: Student class_id → tenant ───
 
-from app.models import ClassGroup, ClassMember
-
-
-@pytest.fixture
-def teacher_b_with_class(db):
-    teacher = User(
-        username="teacher_b",
-        password_hash=User.hash_password("abc12345"),
-        role="teacher",
-        display_name="B 老师",
-    )
-    db.add(teacher)
-    db.commit()
-    db.refresh(teacher)
-    cls = ClassGroup(name="B 班", created_by=teacher.id)
-    db.add(cls)
-    db.commit()
-    db.refresh(cls)
-    return teacher, cls
-
-
-@pytest.fixture
-def student_in_class_b(db, teacher_b_with_class):
-    _, cls = teacher_b_with_class
-    student = User(
-        username="student_in_b",
-        password_hash=User.hash_password("abc12345"),
-        role="student",
-        display_name="学生 1",
-    )
-    db.add(student)
-    db.commit()
-    db.refresh(student)
-    member = ClassMember(class_id=cls.id, user_id=student.id)
-    db.add(member)
-    db.commit()
-    return student, cls
-
-
-def test_student_without_class_id_returns_400(student_in_class_b):
-    student, _ = student_in_class_b
+def test_student_without_class_id_returns_400(class_b_with_student):
+    _, student = class_b_with_student
     app = _make_app_with_tenant()
     client = TestClient(app)
     token = create_access_token({"user_id": student.id})
@@ -133,8 +82,8 @@ def test_student_without_class_id_returns_400(student_in_class_b):
     assert "class_id" in r.json()["detail"]
 
 
-def test_student_with_valid_class_resolves_to_class_teacher(student_in_class_b):
-    student, cls = student_in_class_b
+def test_student_with_valid_class_resolves_to_class_teacher(class_b_with_student):
+    cls, student = class_b_with_student
     app = _make_app_with_tenant()
     client = TestClient(app)
     token = create_access_token({"user_id": student.id})
@@ -144,9 +93,9 @@ def test_student_with_valid_class_resolves_to_class_teacher(student_in_class_b):
     assert r.json()["source"] == "student"
 
 
-def test_student_in_wrong_class_returns_403(student_in_class_b, teacher_user):
-    student, _ = student_in_class_b
-    other_cls = ClassGroup(name="A 班", created_by=teacher_user.id)
+def test_student_in_wrong_class_returns_403(class_b_with_student, teacher_a):
+    _, student = class_b_with_student
+    other_cls = ClassGroup(name="A 班", created_by=teacher_a.id)
     db = TestingSessionLocal()
     db.add(other_cls)
     db.commit()
@@ -161,31 +110,17 @@ def test_student_in_wrong_class_returns_403(student_in_class_b, teacher_user):
 
 # ─── Task 4: tenant_filter query helper ───
 
-from app.models import Question
-from app.core.tenant import tenant_filter
-
-
-def test_tenant_filter_applies_created_by(db, teacher_user):
-    other_teacher = User(
-        username="teacher_x",
-        password_hash=User.hash_password("abc12345"),
-        role="teacher",
-        display_name="X",
-    )
-    db.add(other_teacher)
-    db.commit()
-    db.refresh(other_teacher)
-
+def test_tenant_filter_applies_created_by(db, teacher_a, teacher_b):
     q1 = Question(subject="数学", semester="七年级上册", chapter="代数",
                   q_type="choice", content="题 1", answer="A",
-                  created_by=teacher_user.id)
+                  created_by=teacher_a.id)
     q2 = Question(subject="数学", semester="七年级上册", chapter="代数",
                   q_type="choice", content="题 2", answer="B",
-                  created_by=other_teacher.id)
+                  created_by=teacher_b.id)
     db.add_all([q1, q2])
     db.commit()
 
-    ctx = TenantContext(tenant_id=teacher_user.id, user=teacher_user, source="teacher")
+    ctx = TenantContext(tenant_id=teacher_a.id, user=teacher_a, source="teacher")
     filtered = tenant_filter(db.query(Question), Question, ctx).all()
     assert len(filtered) == 1
     assert filtered[0].content == "题 1"
@@ -201,27 +136,19 @@ def test_tenant_filter_rejects_model_without_created_by():
 
 # ─── Task 5: question_service tenant-aware queries ───
 
-from app.services.question_service import question_service
-
-
-def test_question_service_filters_by_tenant(db, teacher_user):
-    other = User(username="t_other", password_hash=User.hash_password("x"),
-                 role="teacher", display_name="O")
-    db.add(other)
-    db.commit()
-    db.refresh(other)
+def test_question_service_filters_by_tenant(db, teacher_a, teacher_b):
     db.add_all([
         Question(subject="数学", semester="七年级上册", chapter="代数",
                  q_type="choice", content="A1", answer="A",
-                 created_by=teacher_user.id),
+                 created_by=teacher_a.id),
         Question(subject="数学", semester="七年级上册", chapter="代数",
                  q_type="choice", content="O1", answer="B",
-                 created_by=other.id),
+                 created_by=teacher_b.id),
     ])
     db.commit()
 
     qs = question_service.get_questions_for_tenant(
-        db, tenant_id=teacher_user.id, subject=None, semester=None,
+        db, tenant_id=teacher_a.id, subject=None, semester=None,
         chapter=None, q_type=None, difficulty=None, bank_id=None,
         limit=20, offset=0,
     )
@@ -230,27 +157,19 @@ def test_question_service_filters_by_tenant(db, teacher_user):
 
 # ─── Task 6: API list + detail cross-tenant isolation ───
 
-from app.main import app as main_app
-
-
-def test_api_list_questions_isolated_between_teachers(db, teacher_user):
-    other = User(username="t_other2", password_hash=User.hash_password("x"),
-                 role="teacher", display_name="O2")
-    db.add(other)
-    db.commit()
-    db.refresh(other)
+def test_api_list_questions_isolated_between_teachers(db, teacher_a, teacher_b):
     db.add_all([
         Question(subject="数学", semester="七年级上册", chapter="代数",
                  q_type="choice", content="A 的题", answer="A",
-                 created_by=teacher_user.id),
+                 created_by=teacher_a.id),
         Question(subject="数学", semester="七年级上册", chapter="代数",
                  q_type="choice", content="O 的题", answer="B",
-                 created_by=other.id),
+                 created_by=teacher_b.id),
     ])
     db.commit()
 
     client = TestClient(main_app)
-    token_a = create_access_token({"user_id": teacher_user.id})
+    token_a = create_access_token({"user_id": teacher_a.id})
     r = client.get("/api/v1/questions", headers={"Authorization": f"Bearer {token_a}"})
     assert r.status_code == 200
     contents = [q["content"] for q in r.json()["data"]]
@@ -258,31 +177,25 @@ def test_api_list_questions_isolated_between_teachers(db, teacher_user):
     assert "O 的题" not in contents
 
 
-def test_api_get_question_detail_cross_tenant_returns_404(db, teacher_user):
-    other = User(username="t_other3", password_hash=User.hash_password("x"),
-                 role="teacher", display_name="O3")
-    db.add(other)
-    db.commit()
-    db.refresh(other)
+def test_api_get_question_detail_cross_tenant_returns_404(db, teacher_a, teacher_b):
     q = Question(subject="数学", semester="七年级上册", chapter="代数",
                  q_type="choice", content="不应被看见", answer="A",
-                 created_by=other.id)
+                 created_by=teacher_b.id)
     db.add(q)
     db.commit()
     db.refresh(q)
 
     client = TestClient(main_app)
-    token_a = create_access_token({"user_id": teacher_user.id})
+    token_a = create_access_token({"user_id": teacher_a.id})
     r = client.get(f"/api/v1/questions/{q.id}", headers={"Authorization": f"Bearer {token_a}"})
     assert r.status_code == 404
 
 
-# ─── Task 7: API write ops (create / update / delete) tenant isolation ───
+# ─── Task 7: API write ops tenant isolation ───
 
-
-def test_create_question_assigns_tenant_as_created_by(db, teacher_user):
+def test_create_question_assigns_tenant_as_created_by(db, teacher_a):
     client = TestClient(main_app)
-    token = create_access_token({"user_id": teacher_user.id})
+    token = create_access_token({"user_id": teacher_a.id})
     r = client.post("/api/v1/questions",
         headers={"Authorization": f"Bearer {token}"},
         json={
@@ -293,63 +206,47 @@ def test_create_question_assigns_tenant_as_created_by(db, teacher_user):
     assert r.status_code == 200
     created_id = r.json()["data"]["id"]
     q = db.query(Question).filter(Question.id == created_id).first()
-    assert q.created_by == teacher_user.id
+    assert q.created_by == teacher_a.id
 
 
-def test_update_cross_tenant_question_returns_404(db, teacher_user):
-    other = User(username="t_upd", password_hash=User.hash_password("x"),
-                 role="teacher", display_name="U")
-    db.add(other)
-    db.commit()
-    db.refresh(other)
+def test_update_cross_tenant_question_returns_404(db, teacher_a, teacher_b):
     q = Question(subject="数学", semester="七年级上册", chapter="代数",
-                 q_type="choice", content="O 的题", answer="A", created_by=other.id)
+                 q_type="choice", content="O 的题", answer="A", created_by=teacher_b.id)
     db.add(q)
     db.commit()
     db.refresh(q)
     client = TestClient(main_app)
-    token = create_access_token({"user_id": teacher_user.id})
+    token = create_access_token({"user_id": teacher_a.id})
     r = client.put(f"/api/v1/questions/{q.id}",
         headers={"Authorization": f"Bearer {token}"},
         json={"content": "改的"})
     assert r.status_code == 404
 
 
-def test_delete_cross_tenant_question_returns_404(db, teacher_user):
-    other = User(username="t_del", password_hash=User.hash_password("x"),
-                 role="teacher", display_name="D")
-    db.add(other)
-    db.commit()
-    db.refresh(other)
+def test_delete_cross_tenant_question_returns_404(db, teacher_a, teacher_b):
     q = Question(subject="数学", semester="七年级上册", chapter="代数",
-                 q_type="choice", content="O 的题", answer="A", created_by=other.id)
+                 q_type="choice", content="O 的题", answer="A", created_by=teacher_b.id)
     db.add(q)
     db.commit()
     db.refresh(q)
     client = TestClient(main_app)
-    token = create_access_token({"user_id": teacher_user.id})
+    token = create_access_token({"user_id": teacher_a.id})
     r = client.delete(f"/api/v1/questions/{q.id}", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 404
 
 
 # ─── Task 8: random endpoint tenant scoping ───
 
-
-def test_random_endpoint_is_tenant_scoped(db, teacher_user):
-    other = User(username="t_rand", password_hash=User.hash_password("x"),
-                 role="teacher", display_name="R")
-    db.add(other)
-    db.commit()
-    db.refresh(other)
+def test_random_endpoint_is_tenant_scoped(db, teacher_a, teacher_b):
     db.add_all([
         Question(subject="数学", semester="七年级上册", chapter="代数",
-                 q_type="choice", content=f"O{i}", answer="A", created_by=other.id)
+                 q_type="choice", content=f"O{i}", answer="A", created_by=teacher_b.id)
         for i in range(5)
     ])
     db.commit()
     client = TestClient(main_app)
-    token = create_access_token({"user_id": teacher_user.id})
+    token = create_access_token({"user_id": teacher_a.id})
     r = client.get("/api/v1/questions/random?count=10",
                    headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
-    assert r.json()["data"] == []  # teacher_user 名下无题
+    assert r.json()["data"] == []  # teacher_a 名下无题
