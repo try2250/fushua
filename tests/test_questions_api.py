@@ -1,6 +1,7 @@
 import pytest
 from tests.conftest import create_test_user, create_test_question
 from app.core.security import create_access_token
+from app.models import ClassGroup, ClassMember
 
 
 def test_create_question_as_teacher(client, db_session):
@@ -32,11 +33,22 @@ def test_create_question_as_teacher(client, db_session):
 
 
 def test_create_question_as_student_fails(client, db_session):
+    # 学生必须通过 class_id 查询参数指定班级才能解析租户
+    teacher = create_test_user(db_session, "teacher_for_student", role="teacher")
+    cls = ClassGroup(name="测试班", created_by=teacher.id)
+    db_session.add(cls)
+    db_session.commit()
+    db_session.refresh(cls)
+
     student = create_test_user(db_session, "student1", role="student")
+    member = ClassMember(class_id=cls.id, user_id=student.id)
+    db_session.add(member)
+    db_session.commit()
+
     token = create_access_token({"user_id": student.id, "role": student.role, "username": student.username})
 
     response = client.post(
-        "/api/v1/questions",
+        f"/api/v1/questions?class_id={cls.id}",
         json={
             "subject": "数学",
             "q_type": "choice",
