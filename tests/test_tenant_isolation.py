@@ -330,3 +330,26 @@ def test_delete_cross_tenant_question_returns_404(db, teacher_user):
     token = create_access_token({"user_id": teacher_user.id})
     r = client.delete(f"/api/v1/questions/{q.id}", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 404
+
+
+# ─── Task 8: random endpoint tenant scoping ───
+
+
+def test_random_endpoint_is_tenant_scoped(db, teacher_user):
+    other = User(username="t_rand", password_hash=User.hash_password("x"),
+                 role="teacher", display_name="R")
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    db.add_all([
+        Question(subject="数学", semester="七年级上册", chapter="代数",
+                 q_type="choice", content=f"O{i}", answer="A", created_by=other.id)
+        for i in range(5)
+    ])
+    db.commit()
+    client = TestClient(main_app)
+    token = create_access_token({"user_id": teacher_user.id})
+    r = client.get("/api/v1/questions/random?count=10",
+                   headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["data"] == []  # teacher_user 名下无题

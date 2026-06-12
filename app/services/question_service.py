@@ -128,5 +128,20 @@ class QuestionService:
             Question.created_by == tenant_id,
         ).first()
 
+    def get_random_questions_for_tenant(
+        self, db, tenant_id: int,
+        subject=None, semester=None, chapter=None, count: int = 10,
+    ):
+        from sqlalchemy.sql import func
+        from app.models import Question
+        query = db.query(Question).filter(Question.created_by == tenant_id)
+        if subject:
+            query = query.filter(Question.subject == subject)
+        if semester:
+            query = query.filter(Question.semester == semester)
+        if chapter:
+            query = query.filter(Question.chapter == chapter)
+        return query.order_by(func.random()).limit(count).all()
+
 
 question_service = QuestionService()

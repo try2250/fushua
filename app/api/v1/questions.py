@@ -54,9 +54,11 @@ def get_random_questions(
     chapter: Optional[str] = None,
     count: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    tenant: TenantContext = Depends(get_tenant_context),
 ):
-    questions = question_service.get_random_questions(db, subject, semester, chapter, count)
+    questions = question_service.get_random_questions_for_tenant(
+        db, tenant.tenant_id, subject, semester, chapter, count,
+    )
     return ResponseModel(data=[QuestionResponse.model_validate(q) for q in questions])
 
 
