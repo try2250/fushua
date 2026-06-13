@@ -6,6 +6,7 @@
 - get_tenant_context：FastAPI 依赖，从请求中解析租户身份
 - tenant_filter：SQLAlchemy 查询辅助，按 created_by 过滤
 """
+import structlog
 from dataclasses import dataclass
 from typing import Optional, Literal
 
@@ -56,6 +57,7 @@ def get_tenant_context(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="未认证")
 
     if user.role == "teacher":
+        structlog.contextvars.bind_contextvars(tenant_id=user.id, tenant_source="teacher")
         return TenantContext(tenant_id=user.id, user=user, source="teacher")
 
     if user.role == "student":
@@ -80,6 +82,7 @@ def get_tenant_context(
         if not cls:
             raise HTTPException(status_code=404, detail="班级不存在")
 
+        structlog.contextvars.bind_contextvars(tenant_id=cls.created_by, tenant_source="student")
         return TenantContext(tenant_id=cls.created_by, user=user, source="student")
 
     raise HTTPException(status_code=400, detail=f"未支持的角色: {user.role}")

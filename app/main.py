@@ -17,8 +17,13 @@ from app.routers import pages, auth, teacher, student, assignment, classgroup, e
 from app.models import User, Notification
 from app.core.config import settings
 from app.middleware import RequestTrackingMiddleware
+from app.core.request_context import RequestContextMiddleware
 from app.utils.logger import log_error, log_warning, log_info
 from app.utils.error_monitor import error_monitor
+
+from app.core.observability import init_sentry, init_structlog
+init_structlog()
+init_sentry()
 
 if not os.environ.get("DATABASE_URL", "").startswith("postgresql"):
     Base.metadata.create_all(bind=engine)
@@ -114,32 +119,28 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 @app.get("/health")
-def health_check(request: Request):
-    from app.models import Question, ClassGroup, Assignment
-    checks = {}
-    overall = "ok"
+def health():
+    import time
+    from app.core.metrics import request_counter, error_counter
+    db = SessionLocal()
+    t0 = time.perf_counter()
     try:
-        from app.database import SessionLocal
-        db = SessionLocal()
-        user_count = db.query(User).count()
-        question_count = db.query(Question).count()
-        class_count = db.query(ClassGroup).count()
-        assignment_count = db.query(Assignment).count()
+        db.execute(__import__('sqlalchemy').text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    finally:
         db.close()
-        checks["database"] = "ok"
-        checks["user_count"] = user_count
-        checks["question_count"] = question_count
-        checks["class_count"] = class_count
-        checks["assignment_count"] = assignment_count
-    except Exception as e:
-        checks["database"] = f"error: {str(e)[:100]}"
-        overall = "degraded"
+    db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "db_ok": db_ok,
+        "db_latency_ms": db_latency_ms,
+        "request_count_5m": request_counter.count(),
+        "error_count_5m": error_counter.count(),
+    }
 
-    import os
-    checks["version"] = "4.0.0"
-    checks["environment"] = os.environ.get("ENVIRONMENT", "development")
-
-    return {"status": overall, "checks": checks}
+app.add_middleware(RequestContextMiddleware)
 
 app.add_middleware(
     SessionMiddleware,
@@ -367,7 +368,7 @@ app.include_router(extractor.router)
 app.include_router(backup.router)
 app.include_router(classroom.router)
 
-from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom
+from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom, client_error
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_users.router, prefix="/api/v1")
 app.include_router(api_classes.router, prefix="/api/v1")
@@ -377,3 +378,4 @@ app.include_router(api_records.router, prefix="/api/v1")
 app.include_router(api_records.practice_router, prefix="/api/v1")
 app.include_router(api_announcements.router, prefix="/api/v1")
 app.include_router(api_classroom.router, prefix="/api/v1")
+app.include_router(client_error.router, prefix="/api/v1")
