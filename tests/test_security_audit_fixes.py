@@ -13,18 +13,6 @@ def test_login_redirects_to_settings_when_force_password_change(client, db_sessi
     assert "/settings" in resp.headers["location"]
 
 
+@pytest.mark.skip(reason="Admin role removed (Plan 1.2B)")
 def test_default_admin_has_force_password_change(db_session):
-    from app.models import User
-    admin = User(
-        username="admin",
-        password_hash=User.hash_password("random_pw_123"),
-        role="admin",
-        display_name="系统管理员",
-        is_admin=True,
-        force_password_change=True,
-    )
-    db_session.add(admin)
-    db_session.commit()
-    result = db_session.query(User).filter(User.username == "admin").first()
-    assert result is not None
-    assert result.force_password_change is True
+    pass

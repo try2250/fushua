@@ -5,6 +5,14 @@ from sqlalchemy.orm import Session
 from tests.conftest import login_as, get_csrf_token
 
 
+def _platform_login(client, platform_admin):
+    from tests.conftest import get_csrf_token
+    csrf = get_csrf_token(client)
+    return client.post("/platform/login", data={
+        "username": platform_admin.username, "password": "rootpass", "_csrf_token": csrf,
+    }, follow_redirects=False)
+
+
 def test_create_announcement(db: Session):
     """测试创建公告"""
     admin = User(
@@ -108,111 +116,69 @@ def test_announcement_nullable_expires_at(db: Session):
     assert announcement.expires_at is None
 
 
-def test_admin_can_view_announcements(client, db: Session):
+def test_admin_can_view_announcements(client, db: Session, platform_admin):
     """测试管理员可以查看公告列表"""
-    # 创建管理员
-    admin = User(
-        username="admin",
-        password_hash=User.hash_password("Admin123!@#"),
-        role="admin",
-        display_name="Admin"
-    )
-    db.add(admin)
-    db.commit()
-
     # 创建公告
     announcement = Announcement(
         title="测试公告",
         content="这是测试内容",
         type="info",
-        created_by=admin.id
     )
     db.add(announcement)
     db.commit()
 
-    # 管理员登录
-    login_as(client, "admin", "Admin123!@#")
+    _platform_login(client, platform_admin)
 
     # 访问公告列表
-    response = client.get("/admin/announcements")
+    response = client.get("/platform/announcements")
 
     assert response.status_code == 200
     assert "测试公告" in response.text
 
 
-def test_admin_can_create_announcement(client, db: Session):
+def test_admin_can_create_announcement(client, db: Session, platform_admin):
     """测试管理员可以创建公告"""
-    # 创建管理员
-    admin = User(
-        username="admin",
-        password_hash=User.hash_password("Admin123!@#"),
-        role="admin",
-        display_name="Admin"
-    )
-    db.add(admin)
-    db.commit()
+    _platform_login(client, platform_admin)
 
-    # 管理员登录
-    login_as(client, "admin", "Admin123!@#")
-
-    # 获取CSRF token
     csrf = get_csrf_token(client)
 
     # 创建公告
-    response = client.post("/admin/announcements/create", data={
+    response = client.post("/platform/announcements/create", data={
         "title": "新公告",
         "content": "公告内容",
-        "type": "warning",
-        "target_role": "student",
-        "priority": "1",
         "_csrf_token": csrf
     })
 
-    assert response.status_code == 302  # 重定向
+    assert response.status_code == 303  # 重定向
 
     # 验证公告已创建
     announcement = db.query(Announcement).filter(
         Announcement.title == "新公告"
     ).first()
     assert announcement is not None
-    assert announcement.type == "warning"
-    assert announcement.target_role == "student"
 
 
-def test_admin_can_toggle_announcement(client, db: Session):
+def test_admin_can_toggle_announcement(client, db: Session, platform_admin):
     """测试管理员可以启用/禁用公告"""
-    # 创建管理员
-    admin = User(
-        username="admin",
-        password_hash=User.hash_password("Admin123!@#"),
-        role="admin",
-        display_name="Admin"
-    )
-    db.add(admin)
-    db.commit()
-
     # 创建公告
     announcement = Announcement(
         title="测试公告",
         content="内容",
-        created_by=admin.id,
         is_active=True
     )
     db.add(announcement)
     db.commit()
 
-    # 管理员登录
-    login_as(client, "admin", "Admin123!@#")
+    _platform_login(client, platform_admin)
 
-    # 获取CSRF token
     csrf = get_csrf_token(client)
 
     # 禁用公告
-    response = client.post(f"/admin/announcements/{announcement.id}/toggle", data={
+    response = client.post(f"/platform/announcements/{announcement.id}/toggle", data={
         "_csrf_token": csrf
     })
 
-    assert response.status_code == 302
+    assert response.status_code == 303
 
     # 验证公告已禁用
     db.refresh(announcement)

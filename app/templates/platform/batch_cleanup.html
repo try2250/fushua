@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>批量清理</h2>
+<table>
+  <tr><th>类型</th><th>当前数量</th><th>操作</th></tr>
+  <tr><td>过期游客</td><td>{{ expired_guests }}</td>
+    <td><form method="post" action="/platform/batch-cleanup" style="display:inline"><input type="hidden" name="target" value="expired_guests"><button type="submit" {% if expired_guests == 0 %}disabled{% endif %}>清理</button></form></td></tr>
+  <tr><td>空班级</td><td>{{ empty_classes }}</td>
+    <td><form method="post" action="/platform/batch-cleanup" style="display:inline"><input type="hidden" name="target" value="empty_classes"><button type="submit" {% if empty_classes == 0 %}disabled{% endif %}>清理</button></form></td></tr>
+</table>
+{% endblock %}

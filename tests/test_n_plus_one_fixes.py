@@ -166,6 +166,7 @@ def test_teacher_stats_n_plus_one_fix(client, db_session):
     assert counter.count < 15, f"查询次数过多: {counter.count}，可能存在 N+1 问题"
 
 
+@pytest.mark.skip(reason="Admin role removed — admin classes page pending platform migration (Plan 1.2B)")
 def test_admin_classes_n_plus_one_fix(client, db_session):
     """测试管理员班级列表的 N+1 查询修复"""
     # 创建管理员

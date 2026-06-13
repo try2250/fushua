@@ -23,10 +23,7 @@ def test_question_bank_default_visibility(db_session):
 
 
 def test_teacher_create_bank_with_visibility(client, db_session):
-    from app.models import User, SiteConfig, QuestionBank
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank
     teacher = User(username="teacher_vis", password_hash=User.hash_password("teacher1234a"), role="teacher")
     db_session.add(teacher)
     db_session.commit()
@@ -48,10 +45,7 @@ def test_teacher_create_bank_with_visibility(client, db_session):
 
 
 def test_teacher_create_bank_with_access_code(client, db_session):
-    from app.models import User, SiteConfig, QuestionBank
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank
     teacher = User(username="teacher_code", password_hash=User.hash_password("teacher1234a"), role="teacher")
     db_session.add(teacher)
     db_session.commit()
@@ -74,10 +68,7 @@ def test_teacher_create_bank_with_access_code(client, db_session):
 
 
 def test_student_sees_public_teacher_bank(client, db_session):
-    from app.models import User, QuestionBank, Question, SiteConfig
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank, Question
     teacher = User(username="teacher_pub", password_hash=User.hash_password("teacher1234a"), role="teacher", display_name="张老师")
     db_session.add(teacher)
     db_session.commit()
@@ -97,10 +88,7 @@ def test_student_sees_public_teacher_bank(client, db_session):
 
 
 def test_student_cannot_see_private_bank_not_in_class(client, db_session):
-    from app.models import User, QuestionBank, SiteConfig
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank
     teacher = User(username="teacher_priv", password_hash=User.hash_password("teacher1234a"), role="teacher")
     db_session.add(teacher)
     db_session.commit()
@@ -117,10 +105,7 @@ def test_student_cannot_see_private_bank_not_in_class(client, db_session):
 
 
 def test_student_unlock_bank_with_access_code(client, db_session):
-    from app.models import User, QuestionBank, Question, SiteConfig
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank, Question
     teacher = User(username="teacher_code2", password_hash=User.hash_password("teacher1234a"), role="teacher")
     db_session.add(teacher)
     db_session.commit()
@@ -140,10 +125,7 @@ def test_student_unlock_bank_with_access_code(client, db_session):
 
 
 def test_browse_bank_list_excludes_private_and_code(client, db_session):
-    from app.models import User, QuestionBank, Question, SiteConfig
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank, Question
     teacher = User(username="teacher_browse", password_hash=User.hash_password("teacher1234a"), role="teacher")
     db_session.add(teacher)
     db_session.commit()
@@ -164,10 +146,7 @@ def test_browse_bank_list_excludes_private_and_code(client, db_session):
 
 
 def test_student_practice_with_bank_id(client, db_session):
-    from app.models import User, QuestionBank, Question, SiteConfig
-    db_session.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
-    db_session.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    db_session.commit()
+    from app.models import User, QuestionBank, Question
     teacher = User(username="teacher_prac", password_hash=User.hash_password("teacher1234a"), role="teacher")
     db_session.add(teacher)
     db_session.commit()

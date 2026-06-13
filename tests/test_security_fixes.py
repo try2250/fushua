@@ -26,29 +26,12 @@ class TestSanitizeXSS:
 
 
 class TestAdminRedirect:
+    @pytest.mark.skip(reason="Admin role removed (Plan 1.2B)")
     def test_admin_login_redirects_to_admin(self, client, db_session):
-        admin = create_test_user(db_session, username="redir_admin", role="admin")
-        db_session.commit()
-        csrf = get_csrf_token(client)
-        resp = client.post("/login", data={
-            "username": "redir_admin",
-            "password": "abc12345",
-            "_csrf_token": csrf,
-        }, follow_redirects=False)
-        assert resp.status_code == 303
-        assert "/admin" in resp.headers.get("location", "")
+        pass
 
 
 class TestDefaultPasswordForceChange:
+    @pytest.mark.skip(reason="Admin role removed (Plan 1.2B)")
     def test_reset_password_sets_force_change(self, client, db_session):
-        admin = create_test_user(db_session, username="force_admin", role="admin")
-        student = create_test_user(db_session, username="force_student")
-        db_session.commit()
-        register_and_login(client, username="force_admin", role="admin")
-        csrf = get_csrf_token(client)
-        resp = client.post(f"/admin/users/{student.id}/reset-password", data={
-            "_csrf_token": csrf,
-        }, follow_redirects=False)
-        assert resp.status_code == 303
-        db_session.refresh(student)
-        assert student.force_password_change is True
+        pass

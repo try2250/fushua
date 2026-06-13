@@ -1,3 +1,4 @@
+import pytest
 from tests.conftest import create_test_user, create_test_question, register_and_login, get_csrf_token
 from app.models import QuestionBank
 import io
@@ -98,37 +99,6 @@ class TestQuestionBankOwnership:
         ).all()
         assert len(imported_questions) == 0
 
+    @pytest.mark.skip(reason="Admin role removed — is_admin flag no longer functional (Plan 1.2B)")
     def test_admin_can_use_any_bank(self, client, db_session):
-        """Admin can create questions in any teacher's bank"""
-        admin = create_test_user(db_session, "admin1", "teacher")
-        admin.is_admin = True
-        db_session.commit()
-
-        teacher = create_test_user(db_session, "teacher1", "teacher")
-
-        bank = QuestionBank(name="Teacher's Bank", subject="数学", created_by=teacher.id)
-        db_session.add(bank)
-        db_session.commit()
-        db_session.refresh(bank)
-
-        register_and_login(client, "admin1", "teacher")
-        csrf = get_csrf_token(client)
-
-        response = client.post("/teacher/questions/create", data={
-            "content": "Admin question",
-            "answer": "Admin answer",
-            "subject": "数学",
-            "difficulty": "3",
-            "bank_id": str(bank.id),
-            "_csrf_token": csrf,
-        })
-
-        assert response.status_code in [200, 303]
-
-        from app.models import Question
-        admin_question = db_session.query(Question).filter_by(
-            content="Admin question",
-            created_by=admin.id
-        ).first()
-        assert admin_question is not None
-        assert admin_question.bank_id == bank.id
+        pass
