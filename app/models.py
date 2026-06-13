@@ -35,7 +35,6 @@ class User(Base):
     is_guest = Column(Boolean, default=False)
     guest_expires_at = Column(DateTime, nullable=True)
     class_id = Column(Integer, nullable=True, index=True)
-    is_admin = Column(Boolean, default=False)
     is_disabled = Column(Boolean, default=False)
     force_password_change = Column(Boolean, default=False)
     phone = Column(String(20), unique=True, nullable=True, index=True)
@@ -114,6 +113,10 @@ class Question(Base):
     @property
     def type_label(self):
         return QUESTION_TYPES.get(self.q_type, "未知")
+
+    @property
+    def correct_answer(self):
+        return self.answer
 
     @property
     def extra(self):
@@ -394,3 +397,140 @@ class Announcement(Base):
     __table_args__ = (
         Index('idx_announcements_active_role_expires', 'is_active', 'target_role', 'expires_at'),
     )
+
+
+class ClassroomSession(Base):
+    """课堂会话模型"""
+    __tablename__ = "classroom_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    class_id = Column(Integer, ForeignKey("class_groups.id"), nullable=False, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    mode = Column(String(50), default="normal")  # normal, streak, self_select
+    started_at = Column(DateTime, server_default=func.now())
+    ended_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    # 关系
+    class_group = relationship("ClassGroup", foreign_keys=[class_id])
+    teacher = relationship("User", foreign_keys=[teacher_id])
+    draw_records = relationship("ClassroomDrawRecord", back_populates="session")
+
+    # 索引
+    __table_args__ = (
+        Index('idx_classroom_sessions_teacher_created', 'teacher_id', 'created_at'),
+        Index('idx_classroom_sessions_class_created', 'class_id', 'created_at'),
+    )
+
+
+class ClassroomDrawRecord(Base):
+    """课堂抽取记录模型"""
+    __tablename__ = "classroom_draw_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("classroom_sessions.id"), nullable=False, index=True)
+    class_id = Column(Integer, ForeignKey("class_groups.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=True, index=True)
+    result = Column(String(20), nullable=False)  # correct, wrong, skip, manual
+    score_delta = Column(Integer, default=0)  # 积分变化
+    note = Column(Text, default="")  # 备注
+    created_at = Column(DateTime, server_default=func.now())
+
+    # 关系
+    session = relationship("ClassroomSession", back_populates="draw_records")
+    class_group = relationship("ClassGroup", foreign_keys=[class_id])
+    student = relationship("User", foreign_keys=[student_id])
+    question = relationship("Question", foreign_keys=[question_id])
+
+    # 索引
+    __table_args__ = (
+        Index('idx_classroom_draw_session_created', 'session_id', 'created_at'),
+        Index('idx_classroom_draw_student_created', 'student_id', 'created_at'),
+    )
+
+
+class ClassroomQuestionSnapshot(Base):
+    """课堂题目快照模型 - 保留课堂当时的题目内容"""
+    __tablename__ = "classroom_question_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("classroom_sessions.id"), nullable=False, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, index=True)
+    content_snapshot = Column(Text, nullable=False)
+    answer_snapshot = Column(String(200), nullable=False)
+    explanation_snapshot = Column(Text, default="")
+    extra_snapshot = Column(Text, default="{}")  # 包含选项等额外信息的 JSON
+    created_at = Column(DateTime, server_default=func.now())
+
+    # 关系
+    session = relationship("ClassroomSession", foreign_keys=[session_id])
+    question = relationship("Question", foreign_keys=[question_id])
+
+    # 索引
+    __table_args__ = (
+        Index('idx_classroom_snapshot_session_question', 'session_id', 'question_id'),
+    )
+
+
+class ClassroomSessionState(Base):
+    """Cloud state for an in-progress classroom session."""
+    __tablename__ = "classroom_session_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("classroom_sessions.id"), nullable=False, unique=True, index=True)
+    state_json = Column(Text, default="{}")
+    version = Column(Integer, default=1)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    session = relationship("ClassroomSession", foreign_keys=[session_id])
+
+
+class ClassroomGroupSet(Base):
+    """A saved grouping result for one classroom session."""
+    __tablename__ = "classroom_group_sets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("classroom_sessions.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    session = relationship("ClassroomSession", foreign_keys=[session_id])
+
+
+class ClassroomGroupMember(Base):
+    """Student membership inside a saved classroom group set."""
+    __tablename__ = "classroom_group_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_set_id = Column(Integer, ForeignKey("classroom_group_sets.id"), nullable=False, index=True)
+    group_name = Column(String(100), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0)
+
+    group_set = relationship("ClassroomGroupSet", foreign_keys=[group_set_id])
+    student = relationship("User", foreign_keys=[student_id])
+
+
+class PlatformAdmin(Base):
+    __tablename__ = "platform_admins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(128), nullable=False)
+    email = Column(String(120), unique=True, nullable=False, index=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    @staticmethod
+    def verify_password(stored_hash: str, password: str) -> bool:
+        try:
+            return bcrypt.checkpw(password.encode(), stored_hash.encode())
+        except Exception:
+            return False
+

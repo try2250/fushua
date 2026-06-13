@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
-from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor, backup
+from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor, backup, classroom
 from app.models import User, Notification
 from app.core.config import settings
 from app.middleware import RequestTrackingMiddleware
@@ -30,35 +30,23 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("fushua")
 
 _init_db = SessionLocal()
-if not _init_db.query(SiteConfig).filter(SiteConfig.key == "teacher_invite_code").first():
-    _init_db.add(SiteConfig(key="teacher_invite_code", value="FUSHUA2024"))
+
+# Seed default PlatformAdmin on first run
+from app.models import PlatformAdmin as _PA
+_default_pa = _init_db.query(_PA).first()
+if not _default_pa:
+    _init_db.add(_PA(
+        username="root",
+        password_hash=_PA.hash_password("rootpass"),
+        email="root@fushua.local",
+    ))
     _init_db.commit()
-if not _init_db.query(SiteConfig).filter(SiteConfig.key == "admin_invite_code").first():
-    _init_db.add(SiteConfig(key="admin_invite_code", value="ADMIN2026"))
-    _init_db.commit()
-first_admin = _init_db.query(InitUser).filter(InitUser.role == "admin").first()
-if not first_admin:
-    first_teacher = _init_db.query(InitUser).filter(InitUser.role == "teacher", InitUser.is_admin == True).first()
-    if first_teacher:
-        first_teacher.role = "admin"
-        _init_db.commit()
-default_admin_user = _init_db.query(InitUser).filter(InitUser.username == "admin").first()
-if not default_admin_user:
-    admin_password = secrets.token_hex(8)
-    default_admin_user = InitUser(
-        username="admin",
-        password_hash=InitUser.hash_password(admin_password),
-        role="admin",
-        display_name="系统管理员",
-        is_admin=True,
-        force_password_change=True,
-    )
-    _init_db.add(default_admin_user)
-    _init_db.commit()
-    logger.info(f"默认管理员已创建 — 用户名: admin, 密码: {admin_password}（请立即登录修改）")
+    logger.info("默认平台管理员已创建 — root / rootpass")
 _init_db.close()
 
 _is_production = os.environ.get("ENVIRONMENT", "development") == "production"
@@ -372,12 +360,15 @@ app.include_router(classgroup.router)
 app.include_router(admin.router)
 app.include_router(extractor.router)
 app.include_router(backup.router)
+app.include_router(classroom.router)
 
-from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements
+from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_users.router, prefix="/api/v1")
 app.include_router(api_classes.router, prefix="/api/v1")
 app.include_router(api_questions.router, prefix="/api/v1")
 app.include_router(api_assignments.router, prefix="/api/v1")
 app.include_router(api_records.router, prefix="/api/v1")
+app.include_router(api_records.practice_router, prefix="/api/v1")
 app.include_router(api_announcements.router, prefix="/api/v1")
+app.include_router(api_classroom.router, prefix="/api/v1")
