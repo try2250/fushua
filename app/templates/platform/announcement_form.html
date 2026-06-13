@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{% if action == 'create' %}新建{% else %}编辑{% endif %}公告</h2>
+<form method="post" action="/platform/announcements/{% if action == 'edit' %}{{ ann.id }}/edit{% else %}create{% endif %}">
+  <p><input name="title" value="{% if ann %}{{ ann.title }}{% endif %}" placeholder="标题" required></p>
+  <p><textarea name="content" placeholder="内容" required>{% if ann %}{{ ann.content }}{% endif %}</textarea></p>
+  <p><label><input type="checkbox" name="is_active" {% if not ann or ann.is_active %}checked{% endif %}> 启用</label></p>
+  <p><button type="submit">保存</button></p>
+</form>
+{% endblock %}

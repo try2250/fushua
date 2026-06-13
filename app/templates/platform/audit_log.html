@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>审计日志</h2>
+<form method="get" action="/platform/audit-log">
+  <input name="action" value="{{ action }}" placeholder="按操作过滤">
+  <button type="submit">过滤</button>
+  <a href="/platform/audit-log/export">导出 CSV</a>
+</form>
+<table>
+  <thead><tr><th>ID</th><th>操作</th><th>目标</th><th>详情</th><th>时间</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr><td>{{ r.id }}</td><td>{{ r.action }}</td><td>{{ r.target_type }}/{{ r.target_id }}</td><td>{{ r.detail }}</td><td>{{ r.created_at }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

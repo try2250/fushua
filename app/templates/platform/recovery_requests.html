@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>找回申请</h2>
+<h3>待处理 ({{ pending|length }})</h3>
+<table><thead><tr><th>ID</th><th>用户名</th><th>昵称</th><th>班级</th><th>操作</th></tr></thead>
+<tbody>
+{% for r in pending %}<tr><td>{{ r.id }}</td><td>{{ r.username }}</td><td>{{ r.display_name }}</td><td>{{ r.class_id }}</td>
+<td>
+  <form method="post" action="/platform/recovery-requests/{{ r.id }}/approve" style="display:inline"><button>批准</button></form>
+  <form method="post" action="/platform/recovery-requests/{{ r.id }}/reject" style="display:inline"><button>拒绝</button></form>
+</td></tr>{% endfor %}
+</tbody></table>
+<h3>已处理</h3>
+<table><thead><tr><th>ID</th><th>用户名</th><th>状态</th><th>处理时间</th></tr></thead>
+<tbody>
+{% for r in processed %}<tr><td>{{ r.id }}</td><td>{{ r.username }}</td><td>{{ r.status }}</td><td>{{ r.reviewed_at }}</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

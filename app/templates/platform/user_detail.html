@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>用户详情 — {{ user.username }}</h2>
+<p>角色: {{ user.role }} | 昵称: {{ user.display_name }} | 注册: {{ user.created_at }}</p>
+<p>
+  <form method="post" action="/platform/users/{{ user.id }}/reset-password" style="display:inline"><button>重置密码 (abc12345)</button></form>
+  <form method="post" action="/platform/users/{{ user.id }}/toggle-disable" style="display:inline"><button>{% if user.is_disabled %}解禁{% else %}禁用{% endif %}</button></form>
+  <form method="post" action="/platform/users/{{ user.id }}/delete" style="display:inline" onsubmit="return confirm('确认删除？')"><button style="color:red">删除用户</button></form>
+</p>
+<a href="/platform/users">返回列表</a>
+{% endblock %}

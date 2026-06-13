@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
-from app.routers import pages, auth, teacher, student, assignment, classgroup, extractor, backup, classroom, platform
+from app.routers import pages, auth, teacher, student, assignment, classgroup, extractor, backup, classroom, platform, platform_users, platform_recovery, platform_classes, platform_audit, platform_announcements, platform_export
 from app.models import User, Notification
 from app.core.config import settings
 from app.middleware import RequestTrackingMiddleware
@@ -357,6 +357,12 @@ app.include_router(student.router)
 app.include_router(assignment.router)
 app.include_router(classgroup.router)
 app.include_router(platform.router)
+app.include_router(platform_users.router)
+app.include_router(platform_recovery.router)
+app.include_router(platform_classes.router)
+app.include_router(platform_audit.router)
+app.include_router(platform_announcements.router)
+app.include_router(platform_export.router)
 app.include_router(extractor.router)
 app.include_router(backup.router)
 app.include_router(classroom.router)

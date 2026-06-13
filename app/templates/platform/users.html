@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>用户管理</h2>
+<form method="get" action="/platform/users">
+  <input name="q" value="{{ q }}" placeholder="搜索用户名或昵称">
+  <select name="role">
+    <option value="">全部角色</option>
+    <option value="student" {% if role == 'student' %}selected{% endif %}>学生</option>
+    <option value="teacher" {% if role == 'teacher' %}selected{% endif %}>教师</option>
+  </select>
+  <button type="submit">搜索</button>
+</form>
+<table>
+  <thead><tr><th>ID</th><th>用户名</th><th>昵称</th><th>角色</th><th>注册时间</th><th></th></tr></thead>
+  <tbody>
+  {% for user in users %}
+    <tr>
+      <td>{{ user.id }}</td><td>{{ user.username }}</td><td>{{ user.display_name }}</td>
+      <td>{{ user.role }}</td><td>{{ user.created_at }}</td>
+      <td><a href="/platform/users/{{ user.id }}">详情</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

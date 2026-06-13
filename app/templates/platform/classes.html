@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>所有班级</h2>
+<table>
+  <thead><tr><th>ID</th><th>班级名</th><th>创建者</th><th>邮箱</th><th>人数</th><th>创建时间</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.creator }}</td>
+      <td>{{ r.creator_email }}</td><td>{{ r.member_count }}</td><td>{{ r.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
