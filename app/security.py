@@ -96,25 +96,6 @@ async def validate_csrf_async(request: Request) -> None:
         raise HTTPException(status_code=403, detail="CSRF 校验失败")
 
 
-def verify_invite_code(code: str, db, key: str) -> bool:
-    from app.models import SiteConfig
-    if not code:
-        return False
-    config = db.query(SiteConfig).filter(SiteConfig.key == key).first()
-    if not config or not config.value:
-        return False
-    codes = [c.strip() for c in config.value.split(",") if c.strip()]
-    return code in codes
-
-
-def verify_teacher_invite_code(code: str, db) -> bool:
-    return verify_invite_code(code, db, "teacher_invite_code")
-
-
-def verify_admin_invite_code(code: str, db) -> bool:
-    return verify_invite_code(code, db, "admin_invite_code")
-
-
 REGISTER_MAX_ATTEMPTS = 5
 REGISTER_LOCKOUT_SECONDS = 3600
 RECOVER_MAX_ATTEMPTS = 3

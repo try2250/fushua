@@ -69,3 +69,55 @@
 .btn-submit::after {
   border: none;
 }
+
+/* 朱砂印章笔记主题 */
+.create-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.form-section {
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.label,
+.input {
+  color: var(--ink);
+}
+
+.required {
+  color: var(--seal-red);
+}
+
+.input {
+  background-color: rgba(255, 250, 238, 0.82);
+  border: 1rpx solid var(--line);
+}
+
+.placeholder,
+.tip-text {
+  color: var(--ink-muted);
+}
+
+.btn-submit {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+}
+
+/* 文墨学苑主题深化 */
+.form-section {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.required {
+  color: var(--seal-red);
+}
+
+.btn-submit {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+}

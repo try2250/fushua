@@ -293,3 +293,179 @@
   font-size: 28rpx;
   color: #999999;
 }
+
+/* 朱砂印章笔记主题 */
+.detail-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.assignment-header,
+.question-nav,
+.question-card {
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.assignment-header,
+.question-nav {
+  margin: 22rpx 24rpx;
+}
+
+.question-card {
+  position: relative;
+  margin: 0 24rpx 24rpx;
+}
+
+.question-card::after {
+  content: "答";
+  position: absolute;
+  right: 26rpx;
+  top: 28rpx;
+  width: 58rpx;
+  height: 58rpx;
+  line-height: 58rpx;
+  text-align: center;
+  color: rgba(184, 50, 42, 0.40);
+  border: 3rpx solid rgba(184, 50, 42, 0.28);
+  border-radius: 8rpx;
+  transform: rotate(-8deg);
+}
+
+.header-title,
+.nav-title,
+.question-number,
+.question-text,
+.option-text {
+  color: var(--ink);
+}
+
+.info-text,
+.info-divider {
+  color: var(--ink-soft);
+}
+
+.status-badge {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.58);
+  border: 2rpx solid rgba(184, 50, 42, 0.32);
+  border-radius: 6rpx;
+}
+
+.status-completed {
+  color: var(--jade);
+  background-color: rgba(79, 124, 107, 0.12);
+  border-color: rgba(79, 124, 107, 0.32);
+}
+
+.score-text,
+.question-type {
+  color: var(--seal-red);
+}
+
+.question-type {
+  background-color: rgba(245, 216, 212, 0.56);
+}
+
+.nav-item {
+  background-color: rgba(126, 92, 55, 0.10);
+  color: var(--ink-soft);
+}
+
+.nav-item.answered {
+  background-color: rgba(245, 216, 212, 0.58);
+  color: var(--seal-red);
+}
+
+.nav-item.active {
+  background-color: var(--seal-red);
+  color: #FFF8ED;
+}
+
+.question-header {
+  border-bottom: 1rpx dashed rgba(126, 92, 55, 0.30);
+}
+
+.option-item {
+  background-color: rgba(255, 250, 238, 0.82);
+  border-color: rgba(126, 92, 55, 0.18);
+}
+
+.option-item.selected {
+  background-color: rgba(245, 216, 212, 0.58);
+  border-color: var(--seal-red);
+}
+
+.option-item.correct {
+  background-color: rgba(79, 124, 107, 0.12);
+  border-color: var(--jade);
+}
+
+.option-item.wrong {
+  background-color: rgba(184, 50, 42, 0.10);
+  border-color: var(--seal-red);
+}
+
+.option-label {
+  background-color: var(--paper-card);
+  color: var(--ink-soft);
+  border: 1rpx solid var(--line);
+}
+
+.option-item.selected .option-label,
+.option-item.wrong .option-label {
+  background-color: var(--seal-red);
+  color: #FFF8ED;
+}
+
+.option-item.correct .option-label {
+  background-color: var(--jade);
+  color: #FFF8ED;
+}
+
+.bottom-bar {
+  background-color: rgba(251, 245, 232, 0.96);
+  border-top: 2rpx solid var(--line);
+}
+
+.btn-submit {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+}
+
+/* 文墨学苑主题深化 */
+.assignment-header,
+.question-nav,
+.question-card {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.score-text,
+.question-type {
+  color: var(--academy-green);
+}
+
+.question-type,
+.nav-item.answered,
+.option-item.selected {
+  background-color: rgba(23, 107, 87, 0.10);
+}
+
+.nav-item.answered,
+.option-item.selected {
+  color: var(--academy-green);
+  border-color: var(--academy-green);
+}
+
+.nav-item.active,
+.option-item.selected .option-label {
+  background-color: var(--academy-green);
+}
+
+.btn-submit {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+}

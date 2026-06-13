@@ -114,5 +114,23 @@ class AssignmentService:
             AssignmentRecord.user_id == user_id
         ).first()
 
+    def get_assignments_for_tenant(
+        self, db: Session, tenant_id: int, class_id: Optional[int] = None,
+    ) -> List[Assignment]:
+        from app.models import Assignment
+        query = db.query(Assignment).filter(Assignment.created_by == tenant_id)
+        if class_id is not None:
+            query = query.filter(Assignment.class_id == class_id)
+        return query.order_by(Assignment.created_at.desc()).all()
+
+    def get_assignment_by_id_for_tenant(
+        self, db: Session, tenant_id: int, assignment_id: int,
+    ) -> Optional[Assignment]:
+        from app.models import Assignment
+        return db.query(Assignment).filter(
+            Assignment.id == assignment_id,
+            Assignment.created_by == tenant_id,
+        ).first()
+
 
 assignment_service = AssignmentService()

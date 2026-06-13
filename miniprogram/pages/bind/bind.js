@@ -15,7 +15,8 @@ Page({
     classes: [],
     countdown: 0,
     loading: false,
-    step: 1  // 1: 输入手机号和验证码, 2: 选择角色和班级
+    step: 1,  // 1: 输入手机号和验证码, 2: 选择角色和班级
+    phoneBindingRequireSms: config.APP_CONFIG.phoneBindingRequireSms  // 是否需要短信验证
   },
 
   onLoad(options) {
@@ -116,6 +117,15 @@ Page({
         title: '请输入正确的手机号',
         icon: 'none'
       });
+      return;
+    }
+
+    // 如果开发期不需要验证码，跳过验证码校验
+    if (!config.APP_CONFIG.phoneBindingRequireSms) {
+      this.setData({ step: 2 });
+      if (this.data.role === 'student') {
+        this.loadClasses();
+      }
       return;
     }
 

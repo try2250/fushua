@@ -1,0 +1,49 @@
+# Pre-commit hooks for Fushua project
+# 安装: pip install pre-commit && pre-commit install
+# 手动运行所有文件: pre-commit run --all-files
+
+repos:
+  # 通用检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: 去除行尾空白
+      - id: end-of-file-fixer
+        name: 文件末尾空行
+      - id: check-yaml
+        name: YAML 语法检查
+        args: [--allow-multiple-documents]
+      - id: check-json
+        name: JSON 语法检查
+      - id: check-toml
+        name: TOML 语法检查
+      - id: check-merge-conflict
+        name: 合并冲突残留检查
+      - id: debug-statements
+        name: 调试语句检查 (print/breakpoint)
+      - id: detect-private-key
+        name: 私钥泄露检查
+      - id: mixed-line-ending
+        name: 混合换行符检查
+        args: [--fix=auto]
+
+  # Ruff - Linting + 格式化
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.10
+    hooks:
+      # Lint 检查
+      - id: ruff
+        name: Ruff Lint
+        args: [--fix, --exit-non-zero-on-fix]
+      # 格式化
+      - id: ruff-format
+        name: Ruff Format
+
+  # 禁止提交到 main 分支（保护分支）
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: no-commit-to-branch
+        name: 禁止直接提交到 main
+        args: [--branch, main, --branch, master]

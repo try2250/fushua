@@ -55,24 +55,12 @@ async def register(
         return _register_error(request, "用户名至少2个字符", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
 
     if role == "teacher":
-        invite_code = form.get("invite_code", "").strip()
-        if not invite_code:
-            classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
-            return _register_error(request, "教师注册需要邀请码", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
-        from app.security import verify_teacher_invite_code
-        if not verify_teacher_invite_code(invite_code, db):
-            classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
-            return _register_error(request, "邀请码无效", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
+        classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
+        return _register_error(request, "教师请通过邮箱注册（/api/v1/auth/register-teacher）", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
 
     if role == "admin":
-        invite_code = form.get("invite_code", "").strip()
-        if not invite_code:
-            classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
-            return _register_error(request, "管理员注册需要邀请码", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
-        from app.security import verify_admin_invite_code
-        if not verify_admin_invite_code(invite_code, db):
-            classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
-            return _register_error(request, "邀请码无效", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
+        classes = db.query(ClassGroup).order_by(ClassGroup.name).all()
+        return _register_error(request, "管理员角色已移除", request.session.get("csrf_token", ""), classes, role, "", client_ip, db)
 
     existing = db.query(User).filter(User.username == username).first()
     if existing:

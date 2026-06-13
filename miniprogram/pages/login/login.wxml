@@ -1,15 +1,22 @@
 <!-- pages/login/login.wxml -->
-<view class="container login-container">
-  <view class="login-header">
-    <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+<view class="container login-container academy-login">
+  <view class="login-header academy-hero landscape-wash">
+    <view class="academy-brand-mark">
+      <text class="brand-mark-text">文</text>
+    </view>
+    <text class="brush-title">文墨学苑</text>
     <text class="app-name">付刷</text>
-    <text class="app-slogan">让学习更高效</text>
+    <text class="app-slogan">中学题库 · 智学善教</text>
+    <view class="seal-line">
+      <text class="seal-mini">入学</text>
+      <text class="seal-copy">以答促学　以教成章</text>
+    </view>
   </view>
 
-  <view class="login-content">
+  <view class="login-content academy-panel">
     <view class="welcome-text">
-      <text class="title">欢迎使用付刷</text>
-      <text class="subtitle">请使用微信登录</text>
+      <text class="title">微信授权登录</text>
+      <text class="subtitle">同步你的身份、班级与学习记录</text>
     </view>
 
     <button
@@ -27,5 +34,9 @@
       <text class="tip-text">和</text>
       <text class="link">《隐私政策》</text>
     </view>
+  </view>
+
+  <view class="login-footer-note">
+    <text>一方纸卷，记录每一次进步</text>
   </view>
 </view>

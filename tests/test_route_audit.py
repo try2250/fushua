@@ -16,6 +16,11 @@ WHITELIST_PATH_PREFIXES = [
     "/docs/oauth2-redirect",
 ]
 
+# 精确路径白名单：跨租户入口（学生主动加入）
+WHITELIST_EXACT_PATHS = [
+    "/api/v1/classes/{class_id}/join",
+]
+
 
 def _depends_on_tenant(route: APIRoute) -> bool:
     """检查路由是否声明了 get_tenant_context 依赖"""
@@ -38,10 +43,23 @@ def test_all_api_v1_routes_declare_tenant_dep():
             continue
         if any(route.path.startswith(p) for p in WHITELIST_PATH_PREFIXES):
             continue
+        if route.path in WHITELIST_EXACT_PATHS:
+            continue
         if not _depends_on_tenant(route):
             missing.append(f"{list(route.methods)} {route.path}")
     if missing:
-        # Plan 1.1 只覆盖 questions；其他路由在 1.2 完成前 xfail
-        question_missing = [m for m in missing if "/api/v1/questions" in m]
-        assert not question_missing, f"Question routes missing tenant dep: {question_missing}"
-        pytest.xfail(f"Other routes pending (Plan 1.2): {missing}")
+        # Plan 1.2A 覆盖 questions/classes/assignments
+        COVERED_PREFIXES = [
+            "/api/v1/questions",
+            "/api/v1/classes",
+            "/api/v1/assignments",
+        ]
+        covered_missing = [
+            m for m in missing
+            if any(p in m for p in COVERED_PREFIXES)
+        ]
+        assert not covered_missing, (
+            f"Covered resources missing tenant dep: {covered_missing}"
+        )
+        # 余下 users/records/announcements 等待后续 plan
+        pytest.xfail(f"Other routes pending: {missing}")

@@ -4,6 +4,14 @@ const config = require('../config');
 // API 基础 URL
 const BASE_URL = config.baseUrl;
 
+function buildUrl(url) {
+  const path = url.startsWith('/') ? url : `/${url}`;
+  if (path.startsWith('/api/v1/')) {
+    return BASE_URL + path;
+  }
+  return BASE_URL + '/api/v1' + path;
+}
+
 /**
  * 封装的请求方法
  * @param {string} url - 请求路径（不包含 base url）
@@ -24,7 +32,7 @@ function request(url, options = {}) {
     }
 
     wx.request({
-      url: BASE_URL + url,
+      url: buildUrl(url),
       method: options.method || 'GET',
       data: options.data || {},
       header: {
@@ -148,5 +156,7 @@ module.exports = {
   post,
   put,
   del,
+  delete: del,
+  buildUrl,
   BASE_URL
 };

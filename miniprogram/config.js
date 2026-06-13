@@ -4,13 +4,13 @@
 const API_CONFIG = {
   // 开发环境 API 地址
   development: {
-    baseUrl: 'http://localhost:8000/api/v1',
+    baseUrl: 'http://localhost:8000',
     timeout: 10000
   },
 
   // 生产环境 API 地址
   production: {
-    baseUrl: 'https://fushua.onrender.com/api/v1',
+    baseUrl: 'https://www.fushua.asia',
     timeout: 10000
   }
 };
@@ -31,6 +31,9 @@ const APP_CONFIG = {
   // 验证码倒计时（秒）
   smsCountdown: 60,
 
+  // 开发期是否需要短信验证码（与后端配置保持一致）
+  phoneBindingRequireSms: false,
+
   // 每页显示数量
   pageSize: 20,
 
@@ -38,7 +41,7 @@ const APP_CONFIG = {
   maxImageSize: 5,
 
   // 主题色
-  primaryColor: '#1890ff',
+  primaryColor: '#176B57',
 
   // 成功色
   successColor: '#52c41a',

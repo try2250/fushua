@@ -1,3 +1,4 @@
+import gzip
 import os
 import subprocess
 import time
@@ -228,13 +229,14 @@ class BackupService:
             }
         checks["file_exists"] = True
 
-        # 检查文件大小
+        # 检查文件大小。新部署或测试库的数据很少时，PostgreSQL 备份可能只有几 KB，
+        # 因此不能用固定 100KB 阈值判断是否有效。
         actual_size = file_path.stat().st_size
-        if actual_size < 100 * 1024:  # 小于 100KB 可能有问题
+        if actual_size <= 0:
             return {
                 "status": "invalid",
                 "checks": checks,
-                "message": f"备份文件过小: {actual_size} 字节"
+                "message": "备份文件为空"
             }
         checks["file_size_ok"] = True
 
@@ -251,14 +253,11 @@ class BackupService:
                 if result.returncode == 0 and "ok" in result.stdout.lower():
                     checks["integrity_check"] = True
             elif file_path.suffix == ".gz":
-                # PostgreSQL 压缩文件测试
-                result = subprocess.run(
-                    ["gunzip", "-t", str(file_path)],
-                    capture_output=True,
-                    timeout=30
-                )
-                if result.returncode == 0:
-                    checks["integrity_check"] = True
+                # PostgreSQL 压缩文件测试，直接用 Python gzip 避免依赖系统 gunzip。
+                with gzip.open(file_path, "rb") as f:
+                    while f.read(1024 * 1024):
+                        pass
+                checks["integrity_check"] = True
         except Exception as e:
             return {
                 "status": "error",

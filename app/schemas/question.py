@@ -47,6 +47,7 @@ class QuestionResponse(QuestionBase):
     id: int
     created_by: int
     created_at: datetime
+    correct_answer: Optional[str] = None
 
 
 class QuestionListQuery(BaseModel):

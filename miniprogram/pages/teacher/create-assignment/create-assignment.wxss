@@ -202,3 +202,92 @@
 .btn-submit::after {
   border: none;
 }
+
+/* 朱砂印章笔记主题 */
+.create-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.form-section,
+.questions-section {
+  margin: 22rpx 24rpx;
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.form-label,
+.section-title,
+.question-text,
+.picker-text {
+  color: var(--ink);
+}
+
+.section-count {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.54);
+  padding: 6rpx 14rpx;
+  border-radius: 6rpx;
+}
+
+.form-input,
+.picker-display,
+.question-item {
+  background-color: rgba(255, 250, 238, 0.82);
+  border: 1rpx solid var(--line);
+}
+
+.question-item.selected {
+  background-color: rgba(245, 216, 212, 0.56);
+  border-color: var(--seal-red);
+}
+
+.question-checkbox {
+  border-color: rgba(184, 50, 42, 0.32);
+}
+
+.question-item.selected .question-checkbox {
+  background-color: var(--seal-red);
+  border-color: var(--seal-red);
+}
+
+.meta-tag {
+  color: var(--ink-soft);
+  background-color: rgba(126, 92, 55, 0.10);
+}
+
+.submit-section {
+  background-color: rgba(251, 245, 232, 0.96);
+  border-top: 2rpx solid var(--line);
+}
+
+.btn-submit {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+}
+
+/* 文墨学苑主题深化 */
+.form-section,
+.questions-section {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.section-count {
+  color: var(--academy-green);
+  background-color: rgba(23, 107, 87, 0.10);
+}
+
+.question-item.selected {
+  background-color: rgba(23, 107, 87, 0.10);
+  border-color: var(--academy-green);
+}
+
+.question-item.selected .question-checkbox,
+.btn-submit {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+  border-color: var(--academy-green);
+}

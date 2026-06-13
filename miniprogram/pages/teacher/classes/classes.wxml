@@ -1,20 +1,28 @@
 <!--pages/teacher/classes/classes.wxml-->
-<view class="classes-container">
+<view class="classes-container academy-teacher">
+  <view class="teacher-ledger-header landscape-wash">
+    <view class="teacher-ledger-copy">
+      <text class="hero-eyebrow">教师管理旅程</text>
+      <text class="hero-title">班级台账</text>
+      <text class="hero-desc">教学管理、测评跟踪与学生成长记录，从班级开始。</text>
+    </view>
+    <button class="btn-create academy-primary" bindtap="handleCreateClass">
+      <text>创建班级</text>
+    </button>
+  </view>
+
   <!-- 头部操作栏 -->
-  <view class="header-bar">
+  <view class="header-bar academy-summary">
     <view class="header-info">
       <text class="info-text">共 {{classes.length}} 个班级</text>
     </view>
-    <button class="btn-create" bindtap="handleCreateClass">
-      <text class="btn-icon">+</text>
-      <text>创建班级</text>
-    </button>
+    <text class="seal-mini">台账</text>
   </view>
 
   <!-- 班级列表 -->
   <view class="classes-list">
     <view
-      class="class-card"
+      class="class-card ledger-card"
       wx:for="{{classes}}"
       wx:key="id"
       bindtap="handleViewClass"

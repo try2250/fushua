@@ -136,44 +136,31 @@ def login_as(client, username, password="abc12345"):
 
 def register_and_login(client, username="testuser", role="student", password="abc12345"):
     if role == "teacher":
+        email = f"{username}@test.local"
         db = TestingSessionLocal()
         try:
-            config = db.query(SiteConfig).filter(SiteConfig.key == "teacher_invite_code").first()
-            if not config:
-                config = SiteConfig(key="teacher_invite_code", value="FUSHUA2024")
-                db.add(config)
-            else:
-                config.value = "FUSHUA2024"
-            db.commit()
+            u = User(
+                username=email,
+                password_hash=User.hash_password(password),
+                role="teacher",
+                display_name=username,
+            )
+            db.add(u); db.commit()
         finally:
             db.close()
+        return login_as(client, email, password)
+
     if role == "admin":
-        db = TestingSessionLocal()
-        try:
-            config = db.query(SiteConfig).filter(SiteConfig.key == "admin_invite_code").first()
-            if not config:
-                config = SiteConfig(key="admin_invite_code", value="ADMIN2026")
-                db.add(config)
-            else:
-                config.value = "ADMIN2026"
-            db.commit()
-        finally:
-            db.close()
+        raise NotImplementedError(
+            "admin role 已删除；测试请用 platform_admin fixture (Plan 1.2B)"
+        )
+
     csrf = get_csrf_token(client)
-    data = {
-        "username": username,
-        "password": password,
-        "role": role,
-        "display_name": username,
+    client.post("/register", data={
+        "username": username, "password": password, "role": "student",
+        "display_name": username, "join_mode": "guest",
         "_csrf_token": csrf,
-    }
-    if role == "teacher":
-        data["invite_code"] = "FUSHUA2024"
-    if role == "admin":
-        data["invite_code"] = "ADMIN2026"
-    if role == "student":
-        data["join_mode"] = "guest"
-    client.post("/register", data=data, follow_redirects=True)
+    }, follow_redirects=True)
     return login_as(client, username, password)
 
 
@@ -181,3 +168,6 @@ def register_and_login(client, username="testuser", role="student", password="ab
 from tests.fixtures_tenant import (  # noqa: E402, F401
     teacher_a, teacher_b, teacher_a_token, teacher_b_token, class_b_with_student
 )
+
+# ─── Platform admin fixtures (Plan 1.2B) ───
+from tests.fixtures_platform import platform_admin, platform_admin_token  # noqa: E402, F401

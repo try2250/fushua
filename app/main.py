@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
-from app.routers import pages, auth, teacher, student, assignment, classgroup, admin, extractor, backup, classroom
+from app.routers import pages, auth, teacher, student, assignment, classgroup, extractor, backup, classroom, platform
 from app.models import User, Notification
 from app.core.config import settings
 from app.middleware import RequestTrackingMiddleware
@@ -210,7 +210,6 @@ def _global_template_vars(request: Request) -> dict:
                 role = user.role
                 display_name = user.display_name
                 is_guest = user.is_guest
-                is_admin = user.role == "admin"
                 if role == "student":
                     unread_count = db.query(Notification).filter(
                         Notification.user_id == user.id, Notification.is_read == False
@@ -357,7 +356,7 @@ app.include_router(teacher.router)
 app.include_router(student.router)
 app.include_router(assignment.router)
 app.include_router(classgroup.router)
-app.include_router(admin.router)
+app.include_router(platform.router)
 app.include_router(extractor.router)
 app.include_router(backup.router)
 app.include_router(classroom.router)

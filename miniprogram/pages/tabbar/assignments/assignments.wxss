@@ -189,3 +189,142 @@
   font-size: 28rpx;
   color: #999999;
 }
+
+/* 朱砂印章笔记主题 */
+.assignments-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.tabs-bar {
+  margin: 22rpx 24rpx 0;
+  padding: 8rpx;
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.tab-item {
+  padding: 22rpx 0;
+  border-radius: 10rpx;
+}
+
+.tab-item.active {
+  background-color: rgba(245, 216, 212, 0.54);
+}
+
+.tab-label,
+.assignment-title {
+  color: var(--ink);
+}
+
+.tab-item.active .tab-label {
+  color: var(--seal-red);
+}
+
+.tab-item.active::after {
+  background-color: var(--seal-red);
+  bottom: 8rpx;
+}
+
+.assignments-list {
+  padding: 24rpx;
+}
+
+.assignment-card {
+  position: relative;
+  background: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.assignment-card::after {
+  content: "课业";
+  position: absolute;
+  right: 26rpx;
+  bottom: 26rpx;
+  color: rgba(184, 50, 42, 0.36);
+  border: 3rpx solid rgba(184, 50, 42, 0.28);
+  border-radius: 8rpx;
+  padding: 6rpx 10rpx;
+  transform: rotate(-7deg);
+  font-size: 22rpx;
+}
+
+.assignment-status,
+.completion-text {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.58);
+  border: 2rpx solid rgba(184, 50, 42, 0.38);
+  border-radius: 6rpx;
+  transform: rotate(-2deg);
+}
+
+.status-completed {
+  color: var(--jade);
+  background-color: rgba(79, 124, 107, 0.12);
+  border-color: rgba(79, 124, 107, 0.38);
+}
+
+.info-text,
+.progress-text {
+  color: var(--ink-soft);
+}
+
+.progress-bar {
+  background-color: rgba(126, 92, 55, 0.16);
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, var(--seal-red), var(--gold));
+}
+
+.completion-info {
+  border-top: 1rpx dashed rgba(126, 92, 55, 0.26);
+}
+
+.score-text {
+  color: var(--seal-red);
+}
+
+/* 文墨学苑主题深化 */
+.tabs-bar,
+.assignment-card {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.tab-item.active {
+  background-color: rgba(23, 107, 87, 0.10);
+}
+
+.tab-item.active .tab-label,
+.score-text {
+  color: var(--academy-green);
+}
+
+.tab-item.active::after,
+.progress-fill {
+  background: var(--academy-green);
+}
+
+.assignment-status {
+  color: var(--academy-green);
+  background-color: rgba(23, 107, 87, 0.10);
+  border-color: rgba(23, 107, 87, 0.26);
+}
+
+.assignment-card::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 220rpx;
+  height: 90rpx;
+  opacity: 0.18;
+  background: radial-gradient(ellipse at 65% 80%, rgba(23, 107, 87, 0.28), transparent 42%);
+}

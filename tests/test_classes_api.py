@@ -20,11 +20,19 @@ def test_create_class_as_teacher(client, db_session):
 
 
 def test_create_class_as_student_fails(client, db_session):
+    # Student needs a class to resolve tenant context
+    teacher = create_test_user(db_session, "for_student", role="teacher")
+    cls = ClassGroup(name="A", created_by=teacher.id)
+    db_session.add(cls); db_session.commit(); db_session.refresh(cls)
+
     student = create_test_user(db_session, "student1", role="student")
+    db_session.add(ClassMember(class_id=cls.id, user_id=student.id))
+    db_session.commit()
+
     token = create_access_token({"user_id": student.id, "role": student.role, "username": student.username})
 
     response = client.post(
-        "/api/v1/classes",
+        f"/api/v1/classes?class_id={cls.id}",
         json={"name": "Math Class 101"},
         headers={"Authorization": f"Bearer {token}"}
     )

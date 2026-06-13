@@ -76,5 +76,18 @@ class ClassService:
         db.commit()
         return True
 
+    def get_classes_for_tenant(self, db: Session, tenant_id: int) -> List[ClassGroup]:
+        from app.models import ClassGroup
+        return db.query(ClassGroup).filter(
+            ClassGroup.created_by == tenant_id
+        ).order_by(ClassGroup.created_at.desc()).all()
+
+    def get_class_by_id_for_tenant(self, db: Session, tenant_id: int, class_id: int) -> Optional[ClassGroup]:
+        from app.models import ClassGroup
+        return db.query(ClassGroup).filter(
+            ClassGroup.id == class_id,
+            ClassGroup.created_by == tenant_id,
+        ).first()
+
 
 class_service = ClassService()

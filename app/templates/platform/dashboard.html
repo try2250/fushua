@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平台管理后台</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .header { background: white; padding: 16px 24px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .stats { display: flex; gap: 20px; }
+        .stat-card { background: white; padding: 24px; border-radius: 8px; flex: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .stat-card h3 { margin: 0 0 8px 0; color: #666; font-size: 14px; }
+        .stat-card p { margin: 0; font-size: 32px; font-weight: bold; color: #1890ff; }
+        .logout { background: #ff4d4f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span>欢迎，{{ pa.username }}</span>
+        <a href="/platform/logout" class="logout">退出</a>
+    </div>
+    <div class="stats">
+        <div class="stat-card">
+            <h3>教师数</h3>
+            <p>{{ teacher_count }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>学生数</h3>
+            <p>{{ student_count }}</p>
+        </div>
+    </div>
+</body>
+</html>

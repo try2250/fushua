@@ -194,3 +194,88 @@
   font-size: 28rpx;
   color: #999999;
 }
+
+/* 朱砂印章笔记主题 */
+.detail-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.assignment-header,
+.stats-card,
+.record-card {
+  background: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.assignment-header {
+  margin: 22rpx 24rpx;
+}
+
+.assignment-title,
+.section-title,
+.student-name,
+.info-value,
+.empty-text {
+  color: var(--ink);
+}
+
+.info-item,
+.stat-label,
+.info-label,
+.empty-desc {
+  color: var(--ink-soft);
+}
+
+.stats-section,
+.records-section {
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+}
+
+.stat-value,
+.score-value {
+  color: var(--seal-red);
+}
+
+.student-avatar {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+}
+
+.status-badge {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.58);
+  border: 2rpx solid rgba(184, 50, 42, 0.28);
+}
+
+.status-pending {
+  color: var(--ink-soft);
+  background-color: rgba(126, 92, 55, 0.10);
+}
+
+/* 文墨学苑主题深化 */
+.assignment-header,
+.stats-card,
+.record-card {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.stat-value,
+.score-value,
+.status-badge {
+  color: var(--academy-green);
+}
+
+.student-avatar {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+}
+
+.status-badge {
+  background-color: rgba(23, 107, 87, 0.10);
+  border-color: rgba(23, 107, 87, 0.24);
+}

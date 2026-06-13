@@ -39,7 +39,7 @@ def require_teacher(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         raise HTTPException(status_code=303, headers={"Location": "/login"})
     user = db.query(User).filter(User.id == user_id).first()
-    if not user or (user.role != "teacher" and user.role != "admin"):
+    if not user or user.role != "teacher":
         raise HTTPException(status_code=403, detail="仅教师可访问")
     return user_id
 
@@ -65,10 +65,14 @@ def require_non_guest(request: Request, db: Session = Depends(get_db)):
 
 
 def require_admin_role(request: Request, db: Session = Depends(get_db)):
-    user_id = get_current_user(request, db)
-    if not user_id:
-        raise HTTPException(status_code=303, headers={"Location": "/login"})
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or user.role != "admin":
-        raise HTTPException(status_code=403, detail="仅管理员可访问")
-    return user_id
+    pa_id = request.session.get("platform_admin_id")
+    if not pa_id:
+        raise HTTPException(status_code=303, headers={"Location": "/platform/login"})
+    from app.models import PlatformAdmin
+    pa = db.query(PlatformAdmin).filter(
+        PlatformAdmin.id == pa_id,
+        PlatformAdmin.is_active == True,
+    ).first()
+    if not pa:
+        raise HTTPException(status_code=403, detail="仅平台管理员可访问")
+    return pa_id

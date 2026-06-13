@@ -113,10 +113,10 @@ Type=notify
 User=fushua
 Group=fushua
 WorkingDirectory=$PROJECT_DIR
-Environment="PATH=$PROJECT_DIR/venv/bin"
+Environment="PATH=$PROJECT_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EnvironmentFile=$PROJECT_DIR/.env
 ExecStart=$PROJECT_DIR/venv/bin/gunicorn app.main:app \\
-    --workers 4 \\
+    --workers 2 \\
     --worker-class uvicorn.workers.UvicornWorker \\
     --bind 127.0.0.1:8000 \\
     --access-logfile $PROJECT_DIR/logs/access.log \\

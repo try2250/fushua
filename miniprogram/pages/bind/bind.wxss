@@ -34,6 +34,21 @@
   padding: 40rpx 30rpx;
 }
 
+/* 开发期提示样式 */
+.dev-notice {
+  margin-bottom: 24rpx;
+  padding: 16rpx 24rpx;
+  background-color: #fff7e6;
+  border-left: 4rpx solid #faad14;
+  border-radius: 8rpx;
+}
+
+.notice-text {
+  font-size: 26rpx;
+  color: #d48806;
+  line-height: 1.5;
+}
+
 .form-item {
   margin-bottom: 40rpx;
 }
@@ -151,4 +166,72 @@
 
 .mt-20 {
   margin-top: 40rpx;
+}
+
+/* 朱砂印章笔记主题 */
+.bind-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.step-title {
+  color: var(--seal-red);
+}
+
+.step-subtitle {
+  color: var(--ink-soft);
+}
+
+.form-section {
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.label,
+.input,
+.radio-item text,
+.picker {
+  color: var(--ink);
+}
+
+.input,
+.picker {
+  background-color: rgba(255, 250, 238, 0.82);
+  border: 1rpx solid var(--line);
+}
+
+.placeholder,
+.picker .placeholder {
+  color: var(--ink-muted);
+}
+
+.send-code-btn,
+.btn-primary {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+  color: #FFF8ED;
+}
+
+.send-code-btn[disabled],
+.btn-primary[disabled] {
+  background: rgba(126, 92, 55, 0.16);
+  color: var(--ink-muted);
+}
+
+/* 文墨学苑主题深化 */
+.step-title {
+  color: var(--ink-title);
+}
+
+.form-section {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.send-code-btn,
+.btn-primary {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
 }

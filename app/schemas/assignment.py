@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 
 
@@ -32,7 +32,7 @@ class AssignmentResponse(AssignmentBase):
 
 
 class AssignmentSubmitRequest(BaseModel):
-    answers: dict
+    answers: Union[dict, list]
 
 
 class AssignmentRecordResponse(BaseModel):

@@ -66,3 +66,66 @@
   color: rgba(255, 255, 255, 0.7);
   margin-top: 10rpx;
 }
+
+/* 朱砂印章笔记主题 */
+.index-container {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(184, 50, 42, 0.12), transparent 22%),
+    linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx),
+    var(--paper-bg);
+  background-size: 100% 100%, 100% 52rpx, 100% 100%;
+}
+
+.logo {
+  background-color: var(--paper-card);
+  border: 4rpx solid rgba(184, 50, 42, 0.26);
+  box-shadow: var(--shadow-paper);
+}
+
+.app-name {
+  color: var(--seal-red);
+}
+
+.app-slogan,
+.welcome-text,
+.user-role {
+  color: var(--ink-soft);
+}
+
+.welcome-section,
+.user-section {
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+  padding: 34rpx;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+  color: #FFF8ED;
+  border-radius: 10rpx;
+}
+
+/* 文墨学苑主题深化 */
+.index-container {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(23, 107, 87, 0.12), transparent 22%),
+    linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx),
+    var(--paper-bg);
+}
+
+.app-name {
+  color: var(--ink-title);
+}
+
+.welcome-section,
+.user-section {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+}

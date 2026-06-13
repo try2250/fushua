@@ -9,15 +9,27 @@ mkdir -p "${BACKUP_DIR}"
 
 if [ -n "${DATABASE_URL:-}" ] && echo "${DATABASE_URL}" | grep -q "postgresql"; then
     echo "[备份] 检测到 PostgreSQL 数据库"
-    PGHOST=$(echo "${DATABASE_URL}" | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
-    PGPORT=$(echo "${DATABASE_URL}" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
-    PGUSER=$(echo "${DATABASE_URL}" | sed -n 's/.*:\/\/\([^:]*\):.*/\1/p')
-    PGDB=$(echo "${DATABASE_URL}" | sed -n 's/.*\/\([^?]*\).*/\1/p')
-    PGPASSWORD=$(echo "${DATABASE_URL}" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')
+    mapfile -t DB_PARTS < <(python3 - <<'PY'
+import os
+from urllib.parse import unquote, urlparse
+
+url = urlparse(os.environ["DATABASE_URL"])
+print(url.hostname or "localhost")
+print(url.port or 5432)
+print(unquote(url.username or ""))
+print(unquote(url.password or ""))
+print((url.path or "/").lstrip("/"))
+PY
+)
+    PGHOST="${DB_PARTS[0]}"
+    PGPORT="${DB_PARTS[1]}"
+    PGUSER="${DB_PARTS[2]}"
+    PGPASSWORD="${DB_PARTS[3]}"
+    PGDB="${DB_PARTS[4]}"
 
     BACKUP_FILE="${BACKUP_FILE}.sql.gz"
     echo "[备份] 导出 PostgreSQL → ${BACKUP_FILE}"
-    PGPASSWORD="${PGPASSWORD}" pg_dump -h "${PGHOST}" -p "${PGPORT:-5432}" -U "${PGUSER}" "${PGDB}" | gzip > "${BACKUP_FILE}"
+    PGPASSWORD="${PGPASSWORD}" pg_dump -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" "${PGDB}" | gzip > "${BACKUP_FILE}"
     echo "[备份] 完成！文件大小: $(du -h "${BACKUP_FILE}" | cut -f1)"
     echo "BACKUP_FILE_PATH=${BACKUP_FILE}"
 else

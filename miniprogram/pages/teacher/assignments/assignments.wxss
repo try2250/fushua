@@ -181,3 +181,104 @@
   font-size: 28rpx;
   color: #999999;
 }
+
+/* 朱砂印章笔记主题 */
+.assignments-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.header-bar,
+.assignment-card {
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.header-bar {
+  margin: 22rpx 24rpx;
+}
+
+.assignments-list {
+  padding: 0 24rpx 24rpx;
+}
+
+.assignment-card {
+  position: relative;
+}
+
+.assignment-card::after {
+  content: "布置";
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  color: rgba(184, 50, 42, 0.34);
+  border: 3rpx solid rgba(184, 50, 42, 0.26);
+  border-radius: 8rpx;
+  padding: 6rpx 10rpx;
+  transform: rotate(-7deg);
+  font-size: 22rpx;
+}
+
+.picker-display {
+  background-color: rgba(255, 250, 238, 0.82);
+  border: 1rpx solid var(--line);
+}
+
+.picker-text,
+.assignment-title,
+.info-value,
+.empty-text {
+  color: var(--ink);
+}
+
+.picker-arrow,
+.info-label,
+.empty-desc {
+  color: var(--ink-soft);
+}
+
+.btn-create {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+}
+
+.status-badge {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.58);
+  border: 2rpx solid rgba(184, 50, 42, 0.28);
+}
+
+.status-ended {
+  color: var(--ink-soft);
+  background-color: rgba(126, 92, 55, 0.10);
+}
+
+.card-actions {
+  border-top: 1rpx dashed rgba(126, 92, 55, 0.26);
+}
+
+.btn-delete {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.54);
+}
+
+/* 文墨学苑主题深化 */
+.header-bar,
+.assignment-card {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.btn-create {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+}
+
+.status-badge,
+.btn-delete {
+  color: var(--academy-green);
+  background-color: rgba(23, 107, 87, 0.10);
+  border-color: rgba(23, 107, 87, 0.24);
+}

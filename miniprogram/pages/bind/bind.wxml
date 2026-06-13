@@ -20,7 +20,12 @@
         />
       </view>
 
-      <view class="form-item">
+      <!-- 开发期提示 -->
+      <view class="dev-notice" wx:if="{{!phoneBindingRequireSms}}">
+        <text class="notice-text">⚠️ 开发期免验证码绑定</text>
+      </view>
+
+      <view class="form-item" wx:if="{{phoneBindingRequireSms}}">
         <text class="label">验证码</text>
         <view class="code-input-wrapper">
           <input

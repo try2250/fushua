@@ -215,3 +215,124 @@
   font-size: 28rpx;
   color: #999999;
 }
+
+/* 朱砂印章笔记主题 */
+.detail-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.class-header {
+  margin: 22rpx 24rpx;
+  padding: 32rpx 28rpx;
+  background: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.class-name,
+.tab-item.active .tab-label,
+.empty-text {
+  color: var(--seal-red);
+}
+
+.meta-item,
+.meta-divider,
+.meta-text,
+.empty-desc {
+  color: var(--ink-soft);
+}
+
+.btn-invite {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.54);
+  border: 2rpx solid rgba(184, 50, 42, 0.28);
+}
+
+.tabs-bar {
+  margin: 0 24rpx 22rpx;
+  padding: 8rpx;
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.tab-item {
+  padding: 22rpx 0;
+  border-radius: 10rpx;
+}
+
+.tab-label {
+  color: var(--ink-soft);
+}
+
+.tab-item.active {
+  background-color: rgba(245, 216, 212, 0.54);
+}
+
+.tab-item.active::after {
+  bottom: 6rpx;
+  background-color: var(--seal-red);
+}
+
+.members-list,
+.stats-content {
+  padding: 0 24rpx 24rpx;
+}
+
+.member-card {
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.member-avatar {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+}
+
+.member-name {
+  color: var(--ink);
+}
+
+.btn-view {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.54);
+}
+
+.btn-remove {
+  color: var(--ink-soft);
+  background-color: rgba(126, 92, 55, 0.10);
+}
+
+/* 文墨学苑主题深化 */
+.class-header,
+.tabs-bar,
+.member-card {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.class-name,
+.tab-item.active .tab-label,
+.btn-invite,
+.btn-view {
+  color: var(--academy-green);
+}
+
+.btn-invite,
+.tab-item.active,
+.btn-view {
+  background-color: rgba(23, 107, 87, 0.10);
+  border-color: rgba(23, 107, 87, 0.24);
+}
+
+.tab-item.active::after,
+.member-avatar {
+  background: var(--academy-green);
+}

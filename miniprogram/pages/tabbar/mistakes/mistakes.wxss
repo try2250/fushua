@@ -246,3 +246,150 @@
   font-size: 28rpx;
   color: #999999;
 }
+
+/* 朱砂印章笔记主题 */
+.mistakes-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.header-bar {
+  margin: 22rpx 24rpx;
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.info-text,
+.question-text,
+.empty-text {
+  color: var(--ink);
+}
+
+.action-btn {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.58);
+  border: 1rpx solid rgba(184, 50, 42, 0.26);
+}
+
+.mistakes-list {
+  padding: 0 24rpx;
+}
+
+.mistake-card {
+  position: relative;
+  background: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.mistake-card::after {
+  content: "订正";
+  position: absolute;
+  right: 24rpx;
+  top: 28rpx;
+  color: rgba(184, 50, 42, 0.42);
+  border: 3rpx solid rgba(184, 50, 42, 0.30);
+  border-radius: 8rpx;
+  padding: 6rpx 10rpx;
+  transform: rotate(-8deg);
+  font-size: 22rpx;
+}
+
+.tag {
+  border-radius: 6rpx;
+}
+
+.tag-type,
+.tag-subject {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.52);
+}
+
+.difficulty-1 {
+  color: var(--jade);
+  background-color: rgba(79, 124, 107, 0.12);
+}
+
+.difficulty-2 {
+  color: var(--gold);
+  background-color: rgba(183, 131, 56, 0.12);
+}
+
+.difficulty-3,
+.count-text {
+  color: var(--seal-red);
+  background-color: rgba(184, 50, 42, 0.10);
+}
+
+.question-content,
+.answer-info {
+  background-color: rgba(255, 250, 238, 0.74);
+  border: 1rpx dashed rgba(126, 92, 55, 0.22);
+}
+
+.answer-label,
+.time-text,
+.empty-desc {
+  color: var(--ink-soft);
+}
+
+.answer-value.wrong {
+  color: var(--seal-red);
+  background-color: rgba(184, 50, 42, 0.10);
+}
+
+.answer-value.correct {
+  color: var(--jade);
+  background-color: rgba(79, 124, 107, 0.12);
+}
+
+.mistake-footer {
+  border-top: 1rpx dashed rgba(126, 92, 55, 0.26);
+}
+
+.btn-practice {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.54);
+}
+
+.btn-remove {
+  color: var(--ink-soft);
+  background-color: rgba(126, 92, 55, 0.10);
+}
+
+/* 文墨学苑主题深化 */
+.header-bar,
+.mistake-card {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.action-btn,
+.tag-type,
+.tag-subject,
+.btn-practice {
+  color: var(--academy-green);
+  background-color: rgba(23, 107, 87, 0.10);
+}
+
+.answer-value.correct {
+  color: var(--academy-green);
+  background-color: rgba(23, 107, 87, 0.10);
+}
+
+.mistake-card::before {
+  content: "";
+  position: absolute;
+  left: 24rpx;
+  bottom: 20rpx;
+  width: 170rpx;
+  height: 70rpx;
+  opacity: 0.16;
+  background: radial-gradient(ellipse at 35% 70%, rgba(23, 107, 87, 0.30), transparent 45%);
+}

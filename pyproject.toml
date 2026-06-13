@@ -1,0 +1,120 @@
+[tool.ruff]
+# 目标 Python 版本
+target-version = "py312"
+
+# 代码行宽
+line-length = 100
+
+# 排除目录
+exclude = [
+    ".git",
+    ".pytest_cache",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "alembic/versions",
+    "migrations",
+    "miniprogram",
+]
+
+[tool.ruff.lint]
+# 启用的规则集
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes (未使用变量、未定义名称等)
+    "I",   # isort (import 排序)
+    "N",   # pep8-naming (命名规范)
+    "B",   # flake8-bugbear (常见 bug 检测)
+    "SIM", # flake8-simplify (简化代码建议)
+    "C4",  # flake8-comprehensions (推导式优化)
+    "PERF",# Perflint (性能建议)
+    "RUF", # Ruff 特有规则
+]
+
+# 忽略的规则（项目特殊性调整）
+ignore = [
+    "E501",  # 行太长 (由 formatter 处理)
+    "B008",  # 函数参数默认值中的函数调用 (FastAPI Depends 需要)
+    "N818",  # 异常类名应以 Error 结尾
+    "SIM108", # 用三元表达式替代 if-else (有时降低可读性)
+    "PERF203", # try-except 在循环中 (有时是合理的)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试文件允许更宽松的规则
+"tests/**/*.py" = [
+    "S101",   # assert 使用 (pytest 需要)
+    "S311",   # 伪随机数 (测试中可接受)
+    "N802",   # 函数名大写 (pytest fixture 名)
+    "N803",   # 参数名大写
+    "N806",   # 变量名大写
+    "ARG001", # 未使用的函数参数 (fixture 常见)
+    "B017",   # assertRaises(Exception) 过于宽泛
+]
+# 路由文件允许未使用的参数 (request)
+"app/routers/**/*.py" = ["ARG001"]
+# API 路由
+"app/api/**/*.py" = ["ARG001"]
+
+[tool.ruff.lint.isort]
+# import 排序与 Black 兼容
+known-first-party = ["app"]
+force-sort-within-sections = true
+
+[tool.ruff.lint.pep8-naming]
+# 允许的类名风格
+classmethod-decorators = ["classmethod", "validator"]
+
+[tool.ruff.format]
+# 格式化设置
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# ─── Mypy 配置（逐步启用） ───
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # 逐步转为 true
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+disallow_untyped_defs = false
+ignore_errors = false
+
+# ─── Pytest 配置 ───
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+norecursedirs = [
+    ".git",
+    ".pytest_cache",
+    "__pycache__",
+    "alembic",
+    "bin",
+    "greenlet",
+    "include",
+    "mako",
+    "markupsafe",
+    "sqlalchemy",
+    "*-*.dist-info",
+]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]

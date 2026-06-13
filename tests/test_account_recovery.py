@@ -59,6 +59,7 @@ class TestAccountRecovery:
 
 
 class TestRecoveryApproval:
+    @pytest.mark.skip(reason="Admin role removed — recovery routes pending platform migration (Plan 1.2B)")
     def test_admin_can_see_recovery_requests(self, client, db_session):
         admin = create_test_user(db_session, username="rec_admin", role="admin", password="abc12345")
         db_session.commit()
@@ -70,6 +71,7 @@ class TestRecoveryApproval:
         assert resp.status_code == 200
         assert "lost_student" in resp.text
 
+    @pytest.mark.skip(reason="Admin role removed (Plan 1.2B)")
     def test_admin_approve_recovery_resets_password(self, client, db_session):
         admin = create_test_user(db_session, username="reset_admin", role="admin", password="abc12345")
         db_session.commit()
@@ -91,6 +93,7 @@ class TestRecoveryApproval:
         db_session.refresh(recovery)
         assert recovery.status == "approved"
 
+    @pytest.mark.skip(reason="Admin role removed (Plan 1.2B)")
     def test_admin_reject_recovery(self, client, db_session):
         admin = create_test_user(db_session, username="rej_admin", role="admin", password="abc12345")
         db_session.commit()

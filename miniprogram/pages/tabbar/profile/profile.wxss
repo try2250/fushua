@@ -162,3 +162,109 @@
 .logout-btn::after {
   border: none;
 }
+
+/* 朱砂印章笔记主题 */
+.profile-container {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(rgba(126, 92, 55, 0.055) 1rpx, transparent 1rpx);
+  background-size: 100% 52rpx;
+}
+
+.user-card,
+.stats-card,
+.menu-section {
+  margin: 24rpx;
+  background-color: var(--paper-card);
+  border: 2rpx solid var(--line);
+  border-left: 8rpx solid var(--seal-red);
+  border-radius: 14rpx;
+  box-shadow: var(--shadow-paper);
+}
+
+.user-card {
+  position: relative;
+}
+
+.user-card::after {
+  content: "在学";
+  position: absolute;
+  right: 28rpx;
+  bottom: 22rpx;
+  color: rgba(184, 50, 42, 0.42);
+  border: 3rpx solid rgba(184, 50, 42, 0.30);
+  border-radius: 8rpx;
+  padding: 6rpx 10rpx;
+  transform: rotate(-8deg);
+  font-size: 22rpx;
+}
+
+.user-avatar {
+  background: linear-gradient(180deg, var(--seal-red), var(--seal-red-deep));
+  border: 4rpx solid rgba(255, 248, 237, 0.78);
+}
+
+.user-name,
+.stats-title,
+.menu-label {
+  color: var(--ink);
+}
+
+.user-role {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.58);
+  border: 1rpx solid rgba(184, 50, 42, 0.24);
+}
+
+.user-phone,
+.stat-label,
+.menu-arrow {
+  color: var(--ink-soft);
+}
+
+.edit-btn {
+  color: var(--seal-red);
+  background-color: rgba(245, 216, 212, 0.54);
+}
+
+.stat-value {
+  color: var(--seal-red);
+}
+
+.menu-item {
+  border-bottom: 1rpx dashed rgba(126, 92, 55, 0.24);
+}
+
+.logout-section {
+  padding: 0 24rpx;
+}
+
+.logout-btn {
+  background-color: rgba(251, 245, 232, 0.92);
+  color: var(--seal-red);
+  border: 2rpx solid rgba(184, 50, 42, 0.28);
+}
+
+/* 文墨学苑主题深化 */
+.user-card,
+.stats-card,
+.menu-section {
+  border-color: rgba(185, 133, 61, 0.32);
+  border-left-color: var(--academy-green);
+}
+
+.user-avatar {
+  background: linear-gradient(180deg, var(--academy-green), var(--academy-green-deep));
+}
+
+.user-role,
+.edit-btn,
+.stat-value {
+  color: var(--academy-green);
+  background-color: rgba(23, 107, 87, 0.10);
+  border-color: rgba(23, 107, 87, 0.24);
+}
+
+.logout-btn {
+  color: var(--academy-green);
+  border-color: rgba(23, 107, 87, 0.24);
+}

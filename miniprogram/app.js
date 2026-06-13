@@ -21,6 +21,6 @@ App({
   globalData: {
     isLoggedIn: false,
     userInfo: null,
-    apiBaseUrl: 'https://your-api-domain.com/api/v1'  // 需要替换为实际的 API 地址
+    apiBaseUrl: 'https://www.fushua.asia/api/v1'
   }
 });

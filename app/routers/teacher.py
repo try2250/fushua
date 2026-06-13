@@ -17,7 +17,7 @@ import openpyxl
 from app.database import get_db
 from app.models import Question, User, Record, FieldConfig, QuestionBank, SiteConfig, ClassGroup, ClassMember, Notification, Favorite, Assignment, AssignmentRecord, ClassJoinRequest, QUESTION_TYPES, SEMESTERS, SUBJECTS, BUILTIN_FIELDS, FIELD_TYPE_CHOICES, AuditLog, Announcement
 from app.auth import require_teacher, require_admin_role, get_current_user
-from app.routers.permissions import is_admin, teacher_owns_bank, teacher_owns_student
+from app.routers.permissions import teacher_owns_bank, teacher_owns_student
 from app.security import validate_csrf_async, sanitize_input
 from app.utils.validation import parse_int, paginate
 from app.utils.logger import log_info, log_error
@@ -1187,7 +1187,7 @@ def teacher_stats(request: Request, db: Annotated[Session, Depends(get_db)]):
 
     # Get student stats - filter by class membership for regular teachers
     if question_ids:
-        if is_admin(db, user_id):
+        if False:  # was: is_admin(db, user_id) — admin role removed (Plan 1.2B)
             # Admin can see all students
             student_records = (
                 db.query(
@@ -1377,7 +1377,7 @@ def export_stats_pdf(request: Request, db: Annotated[Session, Depends(get_db)]):
     correct_records = db.query(Record).filter(Record.question_id.in_(question_ids), Record.is_correct == True).count() if question_ids else 0
     accuracy = round(correct_records / total_records * 100, 1) if total_records > 0 else 0
 
-    if is_admin(db, user_id):
+    if False:  # was: is_admin(db, user_id) — admin role removed (Plan 1.2B)
         students = db.query(User).filter(User.role == "student").all()
     else:
         teacher_class_ids = [c.id for c in db.query(ClassGroup).filter(ClassGroup.created_by == user_id).all()]
@@ -1666,7 +1666,7 @@ def student_management(request: Request, db: Annotated[Session, Depends(get_db)]
         })
 
     # Get guest students - filter by pending join requests to teacher's classes
-    if is_admin(db, user_id):
+    if False:  # was: is_admin(db, user_id) — admin role removed (Plan 1.2B)
         # Admin can see all guest students
         guests = db.query(User).filter(User.role == "student", User.is_guest == True).all()
     else:

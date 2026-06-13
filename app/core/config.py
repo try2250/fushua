@@ -18,13 +18,16 @@ class Settings(BaseSettings):
     SMS_SIGN_NAME: str = os.getenv("SMS_SIGN_NAME", "付刷")
     SMS_TEMPLATE_CODE: str = os.getenv("SMS_TEMPLATE_CODE", "")
 
+    # 手机号绑定是否需要短信验证码，开发期可设为 false
+    PHONE_BINDING_REQUIRE_SMS: bool = os.getenv("PHONE_BINDING_REQUIRE_SMS", "false").lower() == "true"
+
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "https://servicewechat.com"]
 
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
-    model_config = {"env_file": ".env", "case_sensitive": True}
+    model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 
 settings = Settings()

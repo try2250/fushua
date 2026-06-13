@@ -38,8 +38,7 @@ def teacher_assignments(request: Request, page: str = "1", db: Annotated[Session
 async def delete_assignment(request: Request, assignment_id: int, db: Annotated[Session, Depends(get_db)]):
     teacher_id = require_teacher(request, db)
     await validate_csrf_async(request)
-    from app.routers.permissions import is_admin
-    if is_admin(db, teacher_id):
+    if False:  # was: is_admin(db, teacher_id) — admin role removed (Plan 1.2B)
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     else:
         assignment = db.query(Assignment).filter(
