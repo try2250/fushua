@@ -1,9 +1,14 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models import Record, Question
+from app.models import Record, Question, User
 from app.schemas.record import RecordCreate
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+import logging
+
+from app.core.security import get_week_start
+from app.services.checkin_service import checkin_service
+from app.services.leaderboard_service import leaderboard_service
 
 
 class RecordService:
@@ -32,6 +37,24 @@ class RecordService:
         db.add(new_record)
         db.commit()
         db.refresh(new_record)
+
+        # Trigger gamification (non-fatal)
+        try:
+            is_correct = record_data.is_correct
+            today = date.today()
+            today_count = db.query(Record).filter(
+                Record.user_id == user_id,
+                func.date(Record.created_at) == today
+            ).count()
+            checkin_service.increment_daily_count(db, user_id, today, today_count - 1, today_count)
+
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.class_id:
+                week_start = get_week_start(today)
+                leaderboard_service.update_weekly_score(db, user_id, user.class_id, week_start, is_correct)
+        except Exception as e:
+            logging.getLogger("fushua").warning(f"Gamification trigger failed (non-fatal): {e}")
+
         return new_record
 
     def get_mistakes(

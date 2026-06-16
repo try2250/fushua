@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from typing import Optional, Dict, Any
 import jwt
 from app.core.config import settings
@@ -51,3 +51,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
     except Exception:
         return False
+
+
+def get_week_start(d: date = None) -> date:
+    if d is None:
+        d = date.today()
+    return d - timedelta(days=d.weekday())

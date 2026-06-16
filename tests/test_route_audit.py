@@ -19,6 +19,7 @@ USER_OWNED_PATH_PREFIXES = [
     "/api/v1/users/me",
     "/api/v1/records",
     "/api/v1/practice-records",
+    "/api/v1/practice",
     "/api/v1/announcements",
     "/api/v1/client-error",
     "/api/v1/classroom",
