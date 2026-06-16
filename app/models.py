@@ -1,6 +1,6 @@
 import json
 import bcrypt
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Boolean, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -533,4 +533,37 @@ class PlatformAdmin(Base):
             return bcrypt.checkpw(password.encode(), stored_hash.encode())
         except Exception:
             return False
+
+
+class DailyCheckin(Base):
+    __tablename__ = "daily_checkins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    question_count = Column(Integer, default=0)
+    is_checked = Column(Boolean, default=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "date", name="uq_user_date_checkin"),)
+
+
+class UserStreak(Base):
+    __tablename__ = "user_streaks"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    current_streak = Column(Integer, default=0)
+    max_streak = Column(Integer, default=0)
+    last_checkin_date = Column(Date, nullable=True)
+
+
+class WeeklyScore(Base):
+    __tablename__ = "weekly_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    class_id = Column(Integer, ForeignKey("class_groups.id"), nullable=False, index=True)
+    week_start = Column(Date, nullable=False, index=True)
+    score = Column(Integer, default=0)
+
+    __table_args__ = (UniqueConstraint("user_id", "class_id", "week_start", name="uq_user_class_week"),)
 
