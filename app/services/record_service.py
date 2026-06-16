@@ -9,6 +9,7 @@ import logging
 from app.core.security import get_week_start
 from app.services.checkin_service import checkin_service
 from app.services.leaderboard_service import leaderboard_service
+from app.services.badge_service import badge_service
 
 
 class RecordService:
@@ -54,6 +55,13 @@ class RecordService:
                 leaderboard_service.update_weekly_score(db, user_id, user.class_id, week_start, is_correct)
         except Exception as e:
             logging.getLogger("fushua").warning(f"Gamification trigger failed (non-fatal): {e}")
+
+        # Trigger badges
+        try:
+            total = db.query(Record).filter(Record.user_id == user_id).count()
+            badge_service.check_and_grant(db, user_id, "answer_submit", {"total_answers": total})
+        except Exception as e:
+            logging.getLogger("fushua").warning(f"Badge trigger failed (non-fatal): {e}")
 
         return new_record
 

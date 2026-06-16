@@ -38,5 +38,12 @@ class CheckinService:
         s.last_checkin_date = today
         db.commit()
 
+        # Trigger streak badges
+        try:
+            from app.services.badge_service import badge_service
+            badge_service.check_and_grant(db, user_id, "streak_change", {"streak": s.current_streak})
+        except Exception:
+            pass
+
 
 checkin_service = CheckinService()

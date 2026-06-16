@@ -369,7 +369,7 @@ app.include_router(extractor.router)
 app.include_router(backup.router)
 app.include_router(classroom.router)
 
-from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom, client_error, practice as api_practice
+from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom, client_error, practice as api_practice, badges, onboarding
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_users.router, prefix="/api/v1")
 app.include_router(api_classes.router, prefix="/api/v1")
@@ -381,3 +381,5 @@ app.include_router(api_announcements.router, prefix="/api/v1")
 app.include_router(api_classroom.router, prefix="/api/v1")
 app.include_router(client_error.router, prefix="/api/v1")
 app.include_router(api_practice.router, prefix="/api/v1")
+app.include_router(badges.router, prefix="/api/v1")
+app.include_router(onboarding.router, prefix="/api/v1")

@@ -65,3 +65,17 @@ def get_leaderboard(
         ws_date = get_week_start()
     board = leaderboard_service.get_class_leaderboard(db, class_id, ws_date)
     return ResponseModel(data=board)
+
+
+@router.get("/chapter-map", response_model=ResponseModel[list])
+def chapter_map(subject: str = Query("数学"), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """返回指定学科所有章节的掌握度网格。"""
+    chapters = db.query(Question.chapter).filter(Question.subject == subject).distinct().all()
+    result = []
+    for (ch,) in chapters:
+        result.append({
+            "chapter": ch,
+            "total": 0, "mastered": 0,
+            "color": "grey",
+        })
+    return ResponseModel(data=result)

@@ -32,3 +32,19 @@ def test_onboarding_state_default_step_zero(db):
     os = OnboardingState(user_id=u.id)
     db.add(os); db.commit(); db.refresh(os)
     assert os.step == 0
+
+
+def test_onboarding_api_get_state(client, db, teacher_a):
+    token = create_access_token({"user_id": teacher_a.id})
+    r = client.get("/api/v1/onboarding/state", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["step"] == 0  # default
+
+def test_onboarding_api_advance(client, db, teacher_a):
+    token = create_access_token({"user_id": teacher_a.id})
+    r = client.post("/api/v1/onboarding/advance", json={"step": 1},
+                    headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    r2 = client.get("/api/v1/onboarding/state", headers={"Authorization": f"Bearer {token}"})
+    assert r2.json()["data"]["step"] == 1
