@@ -17,10 +17,14 @@ router = APIRouter()
 def teacher_classes(request: Request, db: Annotated[Session, Depends(get_db)]):
     user_id = require_teacher(request, db)
     classes = db.query(ClassGroup).filter(ClassGroup.created_by == user_id).order_by(ClassGroup.created_at.desc()).all()
-    class_data = []
-    for c in classes:
-        members = db.query(ClassMember).filter(ClassMember.class_id == c.id).count()
-        class_data.append({"id": c.id, "name": c.name, "members": members, "created_at": c.created_at})
+    # Bulk member count — avoid N+1 query
+    class_ids = [c.id for c in classes]
+    member_counts = dict(db.query(ClassMember.class_id, sa_func.count(ClassMember.id))
+        .filter(ClassMember.class_id.in_(class_ids)).group_by(ClassMember.class_id).all()) if class_ids else {}
+    class_data = [
+        {"id": c.id, "name": c.name, "members": member_counts.get(c.id, 0), "created_at": c.created_at}
+        for c in classes
+    ]
     return request.app.state.templates.TemplateResponse(
         "teacher/classes.html",
         {"request": request, "classes": class_data},
