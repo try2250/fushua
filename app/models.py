@@ -567,3 +567,32 @@ class WeeklyScore(Base):
 
     __table_args__ = (UniqueConstraint("user_id", "class_id", "week_start", name="uq_user_class_week"),)
 
+
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100))
+    description = Column(String(500))
+    icon_url = Column(String(500))
+
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    badge_id = Column(Integer, ForeignKey("badges.id"), nullable=False)
+    earned_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),)
+
+
+class OnboardingState(Base):
+    __tablename__ = "onboarding_states"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    step = Column(Integer, default=0)
+    completed_at = Column(DateTime, nullable=True)
+
