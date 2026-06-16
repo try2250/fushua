@@ -596,3 +596,37 @@ class OnboardingState(Base):
     step = Column(Integer, default=0)
     completed_at = Column(DateTime, nullable=True)
 
+
+class NotificationDryrun(Base):
+    __tablename__ = "notification_dryruns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    template = Column(String(50), index=True)
+    payload = Column(Text)
+    scheduled_at = Column(DateTime, index=True)
+    sent_at = Column(DateTime, nullable=True)
+    delivered = Column(Boolean, default=False)
+
+
+class InboxMessage(Base):
+    __tablename__ = "inbox_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200))
+    body = Column(Text)
+    type = Column(String(50))
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+    is_read = Column(Boolean, default=False)
+
+
+class EventLog(Base):
+    __tablename__ = "event_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event = Column(String(50), index=True)
+    props = Column(Text)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+
