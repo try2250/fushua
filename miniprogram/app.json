@@ -16,7 +16,9 @@
     "pages/teacher/create-assignment/create-assignment",
     "pages/teacher/assignment-detail/assignment-detail",
     "pages/teacher/students/students",
-    "pages/teacher/student-detail/student-detail"
+    "pages/teacher/student-detail/student-detail",
+    "pages/badges/badges",
+    "pages/chapter-map/chapter-map"
   ],
   "window": {
     "backgroundTextStyle": "light",

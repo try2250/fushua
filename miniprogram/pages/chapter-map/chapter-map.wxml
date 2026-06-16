@@ -1,0 +1,12 @@
+<view class="map-container">
+  <view class="subject-tabs">
+    <text class="tab {{currentSubject === '数学' ? 'active' : ''}}" bindtap="switchSubject" data-subject="数学">数学</text>
+    <text class="tab {{currentSubject === '物理' ? 'active' : ''}}" bindtap="switchSubject" data-subject="物理">物理</text>
+  </view>
+  <view class="chapter-grid">
+    <view class="chapter-cell color-{{item.color}}" wx:for="{{chapters}}" wx:key="chapter">
+      <text class="chapter-name">{{item.chapter}}</text>
+      <text class="chapter-progress">{{item.mastered}}/{{item.total}}</text>
+    </view>
+  </view>
+</view>

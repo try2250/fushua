@@ -1,0 +1,14 @@
+<view class="badges-container">
+  <view class="badges-header">
+    <text class="badges-title">我的徽章</text>
+  </view>
+  <view class="badges-grid">
+    <view class="badge-card {{item.earned ? 'earned' : 'locked'}}" wx:for="{{badges}}" wx:key="code">
+      <image class="badge-icon" src="{{item.icon_url}}" mode="aspectFit"/>
+      <text class="badge-name">{{item.name}}</text>
+      <text class="badge-desc">{{item.description}}</text>
+      <text class="badge-status" wx:if="{{item.earned}}">已获得</text>
+      <text class="badge-status locked" wx:else>未解锁</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,7 @@
+<view class="onboarding-overlay" wx:if="{{show}}">
+  <view class="onboarding-card">
+    <text class="onboarding-step">第 {{step}} 步</text>
+    <text class="onboarding-guide">{{guideText}}</text>
+    <button class="onboarding-btn" bindtap="handleNext">{{btnText}}</button>
+  </view>
+</view>

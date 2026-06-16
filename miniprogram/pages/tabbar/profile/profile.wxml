@@ -1,4 +1,5 @@
 <!--pages/tabbar/profile/profile.wxml-->
+<onboarding />
 <view class="profile-container">
   <!-- 用户信息卡片 -->
   <view class="user-card">
