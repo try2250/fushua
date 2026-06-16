@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>推送 Dryrun 记录</h2>
+<table><thead><tr><th>ID</th><th>用户</th><th>模板</th><th>payload</th><th>发送时间</th><th>已读</th></tr></thead>
+<tbody>{% for r in rows %}<tr><td>{{ r.id }}</td><td>{{ r.user_id }}</td><td>{{ r.template }}</td><td>{{ r.payload }}</td><td>{{ r.sent_at }}</td><td>{{ "是" if r.delivered else "否" }}</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

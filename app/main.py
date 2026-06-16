@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, Base, SessionLocal, get_db
-from app.routers import pages, auth, teacher, student, assignment, classgroup, extractor, backup, classroom, platform, platform_users, platform_recovery, platform_classes, platform_audit, platform_announcements, platform_export, platform_batch_cleanup
+from app.routers import pages, auth, teacher, student, assignment, classgroup, extractor, backup, classroom, platform, platform_users, platform_recovery, platform_classes, platform_audit, platform_announcements, platform_export, platform_batch_cleanup, platform_notifications
 from app.models import User, Notification
 from app.core.config import settings
 from app.middleware import RequestTrackingMiddleware
@@ -64,6 +64,16 @@ app = FastAPI(
     redoc_url=None if _is_production else "/api/redoc",
     openapi_url=None if _is_production else "/api/openapi.json",
 )
+
+@app.on_event("startup")
+def startup_event():
+    try:
+        from app.scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        import sys
+        print(f"[scheduler] start failed (non-fatal): {e}", file=sys.stderr)
+
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
@@ -365,11 +375,12 @@ app.include_router(platform_audit.router)
 app.include_router(platform_announcements.router)
 app.include_router(platform_export.router)
 app.include_router(platform_batch_cleanup.router)
+app.include_router(platform_notifications.router)
 app.include_router(extractor.router)
 app.include_router(backup.router)
 app.include_router(classroom.router)
 
-from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom, client_error, practice as api_practice, badges, onboarding
+from app.api.v1 import auth as api_auth, users as api_users, classes as api_classes, questions as api_questions, assignments as api_assignments, records as api_records, announcements as api_announcements, classroom as api_classroom, client_error, practice as api_practice, badges, onboarding, notifications as api_notifications
 app.include_router(api_auth.router, prefix="/api/v1")
 app.include_router(api_users.router, prefix="/api/v1")
 app.include_router(api_classes.router, prefix="/api/v1")
@@ -383,3 +394,4 @@ app.include_router(client_error.router, prefix="/api/v1")
 app.include_router(api_practice.router, prefix="/api/v1")
 app.include_router(badges.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
+app.include_router(api_notifications.router, prefix="/api/v1")

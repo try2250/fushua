@@ -42,5 +42,13 @@ class BadgeService:
         db.add(UserBadge(user_id=user_id, badge_id=badge.id))
         db.commit()
 
+        # Event logging
+        try:
+            from app.services.event_log_service import log_event
+            log_event(db, user_id, "badge_earned", {"badge_code": code})
+        except Exception:
+            pass
+        db.commit()
+
 
 badge_service = BadgeService()

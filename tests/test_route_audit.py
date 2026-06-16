@@ -25,6 +25,7 @@ USER_OWNED_PATH_PREFIXES = [
     "/api/v1/classroom",
     "/api/v1/badges",
     "/api/v1/onboarding",
+    "/api/v1/notifications",
 ]
 
 WHITELIST_EXACT_PATHS = [

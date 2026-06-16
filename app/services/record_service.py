@@ -42,6 +42,7 @@ class RecordService:
         # Trigger gamification (non-fatal)
         try:
             is_correct = record_data.is_correct
+            question_id = record_data.question_id
             today = date.today()
             today_count = db.query(Record).filter(
                 Record.user_id == user_id,
@@ -55,6 +56,13 @@ class RecordService:
                 leaderboard_service.update_weekly_score(db, user_id, user.class_id, week_start, is_correct)
         except Exception as e:
             logging.getLogger("fushua").warning(f"Gamification trigger failed (non-fatal): {e}")
+
+        # Event logging
+        try:
+            from app.services.event_log_service import log_event
+            log_event(db, user_id, "answer_submit", {"question_id": question_id, "is_correct": is_correct})
+        except Exception as e:
+            logging.getLogger("fushua").warning(f"Event logging failed (non-fatal): {e}")
 
         # Trigger badges
         try:
