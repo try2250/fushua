@@ -9,6 +9,7 @@ from app.schemas.assignment import (
 )
 from app.schemas.common import ResponseModel
 from app.services.assignment_service import assignment_service
+from app.services.assignment_service import get_assignment_stats as _get_assignment_stats
 from app.models import User, Question
 from app.api.v1.compat_helpers import assignment_to_miniprogram_dict
 from typing import List, Optional
@@ -161,3 +162,10 @@ def get_assignment_records(
         raise HTTPException(status_code=404, detail="作业不存在")
     records = assignment_service.get_assignment_records(db, assignment_id)
     return ResponseModel(data=[AssignmentRecordResponse.model_validate(r) for r in records])
+
+
+@router.get("/{assignment_id}/stats", response_model=ResponseModel[dict])
+def get_stats(assignment_id: int, db: Session = Depends(get_db),
+              tenant: TenantContext = Depends(get_tenant_context)):
+    stats = _get_assignment_stats(db, assignment_id, tenant.tenant_id)
+    return ResponseModel(data=stats)

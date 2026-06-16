@@ -1,5 +1,6 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models import Assignment, AssignmentRecord, Question
+from app.models import Assignment, AssignmentRecord, Question, Record, ClassMember
 from app.schemas.assignment import AssignmentCreate, AssignmentUpdate
 from typing import List, Optional
 from datetime import datetime
@@ -134,3 +135,48 @@ class AssignmentService:
 
 
 assignment_service = AssignmentService()
+
+
+def get_assignment_stats(db: Session, assignment_id: int, teacher_id: int) -> dict:
+    """实时 SQL 聚合班级作业统计数据。"""
+    assignment = db.query(Assignment).filter(
+        Assignment.id == assignment_id,
+        Assignment.created_by == teacher_id,
+    ).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+    total_students = db.query(ClassMember).filter(
+        ClassMember.class_id == assignment.class_id
+    ).count()
+
+    submitted_records = db.query(AssignmentRecord).filter(
+        AssignmentRecord.assignment_id == assignment_id
+    ).all()
+    submitted_count = len(submitted_records)
+    completion_rate = submitted_count / total_students if total_students > 0 else 0
+    avg_score = sum(r.score or 0 for r in submitted_records) / submitted_count if submitted_count else 0
+
+    question_ids = json.loads(assignment.question_ids.replace("'", '"')) if assignment.question_ids else []
+    question_stats = []
+    for qid in question_ids:
+        q = db.query(Question).filter(Question.id == qid).first()
+        records = db.query(Record).filter(Record.question_id == qid).all()
+        correct = sum(1 for r in records if r.is_correct)
+        question_stats.append({
+            "question_id": qid,
+            "question_content": q.content if q else "?",
+            "correct_count": correct,
+            "total_count": len(records),
+            "correct_rate": round(correct / len(records), 2) if records else 0,
+        })
+
+    return {
+        "assignment_id": assignment_id,
+        "total_students": total_students,
+        "submitted_count": submitted_count,
+        "completion_rate": round(completion_rate, 2),
+        "average_score": round(avg_score, 1),
+        "max_score": len(question_ids),
+        "question_stats": question_stats,
+    }
