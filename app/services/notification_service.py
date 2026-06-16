@@ -11,7 +11,7 @@ class NotificationService:
         dr = NotificationDryrun(
             user_id=user_id, template=template,
             payload=json.dumps(payload, ensure_ascii=False),
-            scheduled_at=scheduled_at, sent_at=datetime.utcnow(),
+            scheduled_at=scheduled_at,
         )
         db.add(dr)
         db.commit()
@@ -52,3 +52,43 @@ def daily_push_dryrun():
         db.commit()
     finally:
         db.close()
+
+
+def daily_push_real(db=None):
+    """真实推送：扫描未发送的 dryrun 记录，调微信 API 发送，标记 sent_at。"""
+    import logging
+    logger = logging.getLogger("fushua.push")
+    if db is None:
+        from app.database import SessionLocal
+        db = SessionLocal()
+        own_db = True
+    else:
+        own_db = False
+    try:
+        from app.services.wechat_push_service import wechat_push_service
+        pending = db.query(NotificationDryrun).filter(NotificationDryrun.sent_at == None).limit(50).all()
+        for dr in pending:
+            template_map = {
+                "daily_checkin": "TEMPLATE_CHECKIN_ID",
+                "assignment_due": "TEMPLATE_ASSIGNMENT_ID",
+                "rank_change": "TEMPLATE_RANK_ID",
+                "mistake_review": "TEMPLATE_MISTAKE_ID",
+            }
+            tmpl_id = template_map.get(dr.template, template_map["daily_checkin"])
+            result = wechat_push_service.send_subscribe_message(
+                openid=f"o_{dr.user_id}", template_id=tmpl_id,
+                data={"thing1": {"value": dr.payload}}, page="pages/index/index",
+            )
+            if result.get("errcode") == 0:
+                dr.sent_at = datetime.utcnow()
+                dr.delivered = True
+                # 同时写 InboxMessage
+                notification_service.create_inbox(
+                    db, dr.user_id, dr.template, f"推送已发送: {dr.template}", str(dr.payload),
+                )
+            else:
+                logger.warning(f"Push failed for user {dr.user_id}: {result}")
+        db.commit()
+    finally:
+        if own_db:
+            db.close()
