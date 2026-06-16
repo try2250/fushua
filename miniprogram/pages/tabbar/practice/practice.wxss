@@ -407,3 +407,8 @@
   color: var(--ink-muted);
   font-size: 28rpx;
 }
+
+.streak-badge .stat-value {
+  color: #ff5733;
+  font-size: 36rpx;
+}

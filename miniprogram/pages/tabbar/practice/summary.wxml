@@ -1,0 +1,31 @@
+<view class="summary-container">
+  <view class="summary-hero">
+    <text class="score-ring">{{correctRate}}%</text>
+    <text class="score-label">正确率</text>
+  </view>
+
+  <view class="summary-stats">
+    <view class="stat-row">
+      <text class="stat-num">{{totalQuestions}}</text>
+      <text class="stat-desc">总题数</text>
+    </view>
+    <view class="stat-row">
+      <text class="stat-num correct">{{correctCount}}</text>
+      <text class="stat-desc">答对</text>
+    </view>
+    <view class="stat-row">
+      <text class="stat-num wrong">{{wrongCount}}</text>
+      <text class="stat-desc">答错</text>
+    </view>
+  </view>
+
+  <view class="streak-card" wx:if="{{streak > 0}}">
+    <text class="streak-icon">🔥</text>
+    <text class="streak-text">连续打卡 {{streak}} 天</text>
+  </view>
+
+  <view class="summary-actions">
+    <button class="btn-primary" bindtap="handleRestart">再来一组</button>
+    <button class="btn-secondary" bindtap="handleBack">返回首页</button>
+  </view>
+</view>

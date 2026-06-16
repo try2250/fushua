@@ -26,6 +26,10 @@
       <text class="stat-value">{{todayCorrectRate}}%</text>
       <text class="stat-label">正确率</text>
     </view>
+    <view class="stat-item streak-badge">
+      <text class="stat-value">{{streak}}🔥</text>
+      <text class="stat-label">连续打卡</text>
+    </view>
   </view>
 
   <!-- 题目卡片 -->

@@ -4,6 +4,7 @@
     "pages/login/login",
     "pages/bind/bind",
     "pages/tabbar/practice/practice",
+    "pages/tabbar/practice/summary",
     "pages/tabbar/assignments/assignments",
     "pages/tabbar/mistakes/mistakes",
     "pages/tabbar/profile/profile",

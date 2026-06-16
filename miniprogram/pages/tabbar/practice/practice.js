@@ -26,12 +26,25 @@ Page({
       correct: 0,
       total: 0
     },
-    todayCorrectRate: 0
+    todayCorrectRate: 0,
+    streak: 0
   },
 
   onLoad() {
     this.loadTodayStats();
+    this.loadStreak();
     this.loadQuestions();
+  },
+
+  async loadStreak() {
+    try {
+      const res = await request('/api/v1/practice-records/today-stats', { method: 'GET' });
+      if (res && res.streak !== undefined) {
+        this.setData({ streak: res.streak });
+      }
+    } catch (error) {
+      console.error('加载 streak 失败:', error);
+    }
   },
 
   /**
@@ -186,15 +199,11 @@ Page({
         isCorrect: false
       });
     } else {
-      // 已完成所有题目
-      wx.showModal({
-        title: '完成',
-        content: '已完成本轮刷题，是否继续？',
-        success: (res) => {
-          if (res.confirm) {
-            this.loadQuestions();
-          }
-        }
+      // 已完成所有题目 → 跳转总结页
+      const correct = this.data.questions.filter(q => q.userAnswer === q.correct_answer).length;
+      const wrong = this.data.totalQuestions - correct;
+      wx.redirectTo({
+        url: `/pages/tabbar/practice/summary?correct=${correct}&wrong=${wrong}&total=${this.data.totalQuestions}`
       });
     }
   },
