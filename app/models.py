@@ -630,3 +630,20 @@ class EventLog(Base):
     props = Column(Text)
     created_at = Column(DateTime, server_default=func.now(), index=True)
 
+
+class QuestionComment(Base):
+    __tablename__ = "question_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False, index=True)
+    assignment_id = Column(Integer, ForeignKey("assignments.id"), nullable=True, index=True)
+    comment_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("idx_teacher_assignment", "teacher_id", "assignment_id"),
+        Index("idx_student_question", "student_id", "question_id"),
+    )
+
