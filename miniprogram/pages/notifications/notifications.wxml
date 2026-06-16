@@ -1,0 +1,9 @@
+<view class="notifications-container">
+  <view class="notifications-header"><text class="notifications-title">消息中心</text></view>
+  <view class="notification-card {{item.is_read ? 'read' : 'unread'}}" wx:for="{{messages}}" wx:key="id" bindtap="handleRead" data-id="{{item.id}}">
+    <view class="notification-type">{{item.type === 'daily_checkin' ? '📅' : item.type === 'mistake_review' ? '📝' : item.type === 'rank_change' ? '🏆' : item.type === 'assignment_due' ? '📋' : '📌'}}</view>
+    <view class="notification-body"><text class="notification-title">{{item.title}}</text><text class="notification-text">{{item.body}}</text></view>
+    <view class="notification-dot" wx:if="{{!item.is_read}}"></view>
+  </view>
+  <view class="empty" wx:if="{{messages.length === 0}}"><text>暂无消息</text></view>
+</view>

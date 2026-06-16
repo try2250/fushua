@@ -1,0 +1,10 @@
+.notifications-container { padding: 30rpx; background: #f5f0e8; min-height: 100vh; }
+.notifications-header { margin-bottom: 30rpx; }
+.notifications-title { font-size: 36rpx; font-weight: bold; color: #333; }
+.notification-card { display: flex; align-items: center; gap: 20rpx; background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.04); }
+.notification-card.unread { border-left: 6rpx solid #176B57; }
+.notification-type { font-size: 40rpx; min-width: 60rpx; text-align: center; }
+.notification-body { flex: 1; display: flex; flex-direction: column; }
+.notification-title { font-size: 28rpx; font-weight: bold; color: #333; margin-bottom: 6rpx; }
+.notification-text { font-size: 24rpx; color: #999; }
+.notification-dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: #ff5733; }

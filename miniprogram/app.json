@@ -18,7 +18,8 @@
     "pages/teacher/students/students",
     "pages/teacher/student-detail/student-detail",
     "pages/badges/badges",
-    "pages/chapter-map/chapter-map"
+    "pages/chapter-map/chapter-map",
+    "pages/notifications/notifications"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -18,7 +18,7 @@ def reset_schema(keep_db: bool):
     Base.metadata.create_all(bind=engine)
 
 
-def seed(scale: int = 1, with_records: bool = False):
+def seed(scale: int = 1, with_records: bool = False, with_demo: bool = False):
     db = SessionLocal()
     try:
         # 1 平台管理员（不论 scale 都只有 1 个）
@@ -117,6 +117,29 @@ def seed(scale: int = 1, with_records: bool = False):
                         ))
                 db.commit()
 
+        if with_demo:
+            from app.models import Badge, UserBadge, InboxMessage, EventLog
+            import json
+            # seed badges
+            BADGES = [("opening","开门红","首次答题"),("streak_3","三日连击","连续打卡3天"),("streak_7","七日不缀","连续7天"),("hundred","百题成就","累计100题"),("thousand","千题成就","累计1000题"),("perfect_set","满分组","10题全对"),("subject_math","数学开光","数学>=80%"),("subject_physics","物理开光","物理>=80%"),("subject_chinese","语文开光","语文>=80%"),("streak_30","三十日大师","连续30天")]
+            for code, name, desc in BADGES:
+                if not db.query(Badge).filter(Badge.code == code).first():
+                    db.add(Badge(code=code, name=name, description=desc, icon_url=f"/static/badges/{code}.png"))
+            db.commit()
+            # demo inbox messages
+            for teacher in teachers:
+                students = db.query(User).filter(User.role == "student").limit(3).all()
+                for s in students:
+                    db.add(InboxMessage(user_id=s.id, title="欢迎加入付刷", body="开始你的学习之旅吧!", type="system"))
+                    db.add(InboxMessage(user_id=s.id, title="每日打卡提醒", body="你今天完成了5题，继续保持!", type="daily_checkin"))
+                db.commit()
+            # demo event logs
+            for teacher in teachers[:1]:
+                db.add(EventLog(user_id=teacher.id, event="practice_start", props=json.dumps({"subject":"数学"})))
+                db.add(EventLog(user_id=teacher.id, event="answer_submit", props=json.dumps({"is_correct":True})))
+            db.commit()
+            print("  demo data: badges + inbox + events seeded")
+
         print(f"seed 完成 (scale={scale}, records={with_records})")
         print(f"  - PlatformAdmin: root / rootpass")
         for t in teachers:
@@ -134,11 +157,12 @@ def main():
                         help="数据规模倍数（教师/班级/题目/学生数都乘以该值）")
     parser.add_argument("--with-records", action="store_true",
                         help="为每个学生生成示例答题记录")
+    parser.add_argument("--with-demo", action="store_true", help="生成演示数据（徽章+通知+埋点）")
     parser.add_argument("--keep-db", action="store_true",
                         help="不删除现有数据库（向后兼容）")
     args = parser.parse_args()
     reset_schema(keep_db=not args.reset and args.keep_db)
-    seed(scale=args.scale, with_records=args.with_records)
+    seed(scale=args.scale, with_records=args.with_records, with_demo=args.with_demo)
 
 
 if __name__ == "__main__":
