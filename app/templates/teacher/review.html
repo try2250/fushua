@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>批改: {{ assignment.title }}</h2>
+{% if error %}<p style="color:red">{{ error }}</p>{% else %}
+<p>班级: {{ cls.name if cls else '' }} | 题目数: {{ questions|length }}</p>
+<h3>学生提交 ({{ records|length }})</h3>
+{% for rec in records %}
+<div style="border:1px solid #ddd; margin:10px 0; padding:10px; border-radius:8px">
+  <strong>学生 {{ rec.user_id }}</strong> — 得分: {{ rec.score or 0 }}
+  <hr>
+  {% for q in questions %}
+  <div style="margin:8px 0; padding:8px; background:#fafafa">
+    <strong>题 {{ loop.index }}:</strong> {{ q.content }}
+    <br>正确答案: {{ q.answer }}
+    <form method="post" action="/api/v1/comments" style="margin-top:6px">
+      <input type="hidden" name="student_id" value="{{ rec.user_id }}">
+      <input type="hidden" name="question_id" value="{{ q.id }}">
+      <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+      <textarea name="comment_text" placeholder="添加批注..." rows="2" style="width:100%"></textarea>
+      <button type="submit">保存批注</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

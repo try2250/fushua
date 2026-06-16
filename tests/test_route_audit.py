@@ -49,6 +49,7 @@ def test_all_api_v1_routes_declare_tenant_dep():
         "/api/v1/questions",
         "/api/v1/classes",
         "/api/v1/assignments",
+        "/api/v1/comments",
         "/api/v1/users/{user_id}",
     ]
     missing = []

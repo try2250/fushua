@@ -78,7 +78,7 @@ def get_mistakes_for_miniprogram(
     current_user: User = Depends(get_current_user)
 ):
     mistakes = record_service.get_mistakes(db, current_user.id, subject, limit)
-    return ResponseModel(data=[record_to_miniprogram_dict(record) for record in mistakes])
+    return ResponseModel(data=[record_to_miniprogram_dict(record, db) for record in mistakes])
 
 
 @practice_router.post("", response_model=ResponseModel[dict])
@@ -88,7 +88,7 @@ def create_practice_record_for_miniprogram(
     current_user: User = Depends(get_current_user)
 ):
     new_record = record_service.create_record(db, record_data, current_user.id)
-    return ResponseModel(data=record_to_miniprogram_dict(new_record))
+    return ResponseModel(data=record_to_miniprogram_dict(new_record, db))
 
 
 @practice_router.post("/{record_id}/remove-mistake", response_model=ResponseModel[dict])

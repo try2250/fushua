@@ -393,3 +393,7 @@
   opacity: 0.16;
   background: radial-gradient(ellipse at 35% 70%, rgba(23, 107, 87, 0.30), transparent 45%);
 }
+
+.comment-bubble { background: #fffbe6; border: 1rpx solid #ffe58f; border-radius: 8rpx; padding: 16rpx; margin-top: 12rpx; }
+.comment-label { font-size: 24rpx; color: #fa8c16; font-weight: bold; }
+.comment-text { font-size: 26rpx; color: #333; display: block; margin-top: 6rpx; }

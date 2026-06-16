@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.models import Assignment, AssignmentRecord, Question, Record, User
+from app.models import Assignment, AssignmentRecord, Question, Record, User, QuestionComment
 from app.services.record_service import record_service
 
 
@@ -30,7 +30,7 @@ def question_to_miniprogram_dict(question: Question) -> dict:
     }
 
 
-def record_to_miniprogram_dict(record: Record) -> dict:
+def record_to_miniprogram_dict(record: Record, db: Session = None) -> dict:
     data = {
         "id": record.id,
         "user_id": record.user_id,
@@ -42,6 +42,12 @@ def record_to_miniprogram_dict(record: Record) -> dict:
     }
     if record.question:
         data["question"] = question_to_miniprogram_dict(record.question)
+    if db:
+        comments = db.query(QuestionComment).filter(
+            QuestionComment.student_id == record.user_id,
+            QuestionComment.question_id == record.question_id,
+        ).all()
+        data["comments"] = [c.comment_text for c in comments]
     return data
 
 

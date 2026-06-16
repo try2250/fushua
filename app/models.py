@@ -282,6 +282,7 @@ class AssignmentRecord(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
+    score = Column(Integer, default=0)
 
     assignment = relationship("Assignment", back_populates="records")
 
