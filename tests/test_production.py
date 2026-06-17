@@ -59,6 +59,13 @@ def test_csp_header_content(client):
     assert "frame-ancestors 'none'" in csp
 
 
+def test_csp_allows_classroom_runtime_cdn_sources(client):
+    resp = client.get("/")
+    csp = resp.headers.get("Content-Security-Policy", "")
+    assert "https://unpkg.com" in csp
+    assert "https://cdn.tailwindcss.com" in csp
+
+
 def test_404_error_page(client):
     resp = client.get("/nonexistent-page-12345")
     assert resp.status_code == 404
